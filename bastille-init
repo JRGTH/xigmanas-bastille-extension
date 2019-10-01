@@ -433,7 +433,7 @@ pkg_upgrade()
 	fi
 
 	# Check for extension updates.
-	#extension_upgrade
+	extension_upgrade
 }
 
 reset_install()
