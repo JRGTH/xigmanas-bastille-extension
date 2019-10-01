@@ -547,9 +547,13 @@ get_versions()
 ext_start()
 {
 	# Start bastille jails.
-	JAIL_AUTO_START=$(sysrc -qn bastille_enable)
-	if [ "${JAIL_AUTO_START}" = "YES" ]; then
-		service bastille start
+	if [ -d "${CWDIR}/jails" ]; then
+		if [ "$(ls -A ${CWDIR}/jails)" ]; then
+			JAIL_AUTO_START=$(sysrc -qn bastille_enable)
+			if [ "${JAIL_AUTO_START}" = "YES" ]; then
+				service bastille start
+			fi
+		fi
 	fi
 
 	if [ $? -eq 0 ]; then
