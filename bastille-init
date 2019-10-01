@@ -197,6 +197,7 @@ extension_upgrade()
 			# Logging the update event.
 			UPDATEVERSION=$(cat ${CWDIR}/version)
 			echo "${DATE}: ${FULLAPPNAME} upgraded to ${UPDATEVERSION}" >> ${EXTLOGFILE}
+			echo "${APPNAME} upgraded to version ${UPDATEVERSION}"
 			echo "${FULLAPPNAME} package upgrade completed!"
 		else
 			echo "${FULLAPPNAME} is on the latest version!"
@@ -232,12 +233,12 @@ platform_check()
 	# Check for working platform.
 	if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
 		create_addon_env
-		#ext_initial_download
+		ext_initial_download
 		bastille_initial_download
 		sys_symlinkdir
 	elif [ "${PRDPLATFORM}" = "x64-full" ]; then
 		create_addon_env
-		#ext_initial_download
+		ext_initial_download
 		bastille_initial_download
 		sys_symlinkdir
 	fi
