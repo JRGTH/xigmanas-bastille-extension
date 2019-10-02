@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+0.0.5......Start all jails once.
 0.0.4......Start jails if directory not empty.
 0.0.3......Minor code adjustment.
 0.0.2......Added addon preview page.

@@ -547,11 +547,13 @@ get_versions()
 ext_start()
 {
 	# Start bastille jails.
-	if [ -d "${CWDIR}/jails" ]; then
-		if [ "$(ls -A ${CWDIR}/jails)" ]; then
-			JAIL_AUTO_START=$(sysrc -qn bastille_enable)
-			if [ "${JAIL_AUTO_START}" = "YES" ]; then
-				service bastille start
+	if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
+		if [ -d "${CWDIR}/jails" ]; then
+			if [ "$(ls -A ${CWDIR}/jails)" ]; then
+				JAIL_AUTO_START=$(sysrc -qn bastille_enable)
+				if [ "${JAIL_AUTO_START}" = "YES" ]; then
+					service bastille start
+				fi
 			fi
 		fi
 	fi
