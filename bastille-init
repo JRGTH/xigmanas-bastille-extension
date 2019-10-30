@@ -463,7 +463,7 @@ gui_disable()
 		rm -f ${WWWPATH}bastille_manager_*.php
 		rm -rf ${WWWPATH}/ext/bastille
 		rm -rf ${WWWPATH}/ext/bastille/images
-		rm -f ${LOCALSHAREPATH}/locale-bastille
+		rm -rf ${LOCALSHAREPATH}/locale-bastille
 		rm -rf ${BASTILLECONFLINK}
 		sysrc -f ${CWDIR}${EXTCONF} GUI_ENABLE=NO >/dev/null 2>&1 || error_notify "Error: A problem while removing extension gui files."
 		exit 0
