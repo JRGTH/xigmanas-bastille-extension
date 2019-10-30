@@ -85,9 +85,9 @@ if ($_POST) {
 		bindtextdomain("xigmanas", $textdomain);
 		if (is_link($textdomain_bastille)) mwexec("rm -f {$textdomain_bastille}", true);
 		if (is_dir($confdir)) mwexec("rm -Rf {$confdir}", true);
-		mwexec("rm /usr/local/www/bastille-gui.php && rm -R /usr/local/www/ext/bastille-gui", true);
-		mwexec("{$rootfolder}/bastille-init -t", true);		
-		$uninstall_cmd = "echo 'y' | bastille-init -R";
+		mwexec("rm /usr/local/www/bastille_manager_gui.php && rm -R /usr/local/www/ext/bastille", true);
+		mwexec("{$rootfolder}/usr/local/sbin/bastille-init -t", true);		
+		$uninstall_cmd = "echo 'y' | /usr/local/sbin/bastille-init -R";
 		mwexec($uninstall_cmd, true);
 		if (is_link("/usr/local/share/{$prdname}")) mwexec("rm /usr/local/share/{$prdname}", true);
 		if (is_link("/var/cache/pkg")) mwexec("rm /var/cache/pkg", true);
@@ -200,6 +200,9 @@ $(document).ready(function(){
 <?php
 	if(!empty($errormsg)):
 		print_error_box($errormsg);
+	endif;
+	if(!empty($savemsg)):
+		print_info_box($savemsg);
 	endif;
 	if(!empty($input_errors)):
 		print_input_errors($input_errors);

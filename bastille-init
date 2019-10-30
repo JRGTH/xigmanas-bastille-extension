@@ -52,7 +52,7 @@ CONFIG="/cf/conf/config.xml"
 PRDNAME="Bastille"
 APPNAME="bastille"
 EXTLOGFILE="${CWDIR}/log/bastille_ext.log"
-FULLAPPNAME="${APPNAME}-main"
+FULLAPPNAME="${APPNAME}-dist"
 WWWPATH="/usr/local/www"
 PKGCACHE="/var/cache/pkg"
 USRLOCAL="/usr/local"
@@ -134,7 +134,7 @@ bastille_upgrade()
 {
 	# Perform an online bastille upgrade.
 	DATE=$(date +"%a %b %d %T %Y")
-	echo "Looking for new ${PRDNAME} package!"
+	echo "Looking for new ${APPNAME} package!"
 	mkdir -p ${CWDIR}/update
 	fetch -ao ${CWDIR}/update --no-verify-peer --timeout=30 ${BASTILE_VERSION} || \
 	error_notify "Error: A problem has occurred while fetching version file."
@@ -188,7 +188,7 @@ extension_upgrade()
 {
 	# Perform an online extension upgrade.
 	DATE=$(date +"%a %b %d %T %Y")
-	echo "Looking for new ${FULLAPPNAME} package!"
+	echo "Looking for new Extension package!"
 	mkdir -p ${CWDIR}/update
 	fetch -ao ${CWDIR}/update --no-verify-peer --timeout=30 ${VERFILE} || \
 	error_notify "Error: A problem has occurred while fetching version file."
@@ -198,7 +198,7 @@ extension_upgrade()
 		UPDATEVER=$(cat ${CWDIR}/update/version | tr -d .)
 		CURRENTVER=$(cat ${CWDIR}/version | tr -d .)
 		if [ "${UPDATEVER}" -gt "${CURRENTVER}" ]; then
-			echo "New ${FULLAPPNAME} package found, performing upgrade..."
+			echo "New Extension package found, performing upgrade..."
 			fetch -ao ${CWDIR}/update --no-verify-peer --timeout=30 ${GITURL} || \
 			error_notify "Error: A problem has occurred while fetching extension package."
 			tar -xf ${CWDIR}/update/${BRANCH}.zip --exclude='.git*' --strip-components 1 -C ${CWDIR}/update
@@ -209,11 +209,11 @@ extension_upgrade()
 
 			# Logging the update event.
 			UPDATEVERSION=$(cat ${CWDIR}/version)
-			echo "${DATE}: ${FULLAPPNAME} upgraded to ${UPDATEVERSION}" >> ${EXTLOGFILE}
-			echo "${FULLAPPNAME} upgraded to version ${UPDATEVERSION}"
-			echo "${FULLAPPNAME} package upgrade completed!"
+			echo "${DATE}: Extension upgraded to ${UPDATEVERSION}" >> ${EXTLOGFILE}
+			echo "Extension upgraded to version ${UPDATEVERSION}"
+			echo "Extension package upgrade completed!"
 		else
-			echo "${FULLAPPNAME} is on the latest version!"
+			echo "Extension is on the latest version!"
 			rm -R ${CWDIR}/update
 		fi
 	fi
@@ -569,7 +569,7 @@ remove_addon()
 	# Remove addon related files and folders only-
 	# to protect any user-created custom files-
 	# as well as for the containers dirs/files.
-	FILES="conf download gui locale-bastille log bastille-main LICENSE README.md postinit release_notes version bastille-init"
+	FILES="conf download gui locale-bastille log bastille-dist LICENSE README.md postinit CHANGELOG version bastille-init"
 	for FILE in ${FILES}; do
 		if [ -f "${CWDIR}/${file}" ] || [ -d "${CWDIR}/${file}" ]; then
 			rm -rf ${CWDIR}/${FILE}
