@@ -1,33 +1,40 @@
 #!/bin/sh
 # bastille-init
 # Bastille Extension for XigmaNAS x64 11.x and later.
-# Bastille Homepage: http://bastillebsd.org/
+# Bastille Extension Forum:  https://www.xigmanas.com/forums/viewtopic.php?f=71&t=14848
+# Bastille Extension GitHub: https://github.com/JRGTH/xigmanas-bastille-extension
+# Bastille Homepage:         http://bastillebsd.org/
+# Bastille GitHub:           https://github.com/BastilleBSD/bastille
 #
-# ***(For Preview/Testing)***
 # Debug script
 #set -x
 
-# Copyright (c) 2019 José Rivera (JoseMR)
+# Copyright (c) 2019, José Rivera (joserprg@gmail.com).
 # All rights reserved.
-#
+
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that following conditions are met:
+# modification, are permitted provided that the following conditions
+# are met:
 # 1. Redistributions of source code must retain the above copyright
 #    notice, this list of conditions and the following disclaimer.
 # 2. Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in the
 #    documentation and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS 'AS IS' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY
-# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 3. Neither the name of the developer nor the names of contributors
+#    may be used to endorse or promote products derived from this software
+#    without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE DEVELOPER ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE DEVELOPER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
 
 # Set environment.
 PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
@@ -45,8 +52,7 @@ CONFIG="/cf/conf/config.xml"
 PRDNAME="Bastille"
 APPNAME="bastille"
 EXTLOGFILE="${CWDIR}/log/bastille_ext.log"
-FULLAPPNAME="${APPNAME}-addon"
-PKGCONF="/etc/pkg/FreeBSD.conf"
+FULLAPPNAME="${APPNAME}-main"
 WWWPATH="/usr/local/www"
 PKGCACHE="/var/cache/pkg"
 USRLOCAL="/usr/local"
@@ -56,11 +62,12 @@ EXTCONFLINK="/var/etc/${APPNAME}_conf"
 BASTILLERCD="/usr/local/etc/rc.d/${APPNAME}"
 BASTILLEPATH="${USRLOCAL}/bin"
 BASTILLECONF="${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf"
-BASTILLECONFLINK="/var/etc/bastilleconf"
+BASTILLECONFLINK="/var/etc/bastille_conf"
+BASTILLECONF_EXT="${CWDIR}/conf/bastille.conf.ext"
 INSTALLPATH="${CWDIR}/${FULLAPPNAME}"
 BRANCH="master"
-#BATSILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" # Official Bastille repository(Pending some updates/fixes)
-BATSILLE_URL="https://github.com/JRGTH/${APPNAME}/archive/${BRANCH}.zip" # Alternate Bastille repository(Updated, supports 11.3-RELEASE base)
+BATSILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" # Official Bastille Repository)
+#BATSILLE_URL="https://github.com/JRGTH/${APPNAME}/archive/${BRANCH}.zip" # Alternate Bastille Repository)
 BASTILE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRANCH}/usr/local/bin/${APPNAME}"
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
@@ -80,6 +87,9 @@ runtime_config()
 		if ! sysrc -f ${BASTILLECONF} -qn bastille_prefix | grep -q "${CWDIR}"; then
 			sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_prefix="${CWDIR}" >/dev/null 2>&1
 		fi
+	fi
+	if [ ! -d ${CWDIR}/backups ]; then
+		mkdir -p ${CWDIR}/backups
 	fi
 	if [ ! -d ${CWDIR}/conf ]; then
 		mkdir -p ${CWDIR}/conf
@@ -110,9 +120,10 @@ bastille_pkg_extract()
 	if [ -f ${CWDIR}/${BRANCH}.zip ]; then
 		if [ ! -f ${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME} ]; then
 			echo "Extracting ${APPNAME}..."
-			tar -xf ${CWDIR}/${BRANCH}.zip --exclude='.git*' --strip-components 1 -C ${CWDIR}/${FULLAPPNAME} || \
+			tar -xf ${CWDIR}/${BRANCH}.zip --exclude='.git*' --exclude='docs' --exclude='bastille.conf' --strip-components 1 -C ${CWDIR}/${FULLAPPNAME} || \
 			error_notify "Error: A problem has occurred while extractig ${APPNAME} files."
 			chmod 555 ${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}
+			chmod 555 ${CWDIR}/${FULLAPPNAME}${BASTILLERCD}
 			rm -f ${CWDIR}/${BRANCH}.zip
 			echo "Done!"
 		fi
@@ -123,7 +134,7 @@ bastille_upgrade()
 {
 	# Perform an online bastille upgrade.
 	DATE=$(date +"%a %b %d %T %Y")
-	echo "Looking for new ${APPNAME} package!"
+	echo "Looking for new ${PRDNAME} package!"
 	mkdir -p ${CWDIR}/update
 	fetch -ao ${CWDIR}/update --no-verify-peer --timeout=30 ${BASTILE_VERSION} || \
 	error_notify "Error: A problem has occurred while fetching version file."
@@ -136,10 +147,11 @@ bastille_upgrade()
 			echo "New ${APPNAME} package found, performing upgrade..."
 			fetch -ao ${CWDIR}/update --no-verify-peer --timeout=30 ${BATSILLE_URL} || \
 			error_notify "Error: A problem has occurred while fetching ${APPNAME} package."
-			tar -xf ${CWDIR}/update/${BRANCH}.zip --exclude='.git*' --strip-components 1 -C ${CWDIR}/update
+			tar -xf ${CWDIR}/update/${BRANCH}.zip --exclude='.git*' --exclude='docs' --exclude='bastille.conf' --strip-components 1 -C ${CWDIR}/update
 			rm -f ${CWDIR}/update/${BRANCH}.zip
 			rm -f ${CWDIR}/update/${APPNAME}
 			chmod 555 ${CWDIR}/update/${BASTILLEPATH}/${APPNAME}
+			chmod 555 ${CWDIR}/${FULLAPPNAME}${BASTILLERCD}
 			cp -Rf ${CWDIR}/update/* ${CWDIR}/${FULLAPPNAME}/
 			rm -R ${CWDIR}/update
 
@@ -209,10 +221,13 @@ extension_upgrade()
 
 create_addon_env()
 {
-	# Set bastile dir proper permissions.
+	# Set bastille dir required permissions.
 	chmod 0750 ${CWDIR}
 
 	# Create required directories.
+	if [ ! -d "${CWDIR}/backups" ]; then
+		mkdir -p ${CWDIR}/backups
+	fi
 	if [ ! -d "${CWDIR}/log" ]; then
 		mkdir -p ${CWDIR}/log
 	fi
@@ -252,7 +267,7 @@ bin_symlinks()
 		cd ${INSTALLPATH}/${BASTILLEPATH}
 		for file in *
 			do
-				ln -Ffhs ${INSTALLPATH}/${BASTILLEPATH}/${file} ${USRLOCAL}/bin/${file}
+				ln -fhs ${INSTALLPATH}/${BASTILLEPATH}/${file} ${USRLOCAL}/bin/${file}
 		done
 	fi
 }
@@ -262,26 +277,26 @@ sys_symlinkdir()
 	# Check and create/relink required symlinks/dirs for bastille.
 	# This environment will be checked each time the script is started for consistency.
 
+	# Link required binaries.
+	bin_symlinks
+
 	# Required directories for bastille.
 	if [ ! -d "${USRLOCAL}/share/licenses" ]; then
 		mkdir -p ${USRLOCAL}/share/licenses
 	fi
-
-	# Link required binaries.
-	bin_symlinks
 
 	# Required symlinks for bastille. 
 	if [ -d "${INSTALLPATH}/${USRLOCAL}/share/licenses" ]; then
 		cd ${INSTALLPATH}/${USRLOCAL}/share/licenses
 		for file in *
 			do
-				ln -Ffhs ${INSTALLPATH}/${USRLOCAL}/share/licenses/${file} ${USRLOCAL}/share/licenses/${file}
+				ln -fhs ${INSTALLPATH}/${USRLOCAL}/share/licenses/${file} ${USRLOCAL}/share/licenses/${file}
 		done
 	fi
 
 	# Link bastile config file directory.
 	if [ -d "${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}" ]; then
-		ln -Ffhs ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME} ${USRLOCAL}/etc/${APPNAME}
+		ln -fhs ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME} ${USRLOCAL}/etc/${APPNAME}
 	fi
 
 	# Link bastile config file.
@@ -290,11 +305,15 @@ sys_symlinkdir()
 		if [ ! -f "${APPNAME}.conf" ]; then
 			cp ${APPNAME}.conf.sample ${APPNAME}.conf
 		fi
+	else
+		if [ -f "${BASTILLECONF_EXT}" ]; then
+			cp ${BASTILLECONF_EXT} ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf
+		fi
 	fi
 
 	# Copy bastille shared.
 	if [ -d "${INSTALLPATH}/${USRLOCAL}/share/${APPNAME}" ]; then
-		ln -Ffhs ${INSTALLPATH}/${USRLOCAL}/share/${APPNAME} ${USRLOCAL}/share/${APPNAME}
+		ln -fhs ${INSTALLPATH}/${USRLOCAL}/share/${APPNAME} ${USRLOCAL}/share/${APPNAME}
 	fi
 
 	# Copy bastille rc.
@@ -309,8 +328,8 @@ postinit_cmd()
 	if ! grep -qw ${CWDIR}/${SCRIPTNAME} ${CONFIG}; then
 		touch ${CWDIR}/postinit || error_notify "Error: A problem has occurred while creating the postinit file."
 		chmod +x ${CWDIR}/postinit
-		if [ ! "${PRDVERSION}" -ge "110" ]; then
-			# Generate php script for NAS4Free 10.3 versions.
+		if [ ! "${PRDVERSION}" -ge "112" ]; then
+			# Generate php script for previous product versions.
 			cat << EOF > ${CWDIR}/postinit
 <?php
 require_once("config.inc");
@@ -323,25 +342,49 @@ require_once("functions.inc");
 	}
 	\$config['rc']['postinit']['cmd'][\$i] = \$config['cmd']."\$cmd";
 	write_config();
+
+	\$i =0;
+	if ( is_array(\$config['rc']['shutdown'] ) && is_array( \$config['rc']['shutdown']['cmd'] ) ) {
+		for (\$i; \$i < count(\$config['rc']['shutdown']['cmd']);) {
+			if (preg_match('/${SCRIPTNAME}/', \$config['rc']['shutdown']['cmd'][\$i])) break; ++\$i; }
+	}
+	\$config['rc']['shutdown']['cmd'][\$i] = \$config['cmd']."\$cmd";
+	write_config();
 ?>
 EOF
 		else
-			# Generate php script for NAS4Free/XigmaNAS 11.x versions.
+			# Generate php script for later product versions.
 			cat << EOF > ${CWDIR}/postinit
 <?php
 require_once("config.inc");
 require_once("functions.inc");
 \$cmd = dirname(__FILE__)."/${SCRIPTNAME}";
+\$cmd2 = dirname(__FILE__)."/${SCRIPTNAME} -p";
 \$name = "${PRDNAME} Extension";
-\$comment = "Start ${PRDNAME} jail manager";
+\$comment = "Start ${PRDNAME} Container Manager";
+\$comment2 = "Stop ${PRDNAME} Container Manager";
 \$rc = &array_make_branch(\$config,'rc','param'); 
-if(false === array_search_ex(\$name,\$rc,'name')):
+if(false === array_search_ex(\$cmd,\$rc,'cmd')):
 	\$rc_param = [];
 	\$rc_param['uuid'] = uuid();
 	\$rc_param['name'] = \$name;
 	\$rc_param['value'] = \$cmd;
 	\$rc_param['comment'] = \$comment;
 	\$rc_param['typeid'] = '2';
+	\$rc_param['enable'] = true;
+	\$rc[] = \$rc_param;
+	write_config();
+endif;
+unset(\$rc);
+
+\$rc = &array_make_branch(\$config,'rc','param'); 
+if(false === array_search_ex(\$cmd2,\$rc,'cmd2')):
+	\$rc_param = [];
+	\$rc_param['uuid'] = uuid();
+	\$rc_param['name'] = \$name;
+	\$rc_param['value'] = \$cmd2;
+	\$rc_param['comment2'] = \$comment2;
+	\$rc_param['typeid'] = '3';
 	\$rc_param['enable'] = true;
 	\$rc[] = \$rc_param;
 	write_config();
@@ -359,7 +402,7 @@ EOF
 			echo "Done!"
 		fi
 
-		# Set extension to disable by default.
+		# Set extension to enable by default.
 		sysrc -f ${CWDIR}${EXTCONF} GUI_ENABLE=YES INSTALL_DIR=${CWDIR} >/dev/null 2>&1
 	fi
 }
@@ -382,21 +425,31 @@ gui_start()
 				sysrc -f ${CWDIR}${EXTCONF} INSTALL_DIR=${CWDIR} >/dev/null 2>&1
 			fi
 			mkdir -p ${BASTILLECONFLINK}
-			ln -Ffhs ${CWDIR}/conf ${BASTILLECONFLINK}/conf
-			# Copy the gui files.
-			cp -R ${CWDIR}/gui/* ${WWWPATH}/ || error_notify "Error: A problem has occurred while copying extension gui files."
+			ln -fhs ${CWDIR}/conf ${BASTILLECONFLINK}/conf
+			# Link the gui files.
+			if [ ! -d "${WWWPATH}/ext" ]; then
+				mkdir -p ${WWWPATH}/ext
+			fi
+			ln -fhs ${CWDIR}/gui/ext/bastille ${WWWPATH}/ext/ || error_notify "Error: A problem has occurred while copying extension gui files."
+			ln -fhs ${CWDIR}/gui/images ${WWWPATH}/ext/bastille/ || error_notify "Error: A problem has occurred while copying extension gui files."
+			ln -fhs ${CWDIR}/gui/bastille_manager_*.php ${WWWPATH}/ || error_notify "Error: A problem has occurred while linking extension gui files."
 		fi
 	fi
 }
 
 gui_enable()
 {
-	# Relink conf and copy the gui files.
+	# Relink conf and gui files.
 	if [ -d "${CWDIR}/gui" ]; then
 		mkdir -p ${BASTILLECONFLINK}
-		ln -Ffhs ${CWDIR}/conf ${BASTILLECONFLINK}/conf
+		ln -fhs ${CWDIR}/conf ${BASTILLECONFLINK}/conf
 		sysrc -f ${CWDIR}${EXTCONF} GUI_ENABLE=YES >/dev/null 2>&1
-		cp -R ${CWDIR}/gui/* ${WWWPATH}/ || error_notify "Error: A problem has occurred while copying extension gui files."
+		if [ ! -d "${WWWPATH}/ext" ]; then
+			mkdir -p ${WWWPATH}/ext
+		fi
+		ln -fhs ${CWDIR}/gui/ext/bastille ${WWWPATH}/ext/ || error_notify "Error: A problem has occurred while copying extension gui files."
+		ln -fhs ${CWDIR}/gui/images ${WWWPATH}/ext/bastille/ || error_notify "Error: A problem has occurred while copying extension gui files."
+		ln -fhs ${CWDIR}/gui/bastille_manager_*.php ${WWWPATH}/ || error_notify "Error: A problem has occurred while copying extension gui files."
 		exit 0
 	else
 		error_notify "Error: Extension gui files not found."
@@ -407,10 +460,11 @@ gui_disable()
 {
 	# Disable gui if -t option specified.
 	if [ -d "${CWDIR}/gui" ]; then
-		rm -f ${WWWPATH}bastille-gui.php
-		rm -Rf ${WWWPATH}/ext/bastille-gui
+		rm -f ${WWWPATH}bastille_manager_*.php
+		rm -rf ${WWWPATH}/ext/bastille
+		rm -rf ${WWWPATH}/ext/bastille/images
 		rm -f ${LOCALSHAREPATH}/locale-bastille
-		rm -Rf ${BASTILLECONFLINK}
+		rm -rf ${BASTILLECONFLINK}
 		sysrc -f ${CWDIR}${EXTCONF} GUI_ENABLE=NO >/dev/null 2>&1 || error_notify "Error: A problem while removing extension gui files."
 		exit 0
 	else
@@ -420,7 +474,7 @@ gui_disable()
 	# Remove empty ext folder to prevent empty "Extensions" tab.
 	if [ -d "${WWWPATH}/ext" ]; then
 		if [ ! "$(ls -A ${WWWPATH}/ext)" ]; then
-			rm -R ${WWWPATH}/ext
+			rm -r ${WWWPATH}/ext
 		fi
 	fi
 }
@@ -442,8 +496,8 @@ reset_install()
 {
 	# Reset the extension environment.
 	echo "Removing extension files..."
-	if [ -d ${CWDIR}/conf ]; then
-		rm -rf ${CWDIR}/conf
+	if [ -f ${CWDIR}/conf/bastille_config ]; then
+		rm -rf ${CWDIR}/conf/bastille_config
 	fi
 	if [ -d ${CWDIR}/${FULLAPPNAME} ]; then
 		rm -rf ${CWDIR}/${FULLAPPNAME}
@@ -470,11 +524,11 @@ remove_addon()
 	echo "Proceeding..."
 
 	# Check for working platform and remove symlinks.
-	if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
+	if [ "${PRDPLATFORM}" = "x64-embedded" ] || [ "${PRDPLATFORM}" = "x64-full" ]; then
 		if [ -d "${USRLOCAL}/share/licenses/${APPNAME}-*" ]; then
 			rm -rf ${USRLOCAL}/share/licenses/${APPNAME}-*
 		fi
-		if [ -d ${USRLOCAL}/share/locale-bastille ]; then
+		if [ -d $"{USRLOCAL}/share/locale-bastille" ]; then
 			rm -rf ${USRLOCAL}/share/locale-bastille
 		fi
 		if [ -f "${USRLOCAL}/etc/rc.d/${APPNAME}" ]; then
@@ -489,21 +543,19 @@ remove_addon()
 		if [ -d "${VARLOG}/${APPNAME}" ]; then
 			rm -rf ${VARLOG}/${APPNAME}
 		fi
-	elif [ "${PRDPLATFORM}" = "x64-full" ]; then
-		pkg delete -y ${APPNAME}
 	fi
 
 	# Remove extension and GUI components.
-	if [ -f "${WWWPATH}/${APPNAME}-gui.php" ]; then
-		rm -f ${WWWPATH}/${APPNAME}-gui.php
+	if [ -f "${WWWPATH}/bastille_manager_gui.php" ]; then
+		rm -f ${WWWPATH}/bastille_manager_*.php
 	fi
-	if [ -d "${WWWPATH}/ext/bastille-gui" ]; then
-		rm -rf ${WWWPATH}/ext/bastille-gui
+	if [ -d "${WWWPATH}/ext/bastille" ]; then
+		rm -rf ${WWWPATH}/ext/bastille
 	fi
-	if [ -f ${USRLOCAL}/bin/${APPNAME} ]; then
+	if [ -f "${USRLOCAL}/bin/${APPNAME}" ]; then
 		rm -rf ${USRLOCAL}/bin/${APPNAME}
 	fi
-	if [ -d ${VARLOG}/${APPNAME} ]; then
+	if [ -d "${VARLOG}/${APPNAME}" ]; then
 		rm -rf ${VARLOG}/${APPNAME}
 	fi
 
@@ -515,11 +567,12 @@ remove_addon()
 	fi
 
 	# Remove addon related files and folders only-
-	# to protect any user-created custom files.
-	FILES="conf download gui locale-bastille log bastille-addon README.md postinit release_notes version bastille-init"
-	for file in ${FILES}; do
-		if [ -f ${CWDIR}/${file} ] || [ -d ${CWDIR}/${file} ]; then
-			rm -rf ${CWDIR}/${file}
+	# to protect any user-created custom files-
+	# as well as for the containers dirs/files.
+	FILES="conf download gui locale-bastille log bastille-main LICENSE README.md postinit release_notes version bastille-init"
+	for FILE in ${FILES}; do
+		if [ -f "${CWDIR}/${file}" ] || [ -d "${CWDIR}/${file}" ]; then
+			rm -rf ${CWDIR}/${FILE}
 		fi
 	done
 
@@ -530,7 +583,7 @@ remove_addon()
 
 get_versions()
 {
-	# Get bastille-addon extension version.
+	# Get product versions.
 	if [ -f "${CWDIR}/version" ]; then
 		APPVERSION=$(cat ${CWDIR}/version)
 	else
@@ -540,7 +593,6 @@ get_versions()
 	# Display product versions.
 	BASTILLEVER=$(${USRLOCAL}/bin/bastille --version)
 	echo "Bastille version: ${BASTILLEVER}"
-
 	echo "Extension version: ${APPVERSION}"
 	exit 0
 }
@@ -548,15 +600,15 @@ get_versions()
 ext_start()
 {
 	# Start bastille jails.
-	if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
-		if [ -d "${CWDIR}/jails" ]; then
-			if [ "$(ls -A ${CWDIR}/jails)" ]; then
-				JAIL_AUTO_START=$(sysrc -qn bastille_enable)
-				if [ "${JAIL_AUTO_START}" = "YES" ]; then
-					service bastille start
+	if [ -d "${CWDIR}/jails" ]; then
+		JAIL_LIST=$(bastille list jail)
+		for jail in ${JAIL_LIST}; do
+			if sysrc -f ${CWDIR}${EXTCONF} -qn ${jail}_AUTO_START | grep -w "YES" >/dev/null; then
+				if ! jls | sed "1 d" | awk '{print $3}' | grep -qw ${jail}; then
+					bastille start ${jail}
 				fi
 			fi
-		fi
+		done
 	fi
 
 	if [ $? -eq 0 ]; then
@@ -572,27 +624,70 @@ ext_start()
 
 rc_params()
 {
-	# Bastille rc parameters.
+	# Bastille required parameters.
+
+	# Set bastille prefix.
 	if ! sysrc -f ${BASTILLECONF} -qn bastille_prefix | grep -q "${CWDIR}"; then
 		sysrc -f ${BASTILLECONF} bastille_prefix="${CWDIR}" >/dev/null 2>&1
 	fi
 
-	# Default network interface.
-	ACTIVE_NETIF=$(ifconfig | grep "UP,BROADCAST" | awk -F":" '{print $1}')
-	if ! sysrc -f ${BASTILLECONF} -qn bastille_jail_external >/dev/null 2>&1; then
-		echo "" >> ${BASTILLECONF} && echo "## default network interface" >> ${BASTILLECONF}
+	# Set bastille.conf location.
+	if ! sysrc -f ${CWDIR}${EXTCONF} -n BASTILLE_CONFIG 2>/dev/null | grep -q "${CWDIR}/${FULLAPPNAME}${BASTILLECONF}"; then
+		sysrc -f ${CWDIR}${EXTCONF} BASTILLE_CONFIG="${CWDIR}/${FULLAPPNAME}${BASTILLECONF}" >/dev/null 2>&1
+	fi
+
+	# Default first network interface.
+	ACTIVE_NETIF=$(ifconfig | grep "UP,BROADCAST" | awk -F":" '{print $1}' | sed 1q)
+	if ! sysrc -f ${BASTILLECONF} -qn bastille_jail_external | grep -q "${ACTIVE_NETIF}" >/dev/null 2>&1; then
+		#echo "" >> ${BASTILLECONF} && echo "## default network interface" >> ${BASTILLECONF}
 		sysrc -f ${BASTILLECONF} bastille_jail_external="${ACTIVE_NETIF}" >/dev/null 2>&1
 	else
-		BLANK_NETIF=$(sysrc -f ${BASTILLECONF} -qn bastille_jail_external)
-		if [ -z "${BLANK_NETIF}" ]; then
-			echo "" >> ${BASTILLECONF} && echo "## default network interface" >> ${BASTILLECONF}
+		EXT_NETIF=$(sysrc -f ${BASTILLECONF} -qn bastille_jail_external)
+		if [ -z "${EXT_NETIF}" ]; then
+			#echo "" >> ${BASTILLECONF} && echo "## default network interface" >> ${BASTILLECONF}
 			sysrc -f ${BASTILLECONF} bastille_jail_external="${ACTIVE_NETIF}" >/dev/null 2>&1
 		fi
 	fi
 
-	# Start all jails by default.
+	# Do't start containers by default.
 	if ! sysrc -qn bastille_enable >/dev/null 2>&1; then
-		sysrc bastille_enable="YES" >/dev/null 2>&1
+		sysrc bastille_enable="NO" >/dev/null 2>&1
+	fi
+}
+
+bastille_start()
+{
+	# Start all bastille containers.
+	echo "${PRDNAME} Extension: Starting all containers..."
+	bastille start ALL
+	if [ $? -eq 0 ]; then
+		exit 0
+	else
+		exit 1
+	fi
+}
+
+bastille_stop()
+{
+	# Stop all bastille containers.
+	echo "${PRDNAME} Extension: Stopping all containers..."
+	bastille stop ALL
+	if [ $? -eq 0 ]; then
+		exit 0
+	else
+		exit 1
+	fi
+}
+
+bastille_restart()
+{
+	# Restart all bastille containers.
+	echo "${PRDNAME} Extension: Restarting all containers..."
+	bastille restart ALL
+	if [ $? -eq 0 ]; then
+		exit 0
+	else
+		exit 1
 	fi
 }
 
@@ -603,7 +698,7 @@ bastille_init()
 		echo "Unsupported platform!"; exit 1
 	fi 
 	# Check for product compatibility.
-	if [ ! "${PRDVERSION}" -ge "110" ]; then
+	if [ ! "${PRDVERSION}" -ge "112" ]; then
 		echo "Unsupported version!"; exit 1
 	fi
 
@@ -621,18 +716,24 @@ bastille_init()
 # Run-time configuration.
 runtime_config
 
-while getopts ":ouxRvgth" option; do
+while getopts ":ospruxRvgth" option; do
 	case ${option} in
 		[h]) echo "Usage: ${SCRIPTNAME} -[option]";
 		echo "Options:"
+		echo "        -s  Start All ${PRDNAME} Containers."
+		echo "        -p  Stop All ${PRDNAME} Containers."
+		echo "        -r  Restart All ${PRDNAME} Containers."
 		echo "        -u  Upgrade ${PRDNAME}/Extension packages."
 		echo "        -v  Display product versions."
 		echo "        -g  Enables the addon GUI."
 		echo "        -t  Disable the addon GUI."
 		echo "        -x  Reset ${PRDNAME}/Extension config."
-		echo "        -R  Remove ${PRDNAME}."
+		echo "        -R  Remove ${PRDNAME} (Extension files only)."
 		echo "        -h  Display this help message."; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.
+		[s]) bastille_start;;
+		[p]) bastille_stop;;
+		[r]) bastille_restart;;
 		[u]) pkg_upgrade;;
 		[x]) reset_install;;
 		[R]) remove_addon;;

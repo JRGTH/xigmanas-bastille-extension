@@ -1,48 +1,50 @@
 <?php
 /*
-	bastille-gui.php
+	bastille_manager_maintenance.php
 
-	WebGUI wrapper for the XigmaNAS "Bastille" add-on created by JoseMR.
-	(https://www.xigmanas.com/forums/viewtopic.php?f=71&t=11184)
+	Copyright (c) 2019 José Rivera (joserprg@gmail.com).
+    All rights reserved.
 
 	Copyright (c) 2016 Andreas Schmidhuber
 	All rights reserved.
 
-	Portions of NAS4Free (http://www.nas4free.org).
+	Portions of XigmaNAS (http://www.nas4free.org).
 	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without
-	modification, are permitted provided that the following conditions are met:
+	modification, are permitted provided that the following conditions
+	are met:
+	1. Redistributions of source code must retain the above copyright
+	    notice, this list of conditions and the following disclaimer.
+	2. Redistributions in binary form must reproduce the above copyright
+	    notice, this list of conditions and the following disclaimer in the
+	    documentation and/or other materials provided with the distribution.
+	3. Neither the name of the developer nor the names of contributors
+	    may be used to endorse or promote products derived from this software
+	    without specific prior written permission.
 
-	1. Redistributions of source code must retain the above copyright notice, this
-	   list of conditions and the following disclaimer.
-	2. Redistributions in binary form must reproduce the above copyright notice,
-	   this list of conditions and the following disclaimer in the documentation
-	   and/or other materials provided with the distribution.
-
-	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	The views and conclusions contained in the software and documentation are those
-	of the authors and should not be interpreted as representing official policies,
-	either expressed or implied, of the NAS4Free Project.
+	THIS SOFTWARE IS PROVIDED BY THE DEVELOPER ``AS IS'' AND
+	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+	IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+	ARE DISCLAIMED.  IN NO EVENT SHALL THE DEVELOPER OR CONTRIBUTORS BE LIABLE
+	FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+	DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+	OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+	HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+	LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+	OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+	SUCH DAMAGE.
 */
+
 require("auth.inc");
 require("guiconfig.inc");
+require_once("bastille_manager-lib.inc");
 
 $application = "Bastille";
-$pgtitle = array(gtext("Extensions"), "Bastille");
+$pgtitle = array(gtext("Extensions"), "Bastille", "Maintenance");
 
-// For NAS4Free 10.x versions.
+// For legacy product versions.
 $return_val = mwexec("/bin/cat /etc/prd.version | cut -d'.' -f1 | /usr/bin/grep '10'", true);
 if ($return_val == 0) {
 	if (is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
@@ -50,28 +52,14 @@ if ($return_val == 0) {
 	}
 }
 
-// Initialize some variables.
-//$rootfolder = dirname($config['rc']['postinit']['cmd'][$i]);
-$confdir = "/var/etc/bastilleconf";
-$cwdir = exec("/usr/bin/grep 'INSTALL_DIR=' {$confdir}/conf/bastille_config | cut -d'\"' -f2");
-$rootfolder = $cwdir;
-$configfile = "{$rootfolder}/conf/bastille_config";
-$versionfile = "{$rootfolder}/version";
-$date = strftime('%c');
-$logfile = "{$rootfolder}/log/bastille_ext.log";
-$logevent = "{$rootfolder}/log/bastille_last_event.log";
+// Set default backup directory.
+if (1 == mwexec("/bin/cat {$configfile} | /usr/bin/grep 'BACKUP_DIR='")) {
+	if (is_file("{$configfile}")) exec("/usr/sbin/sysrc -f {$configfile} BACKUP_DIR={$rootfolder}/backups");
+}
+$backup_path = exec("/bin/cat {$configfile} | /usr/bin/grep 'BACKUP_DIR=' | cut -d'\"' -f2");
+
 $prdname = "bastille";
 $tarballversion = "/usr/local/bin/bastille";
-
-if ($rootfolder == "") $input_errors[] = gtext("Extension installed with fault");
-else {
-// Initialize locales.
-	$textdomain = "/usr/local/share/locale";
-	$textdomain_bastille = "/usr/local/share/locale-bastille";
-	if (!is_link($textdomain_bastille)) { mwexec("ln -s {$rootfolder}/locale-bastille {$textdomain_bastille}", true); }
-	bindtextdomain("xigmanas", $textdomain_bastille);
-}
-if (is_file("{$rootfolder}/postinit")) unlink("{$rootfolder}/postinit");
 
 if ($_POST) {
 	if(isset($_POST['upgrade']) && $_POST['upgrade']):
@@ -105,7 +93,7 @@ if ($_POST) {
 		if (is_link("/var/cache/pkg")) mwexec("rm /var/cache/pkg", true);
 		if (is_link("/var/db/pkg")) mwexec("rm /var/db/pkg && mkdir /var/db/pkg", true);
 		
-		// Remove postinit cmd in NAS4Free 10.x versions.
+		// Remove postinit cmd in legacy product versions.
 		$return_val = mwexec("/bin/cat /etc/prd.version | cut -d'.' -f1 | /usr/bin/grep '10'", true);
 			if ($return_val == 0) {
 				if (is_array($config['rc']['postinit']) && is_array($config['rc']['postinit']['cmd'])) {
@@ -117,7 +105,7 @@ if ($_POST) {
 			write_config();
 		}
 
-		// Remove postinit cmd in NAS4Free later versions.
+		// Remove postinit cmd in later product versions.
 		if (is_array($config['rc']) && is_array($config['rc']['param'])) {
 			$postinit_cmd = "{$rootfolder}/bastille-init";
 			$value = $postinit_cmd;
@@ -135,6 +123,29 @@ if ($_POST) {
 	header("Location:index.php");
 }
 
+	if (isset($_POST['save']) && $_POST['save']) {
+		// Ensure to have NO whitespace & trailing slash.
+		$backup_path = rtrim(trim($_POST['backup_path']),'/');
+		if ("{$backup_path}" == "") {
+			$backup_path = "{$rootfolder}/backups";
+			}
+		if (!is_file($backup_path)) {
+			$cmd = "/usr/sbin/sysrc -f {$configfile} BACKUP_DIR={$backup_path}";
+			unset($retval);mwexec($cmd,$retval);
+			if ($retval == 0) {
+				$savemsg .= gtext("Extension settings saved successfully.");
+				exec("echo '{$date}: {$application} Extension settings saved successfully' >> {$logfile}");
+				}
+			else {
+				$input_errors[] = gtext("Failed to save extension settings.");
+				exec("echo '{$date}: {$application} Failed to save extension settings' >> {$logfile}");
+				}
+			}
+		else {
+			$input_errors[] = gtext("Failed to save extension settings.");
+			exec("echo '{$date}: {$application} Failed to save extension settings' >> {$logfile}");
+			}
+	}
 }
 
 function get_version_bastille() {
@@ -185,11 +196,33 @@ $(document).ready(function(){
 }
 //-->
 </script>
-<form action="bastille-gui.php" method="post" name="iform" id="iform" onsubmit="spinner()">
+<form action="bastille_manager_maintenance.php" method="post" name="iform" id="iform" onsubmit="spinner()">
+<?php
+	if(!empty($errormsg)):
+		print_error_box($errormsg);
+	endif;
+	if(!empty($input_errors)):
+		print_input_errors($input_errors);
+	endif;
+	if(file_exists($d_sysrebootreqd_path)):
+		print_info_box(get_std_save_message(0));
+	endif;
+?>
 	<table width="100%" border="0" cellpadding="0" cellspacing="0">
+		<tr><td class="tabnavtbl">
+    		<ul id="tabnav">
+    			<li class="tabinact"><a href="bastille_manager_gui.php"><span><?=gettext("Containers");?></span></a></li>
+				<li class="tabact"><a href="bastille_manager_info.php"><span><?=gettext("Information");?></span></a></li>
+    			<li class="tabact"><a href="bastille_manager_maintenance.php"><span><?=gettext("Maintenance");?></span></a></li>
+    		</ul>
+    	</td></tr>
+		<tr><td class="tabnavtbl">
+		<ul id="tabnav2">
+			<li class="tabact"><a href="bastille_manager_config.php"><span><?=gettext("Bastille Configuration");?></span></a></li>
+			<li class="tabact"><a href="bastille_manager_tarballs.php"><span><?=gettext("Base Releases");?></span></a></li>
+		</ul>
+		</td></tr>
 		<tr><td class="tabcont">
-			<?php if (!empty($input_errors)) print_input_errors($input_errors);?>
-			<?php if (!empty($savemsg)) print_info_box($savemsg);?>
 			<table width="100%" border="0" cellpadding="6" cellspacing="0">
 				<?php html_titleline(gtext("Bastille"));?>
 				<?php html_text("installation_directory", gtext("Installation directory"), sprintf(gtext("The extension is installed in %s"), $rootfolder));?>
@@ -201,8 +234,10 @@ $(document).ready(function(){
 					<td class="vncellt"><?=gtext("Extension version");?></td>
 					<td class="vtable"><span name="getinfo_ext" id="getinfo_ext"><?=get_version_ext()?></span></td>
 				</tr>
+					<?php html_filechooser("backup_path", gtext("Backup directory"), $backup_path, gtext("Directory to store containers .tar backup archives."), $backup_path, true, 60);?>
 			</table>
 			<div id="submit">
+				<input id="save" name="save" type="submit" class="formbtn" title="<?=gtext("Save settings");?>" value="<?=gtext("Save");?>"/>
 				<input name="upgrade" type="submit" class="formbtn" title="<?=gtext("Upgrade Extension and Bastille Packages");?>" value="<?=gtext("Upgrade");?>" />
 			</div>
 			<div id="remarks">
@@ -215,7 +250,7 @@ $(document).ready(function(){
 				<?php html_separator();?>
 			</table>
 			<div id="submit1">
-				<input name="uninstall" type="submit" class="formbtn" title="<?=gtext("Uninstall Extension");?>" value="<?=gtext("Uninstall");?>" onclick="return confirm('<?=gtext("Bastille Extension and packages will be completely removed, ready to proceed?");?>')" />
+				<input name="uninstall" type="submit" class="formbtn" title="<?=gtext("Uninstall Extension");?>" value="<?=gtext("Uninstall");?>" onclick="return confirm('<?=gtext("Bastille Extension and packages will be completely removed, Bastille containers and child directories will not be touched, really to proceed?");?>')" />
 			</div>
 		</td></tr>
 	</table>
