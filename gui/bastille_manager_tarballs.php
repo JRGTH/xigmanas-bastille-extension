@@ -49,7 +49,7 @@ function get_rel_list() {
 	global $rootfolder;
 	$result = [];
 	if (is_dir("{$rootfolder}/releases")):
-		$entries = preg_grep('/^([^.])/', scandir("{$rootfolder}/releases"));
+		$entries = preg_grep('/^[0-9]+\.[0-9]+\-RELEASE/', scandir("{$rootfolder}/releases"));
 		foreach($entries as $entry):
    		$a = preg_split('/\t/',$entry);
 		$r = [];

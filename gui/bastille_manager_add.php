@@ -62,7 +62,7 @@ foreach($a_release as $k_release => $release):
 	$l_release[$k_release] = $k_release;
 endforeach;
 
-if(!is_dir($jail_dir)):
+if(!get_all_release_list()):
 	$errormsg = gtext('No base releases extracted yet.')
 			. ' '
 			. '<a href="' . 'bastille_manager_tarballs.php' . '">'
@@ -72,7 +72,6 @@ if(!is_dir($jail_dir)):
 endif;
 
 if($_POST):
-	global $empty_releases;
 	global $configfile;
 	unset($input_errors);
 	$pconfig = $_POST;
@@ -90,26 +89,27 @@ if($_POST):
 			$interface = $pconfig['interface'];
 		endif;
 
-		if($empty_releases !== "YES"):
-			if ($_POST['nowstart']):
-				$cmd = ("/usr/local/bin/bastille create {$jname} {$release} {$ipaddr} {$interface} && /usr/local/bin/bastille start {$jname}");
-			else:
-				$cmd = ("/usr/local/bin/bastille create {$jname} {$release} {$ipaddr} {$interface}");
-			endif;
-			else:
-				$cmd = "";
-			endif;
+		if ($_POST['nowstart']):
+			$cmd = ("/usr/local/bin/bastille create {$jname} {$release} {$ipaddr} {$interface} && /usr/local/bin/bastille start {$jname}");
+		else:
+			$cmd = ("/usr/local/bin/bastille create {$jname} {$release} {$ipaddr} {$interface}");
+		endif;
+
 		if ($_POST['Create']):
-			if ($_POST['autostart']):
-				exec("/usr/sbin/sysrc -f {$configfile} {$jname}_AUTO_START=\"YES\"");
-			endif;
-			unset($output,$retval);mwexec2($cmd,$output,$retval);
-			if($retval == 0):
-				//$savemsg .= gtext("Boot Environment created and activated successfully.");
-				header('Location: bastille_manager_gui.php');
-				exit;
+			if(get_all_release_list()):
+				unset($output,$retval);mwexec2($cmd,$output,$retval);
+				if($retval == 0):
+					if ($_POST['autostart']):
+						exec("/usr/sbin/sysrc -f {$configfile} {$jname}_AUTO_START=\"YES\"");
+					endif;
+					//$savemsg .= gtext("Boot Environment created and activated successfully.");
+					header('Location: bastille_manager_gui.php');
+					exit;
+				else:
+					$errormsg .= gtext("Failed to create container.");
+				endif;
 			else:
-				$errormsg .= gtext("Failed to create container.");
+				$errormsg .= gtext(" <<< Failed to create container.");
 			endif;
 		endif;
 	endif;

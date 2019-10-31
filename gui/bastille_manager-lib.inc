@@ -54,12 +54,6 @@ $bastille_config = "{$rootfolder}/conf/bastille_config";
 $jail_dir = "{$rootfolder}/jails";
 $image_dir = "ext/bastille/images";
 
-$avail_releases = exec("/bin/echo $(/bin/ls {$rootfolder}/releases 2>/dev/null)");
-if ($avail_releases == ''):
-	$empty_releases = "YES";
-	$avail_releases = "No base releases detected!";
-endif;
-
 // Ensure the root directory is configured.
 if ($rootfolder == "")
 	$input_errors[] = gtext("Extension installed with fault");
