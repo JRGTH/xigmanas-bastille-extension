@@ -47,6 +47,7 @@ $sphere_record = [];
 
 function get_rel_list() {
 	global $rootfolder;
+	global $jail_dir;
 	$result = [];
 	if (is_dir("{$rootfolder}/releases")):
 		$entries = preg_grep('/^[0-9]+\.[0-9]+\-RELEASE/', scandir("{$rootfolder}/releases"));
@@ -60,7 +61,6 @@ function get_rel_list() {
 			$r['name'] = 'unknown';
 		endif;
 		$r['relname'] = $r['name'];
-	
 		$result[] = $r;
 		endforeach;
 	endif;
@@ -103,20 +103,26 @@ if($_POST):
 		if ($_POST['Destroy']):
 			$get_release = $pconfig['release_item'];
 			$check_release = ("{$rootfolder}/releases/{$get_release}");
+			$check_used = exec("/usr/bin/grep -wo {$get_release} {$jail_dir}/*/fstab 2>/dev/null");
 			$cmd = ("/usr/local/bin/bastille destroy {$get_release}");
-			if(!file_exists($check_release)):
+
+			if (!file_exists($check_release)):
 				// FreeBSD base release check.
 				$savemsg .= sprintf(gtext('%s base does not exist, nothing to do.'),$get_release);
 			else:
-				// Delete the FreeBSD base release/directory.
-				if ($_POST['Destroy']):
-					unset($output,$retval);mwexec2($cmd,$output,$retval);
-					if($retval == 0):
-						//$savemsg .= sprintf(gtext('%s base deleted successfully.'),$get_release);
-						header('Location: bastille_manager_tarballs.php');
-					else:
-						$errormsg .= sprintf(gtext('%s failed to delete.'),$get_release);
-					endif;
+				// Do not delete base releases with containers child.
+				if ($check_used):
+					$errormsg .= sprintf(gtext('%s base appears to have containers child.'),$get_release);
+				else:			
+					// Delete the FreeBSD base release/directory.
+					if ($_POST['Destroy']):
+						unset($output,$retval);mwexec2($cmd,$output,$retval);
+						if($retval == 0):
+							$savemsg .= sprintf(gtext('%s base deleted successfully.'),$get_release);
+						else:
+							$errormsg .= sprintf(gtext('%s failed to delete.'),$get_release);
+						endif;
+					endif;		
 				endif;
 			endif;
 		endif;
@@ -182,7 +188,11 @@ $document->render();
 		<tbody>
 <?php
 			foreach ($sphere_array as $sphere_record):
-			html_text2('releases',gettext('Installed Base:'),htmlspecialchars($sphere_record['relname']));
+			if (file_exists("{$rootfolder}/releases/{$sphere_record['relname']}/root/.profile")):
+				html_text2('releases',gettext('Installed Base:'),htmlspecialchars($sphere_record['relname']));
+			else:
+				html_text2('releases',gettext('Unknown Base:'),htmlspecialchars($sphere_record['relname']));
+			endif;
 			endforeach;
 			$a_action = [
 				//'12.1-RELEASE' => gettext('12.1-RELEASE'),
@@ -190,16 +200,13 @@ $document->render();
 				'11.3-RELEASE' => gettext('11.3-RELEASE'),
 				'11.2-RELEASE' => gettext('11.2-RELEASE'),
 			];
-			html_combobox2('release_item',gettext('Select Base Release'),$pconfig['release_item'],$a_action,'',true,false,'action_change()');
+			html_combobox2('release_item',gettext('Select Base Release'),$pconfig['release_item'],$a_action,'',true,false);
 ?>
 		</tbody>
 	</table>
 	<div id="submit">
 		<input name="Download" type="submit" class="formbtn" value="<?=gtext("Download");?>" onclick="enable_change(true)" />
-		
 		<input name="Destroy" id="Destroy" type="submit" class="formbtn" value="<?=gtext("Destroy");?>"/>
-		
-
 		<input name="Cancel" type="submit" class="formbtn" value="<?=gtext("Cancel");?>" />
 	</div>
 	<div id="remarks">
