@@ -328,32 +328,8 @@ postinit_cmd()
 	if ! grep -qw ${CWDIR}/${SCRIPTNAME} ${CONFIG}; then
 		touch ${CWDIR}/postinit || error_notify "Error: A problem has occurred while creating the postinit file."
 		chmod +x ${CWDIR}/postinit
-		if [ ! "${PRDVERSION}" -ge "112" ]; then
-			# Generate php script for previous product versions.
-			cat << EOF > ${CWDIR}/postinit
-<?php
-require_once("config.inc");
-require_once("functions.inc");
-\$cmd = dirname(__FILE__)."/${SCRIPTNAME}";
-	\$i =0;
-	if ( is_array(\$config['rc']['postinit'] ) && is_array( \$config['rc']['postinit']['cmd'] ) ) {
-		for (\$i; \$i < count(\$config['rc']['postinit']['cmd']);) {
-			if (preg_match('/${SCRIPTNAME}/', \$config['rc']['postinit']['cmd'][\$i])) break; ++\$i; }
-	}
-	\$config['rc']['postinit']['cmd'][\$i] = \$config['cmd']."\$cmd";
-	write_config();
-
-	\$i =0;
-	if ( is_array(\$config['rc']['shutdown'] ) && is_array( \$config['rc']['shutdown']['cmd'] ) ) {
-		for (\$i; \$i < count(\$config['rc']['shutdown']['cmd']);) {
-			if (preg_match('/${SCRIPTNAME}/', \$config['rc']['shutdown']['cmd'][\$i])) break; ++\$i; }
-	}
-	\$config['rc']['shutdown']['cmd'][\$i] = \$config['cmd']."\$cmd";
-	write_config();
-?>
-EOF
-		else
-			# Generate php script for later product versions.
+		if [ "${PRDVERSION}" -ge "110" ]; then
+			# Generate php script for start/stop commands.
 			cat << EOF > ${CWDIR}/postinit
 <?php
 require_once("config.inc");
@@ -383,7 +359,7 @@ if(false === array_search_ex(\$cmd2,\$rc,'cmd2')):
 	\$rc_param['uuid'] = uuid();
 	\$rc_param['name'] = \$name;
 	\$rc_param['value'] = \$cmd2;
-	\$rc_param['comment2'] = \$comment2;
+	\$rc_param['comment'] = \$comment2;
 	\$rc_param['typeid'] = '3';
 	\$rc_param['enable'] = true;
 	\$rc[] = \$rc_param;

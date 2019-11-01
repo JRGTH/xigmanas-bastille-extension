@@ -92,36 +92,39 @@ if ($_POST) {
 		if (is_link("/usr/local/share/{$prdname}")) mwexec("rm /usr/local/share/{$prdname}", true);
 		if (is_link("/var/cache/pkg")) mwexec("rm /var/cache/pkg", true);
 		if (is_link("/var/db/pkg")) mwexec("rm /var/db/pkg && mkdir /var/db/pkg", true);
-		
-		// Remove postinit cmd in legacy product versions.
-		$return_val = mwexec("/bin/cat /etc/prd.version | cut -d'.' -f1 | /usr/bin/grep '10'", true);
-			if ($return_val == 0) {
-				if (is_array($config['rc']['postinit']) && is_array($config['rc']['postinit']['cmd'])) {
-					for ($i = 0; $i < count($config['rc']['postinit']['cmd']);) {
-					if (preg_match('/bastille-init/', $config['rc']['postinit']['cmd'][$i])) { unset($config['rc']['postinit']['cmd'][$i]); }
-					++$i;
-				}
-			}
-			write_config();
-		}
 
-		// Remove postinit cmd in later product versions.
+		// Remove start postinit cmd in later product versions.
 		if (is_array($config['rc']) && is_array($config['rc']['param'])) {
 			$postinit_cmd = "{$rootfolder}/bastille-init";
 			$value = $postinit_cmd;
 			$sphere_array = &$config['rc']['param'];
 			$updateconfigfile = false;
-		if (false !== ($index = array_search_ex($value, $sphere_array, 'value'))) {
-			unset($sphere_array[$index]);
-			$updateconfigfile = true;
+			if (false !== ($index = array_search_ex($value, $sphere_array, 'value'))) {
+				unset($sphere_array[$index]);
+				$updateconfigfile = true;
+			}
+			if ($updateconfigfile) {
+				write_config();
+				$updateconfigfile = false;
+			}
 		}
-		if ($updateconfigfile) {
-			write_config();
+		// Remove stop postinit cmd in later product versions.
+		if (is_array($config['rc']) && is_array($config['rc']['param'])) {
+			$shutdown_cmd = "{$rootfolder}/bastille-init -p";
+			$value = $shutdown_cmd;
+			$sphere_array = &$config['rc']['param'];
 			$updateconfigfile = false;
+			if (false !== ($index = array_search_ex($value, $sphere_array, 'value'))) {
+				unset($sphere_array[$index]);
+				$updateconfigfile = true;
+			}
+			if ($updateconfigfile) {
+				write_config();
+				$updateconfigfile = false;
+			}
 		}
+		header("Location:index.php");
 	}
-	header("Location:index.php");
-}
 
 	if (isset($_POST['save']) && $_POST['save']) {
 		// Ensure to have NO whitespace & trailing slash.
