@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.5......Add missing uninstall code.
 1.0.4......Remove obsolete code, delete shutdown command upon uninstall.
 1.0.3......Do not delete base releases with containers child.
 1.0.2......Code and regex improvements.

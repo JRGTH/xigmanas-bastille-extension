@@ -513,6 +513,9 @@ remove_addon()
 		if [ -f "${USRLOCAL}/etc/${APPNAME}.conf" ]; then
 			rm -f ${USRLOCAL}/etc/${APPNAME}.conf
 		fi
+		if [ -f "${BASTILLEPATH}/${APPNAME}" ]; then
+			rm -f ${BASTILLEPATH}/${APPNAME}
+		fi
 		if [ -f "${USRLOCAL}/sbin/${APPNAME}-init" ]; then
 			rm -rf ${USRLOCAL}/sbin/${APPNAME}-init
 		fi
