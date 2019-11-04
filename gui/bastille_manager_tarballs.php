@@ -118,7 +118,8 @@ if($_POST):
 					if ($_POST['Destroy']):
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
-							$savemsg .= sprintf(gtext('%s base deleted successfully.'),$get_release);
+							//$savemsg .= sprintf(gtext('%s base deleted successfully.'),$get_release);
+							header('Location: bastille_manager_tarballs.php');
 						else:
 							$errormsg .= sprintf(gtext('%s failed to delete.'),$get_release);
 						endif;
