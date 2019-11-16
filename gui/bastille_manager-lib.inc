@@ -53,6 +53,7 @@ $backup_path = exec("/bin/cat {$configfile} | /usr/bin/grep 'BACKUP_DIR=' | /usr
 $bastille_config = "{$rootfolder}/conf/bastille_config";
 $jail_dir = "{$rootfolder}/jails";
 $image_dir = "ext/bastille/images";
+$thick_jail = exec("/usr/local/bin/bastille create | grep -wo '\[option\]'");
 
 // Ensure the root directory is configured.
 if ($rootfolder == "")

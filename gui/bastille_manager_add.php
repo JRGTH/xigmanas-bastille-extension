@@ -89,10 +89,16 @@ if($_POST):
 			$interface = $pconfig['interface'];
 		endif;
 
-		if ($_POST['nowstart']):
-			$cmd = ("/usr/local/bin/bastille create {$jname} {$release} {$ipaddr} {$interface} && /usr/local/bin/bastille start {$jname}");
+		if($_POST['thickjail']):
+			$thick_jail = "-T";
 		else:
-			$cmd = ("/usr/local/bin/bastille create {$jname} {$release} {$ipaddr} {$interface}");
+			$thick_jail = "";
+		endif;
+
+		if ($_POST['nowstart']):
+			$cmd = ("/usr/local/bin/bastille create {$thick_jail} {$jname} {$release} {$ipaddr} {$interface} && /usr/local/bin/bastille start {$jname}");
+		else:
+			$cmd = ("/usr/local/bin/bastille create {$thick_jail} {$jname} {$release} {$ipaddr} {$interface}");
 		endif;
 
 		if ($_POST['Create']):
@@ -169,6 +175,9 @@ $document->render();
 			$b_action = $l_release;
 			html_combobox2('interface',gettext('Network interface'),$pconfig['interface'],$a_action,'',true,false,'action_change()');
 			html_combobox2('release',gettext('Base release'),$pconfig['release'],$b_action,'',true,false,'action_change()');
+			if($thick_jail):
+				html_checkbox2('thickjail',gettext('Create a thick container'),!empty($pconfig['thickjail']) ? true : false,gettext('These containers consume more space, but are self contained.'),'',false);
+			endif;
 			html_checkbox2('nowstart',gettext('Start after creation'),!empty($pconfig['nowstart']) ? true : false,gettext('Start the container after creation.'),'',false);
 			html_checkbox2('autostart',gettext('Auto start on boot'),!empty($pconfig['autostart']) ? true : false,gettext('Automatically start the container at boot time.'),'',false);
 ?>

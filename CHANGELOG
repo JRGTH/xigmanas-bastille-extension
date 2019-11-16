@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.8......Add option for thickjail creation if supported.
 1.0.7......Added 12.1-RELEASE.
 1.0.6......Reload page after base release download.
 1.0.5......Add missing uninstall code.
