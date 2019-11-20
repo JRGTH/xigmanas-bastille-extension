@@ -83,7 +83,7 @@ if($_POST):
 		$jname = $pconfig['jailname'];
 		$ipaddr = $pconfig['ipaddress'];
 		$release = $pconfig['release'];
-		if ($_POST['interface'] == 'NONE'):
+		if ($_POST['interface'] == 'Config'):
 			$interface = "";
 		else:
 			$interface = $pconfig['interface'];

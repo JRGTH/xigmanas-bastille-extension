@@ -3,13 +3,14 @@
 ======================
 Version    Description
 
-1.0.9......Allow for distfiles download override.
-1.0.8......Add option for thickjail creation if supported.
-1.0.7......Added 12.1-RELEASE.
-1.0.6......Reload page after base release download.
-1.0.5......Add missing uninstall code.
-1.0.4......Remove obsolete code, delete shutdown command upon uninstall.
-1.0.3......Do not delete base releases with containers child.
-1.0.2......Code and regex improvements.
-1.0.1......Update paths and minor changes.
-1.0.0......First Public Release.
+1.0.10......Cosmetic changes and version number adjust.
+1.0.09......Allow for distfiles download override.
+1.0.08......Add option for thickjail creation if supported.
+1.0.07......Added 12.1-RELEASE.
+1.0.06......Reload page after base release download.
+1.0.05......Add missing uninstall code.
+1.0.04......Remove obsolete code, delete shutdown command upon uninstall.
+1.0.03......Do not delete base releases with containers child.
+1.0.02......Code and regex improvements.
+1.0.01......Update paths and minor changes.
+1.0.00......First Public Release.

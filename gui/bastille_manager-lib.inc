@@ -56,6 +56,7 @@ $default_distfiles = exec("/bin/cat {$config_path} | /usr/bin/grep 'bastille_boo
 $jail_dir = "{$rootfolder}/jails";
 $image_dir = "ext/bastille/images";
 $thick_jail = exec("/usr/local/bin/bastille create | grep -wo '\[option\]'");
+$reldir = "{$rootfolder}/releases";
 
 // Ensure the root directory is configured.
 if ($rootfolder == "")
@@ -68,6 +69,12 @@ else {
 	bindtextdomain("xigmanas", $textdomain_bastille);
 }
 if (is_file("{$rootfolder}/postinit")) unlink("{$rootfolder}/postinit");
+
+// Check releases dir.
+function is_dir_empty($reldir) {
+	if (!is_readable($reldir)) return NULL; 
+	return (count(scandir($reldir)) == 2);
+}
 
 // Get all base releases list.
 function get_all_release_list() {
@@ -90,7 +97,7 @@ function get_all_release_list() {
 // Get all interface list.
 function get_all_interface_list() {
 	global $g;
-	exec("/bin/echo; /sbin/ifconfig -l | /usr/bin/tr -s ' ' '\n'; /bin/echo 'NONE'",$linkinfo);
+	exec("/bin/echo; /sbin/ifconfig -l | /usr/bin/tr -s ' ' '\n'; /bin/echo 'Config'",$linkinfo);
 	array_shift($linkinfo);
 	$iflist = [];
 	foreach($linkinfo as $link):

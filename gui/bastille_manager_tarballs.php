@@ -204,11 +204,12 @@ $document->render();
 			<col class="area_data_settings_col_data">
 		</colgroup>
 		<thead>
-
-			<?php
-			html_titleline2(gettext('FreeBSD Base Release Installed'));
-						foreach ($sphere_array as $sphere_record):
-			if (file_exists("{$rootfolder}/releases/{$sphere_record['relname']}/root/.profile")):
+<?php
+			if (!is_dir_empty($reldir)):
+				html_titleline2(gettext('FreeBSD Base Release Installed'));
+			endif;
+			foreach ($sphere_array as $sphere_record):
+			if (file_exists("{$reldir}/{$sphere_record['relname']}/root/.profile")):
 				html_text2('releases',gettext('Installed Base:'),htmlspecialchars($sphere_record['relname']));
 			else:
 				html_text2('releases',gettext('Unknown Base:'),htmlspecialchars($sphere_record['relname']));
