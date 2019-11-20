@@ -82,15 +82,37 @@ if($_POST):
 		$get_release = $pconfig['release_item'];
 		$check_release = ("{$rootfolder}/releases/{$get_release}");
 		$cmd = ("/usr/local/bin/bastille bootstrap {$get_release}");
+		$base_mandatory = "base";
+
+		unset($lib32,$ports,$src);
+		if ($_POST['lib32']):
+			$lib32 = "lib32";
+		endif;
+		if ($_POST['ports']):
+			$ports = "ports";
+		endif;
+		if ($_POST['src']):
+			$src = "src";
+		endif;
+		$opt_tarballs = "$lib32 $ports $src";
+
 		if(file_exists($check_release)):
 			// FreeBSD base release check.
 			$savemsg .= sprintf(gtext('%s base appears to be already extracted.'),$get_release);
 		else:
 			// Download a FreeBSD base release.
 			if ($_POST['Download']):
+				if ($opt_tarballs):
+					if ($config_path):
+						// Override default distfiles.
+						exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$base_mandatory $opt_tarballs\"");
+					endif;
+				endif;
 				unset($output,$retval);mwexec2($cmd,$output,$retval);
 				if($retval == 0):
 					//$savemsg .= sprintf(gtext('%s base downloaded and extracted successfully.'),$get_release);
+					// Set back default distfiles.
+					exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$default_distfiles\"");
 					header('Location: bastille_manager_tarballs.php');
 				else:
 					$errormsg .= sprintf(gtext('%s Failed to download and/or extract release base.'),$get_release);
@@ -182,19 +204,24 @@ $document->render();
 			<col class="area_data_settings_col_data">
 		</colgroup>
 		<thead>
-<?php
-			html_titleline2(gettext('FreeBSD Base Releases'));
-?>
-		</thead>
-		<tbody>
-<?php
-			foreach ($sphere_array as $sphere_record):
+
+			<?php
+			html_titleline2(gettext('FreeBSD Base Release Installed'));
+						foreach ($sphere_array as $sphere_record):
 			if (file_exists("{$rootfolder}/releases/{$sphere_record['relname']}/root/.profile")):
 				html_text2('releases',gettext('Installed Base:'),htmlspecialchars($sphere_record['relname']));
 			else:
 				html_text2('releases',gettext('Unknown Base:'),htmlspecialchars($sphere_record['relname']));
 			endif;
 			endforeach;
+?>
+<?php
+			html_separator();
+			html_titleline2(gettext('FreeBSD Base Release Download'));
+?>
+		</thead>
+		<tbody>
+<?php
 			$a_action = [
 				//'12.1-RELEASE' => gettext('12.1-RELEASE'),
 				'12.1-RELEASE' => gettext('12.1-RELEASE'),
@@ -203,6 +230,10 @@ $document->render();
 				'11.2-RELEASE' => gettext('11.2-RELEASE'),
 			];
 			html_combobox2('release_item',gettext('Select Base Release'),$pconfig['release_item'],$a_action,'',true,false);
+			html_titleline2(gettext('Optional Distfiles (Overrides config)'));
+			html_checkbox2('lib32',gettext('32-bit Compatibility'),!empty($pconfig['lib32']) ? true : false,gettext('lib32.txz'),'',false);
+			html_checkbox2('ports',gettext('Ports tree'),!empty($pconfig['ports']) ? true : false,gettext('ports.txz'),'',false);
+			html_checkbox2('src',gettext('System source tree'),!empty($pconfig['src']) ? true : false,gettext('src.txz'),'',false);
 ?>
 		</tbody>
 	</table>

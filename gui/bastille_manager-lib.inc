@@ -51,6 +51,8 @@ $logfile = "{$rootfolder}/log/bastille_ext.log";
 $logevent = "{$rootfolder}/log/bastille_last_event.log";
 $backup_path = exec("/bin/cat {$configfile} | /usr/bin/grep 'BACKUP_DIR=' | /usr/bin/cut -d'\"' -f2");
 $bastille_config = "{$rootfolder}/conf/bastille_config";
+$config_path = exec("/bin/cat {$configfile} | /usr/bin/grep 'BASTILLE_CONFIG=' | /usr/bin/cut -d'\"' -f2");
+$default_distfiles = exec("/bin/cat {$config_path} | /usr/bin/grep 'bastille_bootstrap_archives=' | /usr/bin/cut -d'\"' -f2");
 $jail_dir = "{$rootfolder}/jails";
 $image_dir = "ext/bastille/images";
 $thick_jail = exec("/usr/local/bin/bastille create | grep -wo '\[option\]'");
