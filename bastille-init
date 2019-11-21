@@ -51,6 +51,10 @@ SCRIPTNAME=$(basename $0)
 CONFIG="/cf/conf/config.xml"
 PRDNAME="Bastille"
 APPNAME="bastille"
+DEF_ZFS_SENDPARAMS=""
+DEF_ZFS_RECVPARAM=""
+DEF_ZFS_COMPRESS="xz -0 -v --threads=0"
+DEF_ZFS_DECOMPRESS="xz -c -d -v --threads=0"
 EXTLOGFILE="${CWDIR}/log/bastille_ext.log"
 FULLAPPNAME="${APPNAME}-dist"
 WWWPATH="/usr/local/www"
@@ -71,6 +75,12 @@ BATSILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" #
 BASTILE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRANCH}/usr/local/bin/${APPNAME}"
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
+ARG="$2"
+
+# Required
+if [ -f "${BASTILLECONF}" ]; then
+	. /${BASTILLECONF}
+fi
 
 error_notify()
 {
@@ -88,6 +98,8 @@ runtime_config()
 			sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_prefix="${CWDIR}" >/dev/null 2>&1
 		fi
 	fi
+
+	# Check for directories.
 	if [ ! -d ${CWDIR}/backups ]; then
 		mkdir -p ${CWDIR}/backups
 	fi
@@ -99,6 +111,20 @@ runtime_config()
 	fi
 	if [ ! -d ${CWDIR}/locale-bastille ]; then
 		mkdir -p ${CWDIR}/locale-bastille
+	fi
+
+	# Set rquired zfs send/recv parameters is missing.
+	if ! grep -qw "ZFS_SENDPARAMS=" ${CWDIR}${EXTCONF} >/dev/null 2>&1; then
+		sysrc -f ${CWDIR}${EXTCONF} ZFS_SENDPARAMS="${DEF_ZFS_SENDPARAMS}" >/dev/null 2>&1
+	fi
+	if ! grep -qw "ZFS_RECVPARAM=" ${CWDIR}${EXTCONF} >/dev/null 2>&1; then
+		sysrc -f ${CWDIR}${EXTCONF} ZFS_RECVPARAM="${DEF_ZFS_RECVPARAM}" >/dev/null 2>&1
+	fi
+	if ! grep -qw "DEFAULT_COMPRESS=" ${CWDIR}${EXTCONF} >/dev/null 2>&1; then
+		sysrc -f ${CWDIR}${EXTCONF} ZFS_COMPRESS="${DEF_ZFS_COMPRESS}" >/dev/null 2>&1
+	fi
+	if ! grep -qw "DEFAULT_DECOMPRESS=" ${CWDIR}${EXTCONF} >/dev/null 2>&1; then
+		sysrc -f ${CWDIR}${EXTCONF} ZFS_DECOMPRESS="${DEF_ZFS_DECOMPRESS}" >/dev/null 2>&1
 	fi
 }
 
@@ -307,7 +333,9 @@ sys_symlinkdir()
 		fi
 	else
 		if [ -f "${BASTILLECONF_EXT}" ]; then
-			cp ${BASTILLECONF_EXT} ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf
+			if [ ! -f "${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf" ]; then
+				cp ${BASTILLECONF_EXT} ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf
+			fi
 		fi
 	fi
 
@@ -453,6 +481,87 @@ gui_disable()
 			rm -r ${WWWPATH}/ext
 		fi
 	fi
+}
+
+jail_backup()
+{
+	# Backup container on request.
+	ZFS_COMPRESS=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_COMPRESS)
+	ZFS_SENDPARAMS=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_SENDPARAMS)
+	JAIL_NAME="${ARG}"
+	DATE=$(date +%Y-%m-%d-%H%M%S)
+	EXCLUDE="--exclude=.bastille --exclude=.template"
+	if [ -n "${JAIL_NAME}" ]; then
+		if [ -d "${CWDIR}/jails/${JAIL_NAME}" ]; then
+			if [ "${bastille_zfs_enable}" = "YES" ]; then
+				if [ ! -z "${bastille_zfs_zpool}" ]; then
+					# Take a temp snapshot of the jail.
+					SNAP_NAME="bastille-$(date +%Y-%m-%d-%H%M%S)"
+					zfs snapshot -r ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${JAIL_NAME}@${SNAP_NAME}
+
+					# Backup the jail then cleanup temp zfs snapshots.
+					zfs send ${ZFS_SENDPARAMS} -R ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${JAIL_NAME}@${SNAP_NAME} | ${ZFS_COMPRESS} > ${CWDIR}/backups/${JAIL_NAME}-${DATE}.zfs
+					zfs destroy -r ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${JAIL_NAME}@${SNAP_NAME}
+				fi
+			else
+				# Create backup file with tar.
+				cd ${CWDIR}/jails && tar ${EXCLUDE} -zcf ${JAIL_NAME}-${DATE}.tar ${JAIL_NAME} && mv ${JAIL_NAME}-${DATE}.tar ${CWDIR}/backups
+			fi
+			if [ $? -ne 0 ]; then
+				echo "Failed to backup '${JAIL_NAME}' container."
+				exit 1
+			else
+				exit 0
+			fi
+		else
+			echo "Container '${JAIL_NAME}' does not exist."
+			exit 1
+		fi
+	else
+		exit 0
+	fi
+}
+
+jail_restore()
+{
+	# Restore container on request.
+	ZFS_DECOMPRESS=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_DECOMPRESS)
+	ZFS_RECVPARAM=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_RECVPARAM)
+	BACKUP_FILE="${ARG}"
+	NAME_TRIM=$(echo ${BACKUP_FILE} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '-' -f1)
+	if [ -f "${CWDIR}/backups/${BACKUP_FILE}" ]; then
+		if [ -d "${CWDIR}/jails" ]; then
+			if [ ! -d "${CWDIR}/jails/${NAME_TRIM}" ]; then
+				if [ "${bastille_zfs_enable}" = "YES" ]; then
+					if [ ! -z "${bastille_zfs_zpool}" ]; then
+						# Restore from zfs file and mount jail/root dataset.
+						${ZFS_DECOMPRESS} ${CWDIR}/backups/${BACKUP_FILE} | zfs receive ${ZFS_RECVPARAM} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
+						zfs mount ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}/root
+					fi
+				else
+					# Restore from tar file.
+					tar -xf  ${CWDIR}/backups/${BACKUP_FILE} -C ${CWDIR}/jails
+				fi
+				if [ $? -ne 0 ]; then
+					echo "Failed to restore '${NAME_TRIM}' container."
+					exit 1
+				else
+					mkdir -p ${CWDIR}/jails/${NAME_TRIM}/root/.bastille
+					mkdir -p ${CWDIR}/jails/${NAME_TRIM}/root/.template
+					exit 0
+				fi
+			else
+				echo "Container '${NAME_TRIM}' directory/dataset already exist."
+				exit 1
+			fi
+		else
+			echo "Jails directory/dataset does not exist."
+			exit 1
+		fi
+	else
+		echo "Archive '${BACKUP_FILE}' does not exist."
+		exit 1
+	fi	
 }
 
 pkg_upgrade()
@@ -695,9 +804,9 @@ bastille_init()
 # Run-time configuration.
 runtime_config
 
-while getopts ":ospruxRvgth" option; do
+while getopts ":ospruxUvgtBRh" option; do
 	case ${option} in
-		[h]) echo "Usage: ${SCRIPTNAME} -[option]";
+		[h]) echo "Usage: ${SCRIPTNAME} -[option] | [container]";
 		echo "Options:"
 		echo "        -s  Start All ${PRDNAME} Containers."
 		echo "        -p  Stop All ${PRDNAME} Containers."
@@ -706,8 +815,10 @@ while getopts ":ospruxRvgth" option; do
 		echo "        -v  Display product versions."
 		echo "        -g  Enables the addon GUI."
 		echo "        -t  Disable the addon GUI."
+		echo "        -B  Backup a ${PRDNAME} container."
+		echo "        -R  Restore a ${PRDNAME} container."
 		echo "        -x  Reset ${PRDNAME}/Extension config."
-		echo "        -R  Remove ${PRDNAME} (Extension files only)."
+		echo "        -U  Uninstall ${PRDNAME} (Extension files only)."
 		echo "        -h  Display this help message."; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.
 		[s]) bastille_start;;
@@ -715,10 +826,12 @@ while getopts ":ospruxRvgth" option; do
 		[r]) bastille_restart;;
 		[u]) pkg_upgrade;;
 		[x]) reset_install;;
-		[R]) remove_addon;;
+		[U]) remove_addon;;
 		[v]) get_versions;;
 		[g]) gui_enable; exit 0 ;; # For enable the addon gui.
 		[t]) gui_disable; exit 0 ;; # For disable the addon gui.
+		[B]) jail_backup;;
+		[R]) jail_restore;;
 		[?]) echo "Invalid option, -h for usage."; exit 1;;
 	esac
 done

@@ -40,6 +40,7 @@ require_once 'system.inc';
 // internal PHP functions rather than external shell commands.
 
 //$rootfolder = dirname($config['rc']['postinit']['cmd'][$i]);
+$application = "Bastille Manager";
 $restore_name = "restore";
 $confdir = "/var/etc/bastille_conf";
 $cwdir = exec("/usr/bin/grep 'INSTALL_DIR=' {$confdir}/conf/bastille_config | /usr/bin/cut -d'\"' -f2");

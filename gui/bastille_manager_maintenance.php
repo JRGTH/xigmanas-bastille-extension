@@ -41,7 +41,6 @@ require("auth.inc");
 require("guiconfig.inc");
 require_once("bastille_manager-lib.inc");
 
-$application = "Bastille";
 $pgtitle = array(gtext("Extensions"), "Bastille", "Maintenance");
 
 // For legacy product versions.
@@ -87,7 +86,7 @@ if ($_POST) {
 		if (is_dir($confdir)) mwexec("rm -Rf {$confdir}", true);
 		mwexec("rm /usr/local/www/bastille_manager_gui.php && rm -R /usr/local/www/ext/bastille", true);
 		mwexec("{$rootfolder}/usr/local/sbin/bastille-init -t", true);		
-		$uninstall_cmd = "echo 'y' | /usr/local/sbin/bastille-init -R";
+		$uninstall_cmd = "echo 'y' | /usr/local/sbin/bastille-init -U";
 		mwexec($uninstall_cmd, true);
 		if (is_link("/usr/local/share/{$prdname}")) mwexec("rm /usr/local/share/{$prdname}", true);
 		if (is_link("/var/cache/pkg")) mwexec("rm /var/cache/pkg", true);
@@ -137,17 +136,49 @@ if ($_POST) {
 			unset($retval);mwexec($cmd,$retval);
 			if ($retval == 0) {
 				$savemsg .= gtext("Extension settings saved successfully.");
-				exec("echo '{$date}: {$application} Extension settings saved successfully' >> {$logfile}");
+				exec("echo '{$date}: {$application}: Extension settings saved successfully' >> {$logfile}");
 				}
 			else {
 				$input_errors[] = gtext("Failed to save extension settings.");
-				exec("echo '{$date}: {$application} Failed to save extension settings' >> {$logfile}");
+				exec("echo '{$date}: {$application}: Failed to save extension settings' >> {$logfile}");
 				}
 			}
 		else {
 			$input_errors[] = gtext("Failed to save extension settings.");
-			exec("echo '{$date}: {$application} Failed to save extension settings' >> {$logfile}");
+			exec("echo '{$date}: {$application}: Failed to save extension settings' >> {$logfile}");
 			}
+	}
+
+		if (isset($_POST['restore']) && $_POST['restore']) {
+		// Ensure to have NO whitespace & trailing slash.
+		$backup_file = rtrim(trim($_POST['backup_path']),'/');
+		$filename_trim = exec("echo {$backup_file} | awk '{print $1}' | grep -o '[^/]*$'");
+		$jailname_trim = exec("echo {$backup_file} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '-' -f1");
+
+		if ("{$backup_file}" == "") {
+			$input_errors[] = gtext("Error: backup file undefined.");
+			}
+
+		if (is_dir("{$jail_dir}/{$jailname_trim}")):
+			$input_errors[] = gtext("Container directory/dataset already exist.");
+		else:
+		if (is_file($backup_file)) {
+			$cmd = ("/usr/local/sbin/bastille-init -R '{$filename_trim}'");
+			unset($retval);mwexec($cmd,$retval);
+			if ($retval == 0) {
+				$savemsg .= gtext("Container restored successfully.");
+				exec("echo '{$date}: {$application}: Container restored successfully from {$filename_trim}' >> {$logfile}");
+				}
+			else {
+				$input_errors[] = gtext("Failed to restore container.");
+				exec("echo '{$date}: {$application}: Failed to restore container from {$filename_trim}' >> {$logfile}");
+				}
+			}
+		else {
+			$input_errors[] = gtext("Failed to restore container, file not found.");
+			exec("echo '{$date}: {$application}: Failed to restore container, file {$filename_trim} not found' >> {$logfile}");
+			}
+		endif;
 	}
 }
 
@@ -240,11 +271,12 @@ $(document).ready(function(){
 					<td class="vncellt"><?=gtext("Extension version");?></td>
 					<td class="vtable"><span name="getinfo_ext" id="getinfo_ext"><?=get_version_ext()?></span></td>
 				</tr>
-					<?php html_filechooser("backup_path", gtext("Backup directory"), $backup_path, gtext("Directory to store containers .tar backup archives."), $backup_path, true, 60);?>
+					<?php html_filechooser("backup_path", gtext("Backup directory"), $backup_path, gtext("Directory to store containers .tar backup archives, use as file chooser for restoring from file."), $backup_path, true, 60);?>
 			</table>
 			<div id="submit">
 				<input id="save" name="save" type="submit" class="formbtn" title="<?=gtext("Save settings");?>" value="<?=gtext("Save");?>"/>
 				<input name="upgrade" type="submit" class="formbtn" title="<?=gtext("Upgrade Extension and Bastille Packages");?>" value="<?=gtext("Upgrade");?>" />
+				<input name="restore" type="submit" class="formbtn" title="<?=gtext("Restore a container");?>" value="<?=gtext("Restore");?>" />
 			</div>
 			<div id="remarks">
 				<?php html_remark("note", gtext("Info"), sprintf(gtext("For general information visit the following link(s):")));?>

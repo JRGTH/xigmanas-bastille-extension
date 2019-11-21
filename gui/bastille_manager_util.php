@@ -114,15 +114,16 @@ if($_POST):
 					$container['jailname'] = $_POST['jailname'];
 					$confirm_name = $pconfig['confirmname'];
 					$item = $container['jailname'];
-					$date = (strftime('%Y-%m-%d-%H%M%S'));
-					$cmd = ("cd {$rootfolder}/jails && /usr/bin/tar -cf {$item}-{$date}.tar --exclude=.bastille --exclude=.template {$item} && /bin/mv {$item}-{$date}.tar {$backup_path}");
+					$cmd = ("/usr/local/sbin/bastille-init -B '{$item}'");
 					unset($output,$retval);mwexec2($cmd,$output,$retval);
 					if($retval == 0):
 						$savemsg .= gtext("Container backup process completed successfully.");
+						exec("echo '{$date}: {$application}: Container backup process completed successfully for {$item}' >> {$logfile}");
 						//header('Location: bastille_manager_gui.php');
 						//exit;
 					else:
 						$errormsg .= gtext("Failed to backup container.");
+						exec("echo '{$date}: {$application}: Failed to backup container {$item}' >> {$logfile}");
 					endif;
 				endif;
 				break;
