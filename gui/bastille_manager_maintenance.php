@@ -271,7 +271,7 @@ $(document).ready(function(){
 					<td class="vncellt"><?=gtext("Extension version");?></td>
 					<td class="vtable"><span name="getinfo_ext" id="getinfo_ext"><?=get_version_ext()?></span></td>
 				</tr>
-					<?php html_filechooser("backup_path", gtext("Backup directory"), $backup_path, gtext("Directory to store containers .tar backup archives, use as file chooser for restoring from file."), $backup_path, true, 60);?>
+					<?php html_filechooser("backup_path", gtext("Backup directory"), $backup_path, gtext("Directory to store containers backup archives, use as file chooser for restoring from file."), $backup_path, true, 60);?>
 			</table>
 			<div id="submit">
 				<input id="save" name="save" type="submit" class="formbtn" title="<?=gtext("Save settings");?>" value="<?=gtext("Save");?>"/>

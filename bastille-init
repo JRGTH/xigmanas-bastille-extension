@@ -505,7 +505,7 @@ jail_backup()
 				fi
 			else
 				# Create backup file with tar.
-				cd ${CWDIR}/jails && tar ${EXCLUDE} -zcf ${JAIL_NAME}-${DATE}.tar ${JAIL_NAME} && mv ${JAIL_NAME}-${DATE}.tar ${CWDIR}/backups
+				cd ${CWDIR}/jails && tar ${EXCLUDE} -zcf ${JAIL_NAME}-${DATE}.tgz ${JAIL_NAME} && mv ${JAIL_NAME}-${DATE}.tgz ${CWDIR}/backups
 			fi
 			if [ $? -ne 0 ]; then
 				echo "Failed to backup '${JAIL_NAME}' container."

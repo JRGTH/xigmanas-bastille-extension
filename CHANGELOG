@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.12......Change tar archive extension.
 1.0.11......Backup and Restore implementation changes.
 1.0.10......Cosmetic changes and version number adjust.
 1.0.09......Allow for distfiles download override.
