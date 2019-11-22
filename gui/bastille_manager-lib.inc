@@ -58,6 +58,7 @@ $jail_dir = "{$rootfolder}/jails";
 $image_dir = "ext/bastille/images";
 $thick_jail = exec("/usr/local/bin/bastille create | grep -wo '\[option\]'");
 $reldir = "{$rootfolder}/releases";
+$zfs_support = exec("/bin/cat {$configfile} | /usr/bin/grep 'ZFS_SUPPORT=' | /usr/bin/cut -d'\"' -f2");
 
 // Ensure the root directory is configured.
 if ($rootfolder == "")
@@ -75,6 +76,20 @@ if (is_file("{$rootfolder}/postinit")) unlink("{$rootfolder}/postinit");
 function is_dir_empty($reldir) {
 	if (!is_readable($reldir)) return NULL; 
 	return (count(scandir($reldir)) == 2);
+}
+
+// Check for sane ZFS settings.
+function get_state_zfs() {
+	global $zfs_support;
+	if ($zfs_support == "YES"):
+		return $getinfo['zfs'] = gettext("Enabled");
+	elseif ($zfs_support == "AVA"):
+		return $getinfo['zfs'] = gettext("Available but not enabled");
+	elseif ($zfs_support == "ERR"):
+		return $getinfo['zfs'] = gettext("Invalid ZFS configuration");
+	else:
+		return $getinfo['zfs'] = gettext("Disabled");
+	endif;
 }
 
 // Get all base releases list.

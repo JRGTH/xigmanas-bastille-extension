@@ -564,6 +564,76 @@ jail_restore()
 	fi	
 }
 
+zfs_activate()
+{
+	# Check if ZFS is already configured.
+	BASTILLE_DIR=$(echo ${CWDIR} | grep -o '[^/]*$')
+	if zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
+		echo "Bastille ZFS is already configured."
+		exit 0
+	else
+		BASTILLE_DIRS="cache jails logs releases templates"
+		for dir in ${BASTILLE_DIRS}; do
+			if [ -d "${CWDIR}/${dir}" ]; then
+				# Stop if any of the listed dirs already exist.
+				echo "Bastille has been bootstrapped already, aborting."
+				exit 0
+			fi
+		done
+	fi
+
+	echo "Enabling ZFS on ${PRDNAME} Extension..."
+	# Confirm before conversion.
+	while :
+		do
+			read -p "Do you really wish to enable ZFS for ${PRDNAME} Extension? [y/N]:" yn
+			case ${yn} in
+			[Yy]) break;;
+			[Nn]) exit 0;;
+			esac
+		done
+	echo "Proceeding..."
+
+	if [ "${bastille_zfs_enable}" = "YES" ]; then
+		if [ ! -z "${bastille_zfs_zpool}" ]; then
+			if zfs list "${bastille_zfs_zpool}" > /dev/null 2>&1; then
+				if ! zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
+					echo "Renaming existing '${BASTILLE_DIR}' directory"
+					mv ${CWDIR} ${CWDIR}.old
+					echo "Creating a new ZFS dataset for '${BASTILLE_DIR}'"
+					zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}
+					if [ $? -ne 0 ]; then
+						echo "Failed to enable ZFS, reverting changes."
+						mv ${CWDIR}.old ${CWDIR}
+						zfs destroy ${bastille_zfs_zpool}/${bastille_zfs_prefix}
+					else
+						echo "Synchronizing '${BASTILLE_DIR}' data on new dataset"
+						rsync -a ${CWDIR}.old/ ${CWDIR}/
+					fi
+				else
+					if zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
+						echo "Bastille ZFS is already configured."
+						exit 0
+					else
+						echo -e "ERROR: ${bastille_zfs_zpool}/${BASTILLE_DIR} is not a ZFS pool/dataset."
+						exit 1
+					fi
+				fi
+			else
+				echo -e "ERROR: ${bastille_zfs_zpool} is not a ZFS pool/dataset."
+				exit 1
+			fi
+		else
+			echo "Bastille ZPOOL is not set."
+			exit 1
+		fi
+		echo "ZFS Enabled for ${PRDNAME} Extension successfully."
+	else
+		echo "Bastille ZFS option is not set."
+		exit 1
+	fi
+}
+
 pkg_upgrade()
 {
 	# Re-fetch bastille package and extract.
@@ -741,6 +811,26 @@ rc_params()
 	if ! sysrc -qn bastille_enable >/dev/null 2>&1; then
 		sysrc bastille_enable="NO" >/dev/null 2>&1
 	fi
+
+	# Check if sane ZFS is enabled in this setup.
+	if [ "${bastille_zfs_enable}" = "YES" ]; then
+		if [ ! -z "${bastille_zfs_zpool}" ]; then
+			if zfs list "${bastille_zfs_zpool}" > /dev/null 2>&1; then
+				BASTILLE_DIR=$(echo ${CWDIR} | grep -o '[^/]*$')
+				if zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
+					sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="YES" >/dev/null 2>&1
+				else
+					sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="AVA" >/dev/null 2>&1
+				fi
+			else
+				sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="ERR" >/dev/null 2>&1
+			fi
+		else
+			sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="NO" >/dev/null 2>&1
+		fi
+	else
+		sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="NO" >/dev/null 2>&1
+	fi
 }
 
 bastille_start()
@@ -804,7 +894,7 @@ bastille_init()
 # Run-time configuration.
 runtime_config
 
-while getopts ":ospruxUvgtBRh" option; do
+while getopts ":ospruxUvgtBRZh" option; do
 	case ${option} in
 		[h]) echo "Usage: ${SCRIPTNAME} -[option] | [container]";
 		echo "Options:"
@@ -817,6 +907,7 @@ while getopts ":ospruxUvgtBRh" option; do
 		echo "        -t  Disable the addon GUI."
 		echo "        -B  Backup a ${PRDNAME} container."
 		echo "        -R  Restore a ${PRDNAME} container."
+		echo "        -Z  Activate ZFS for ${PRDNAME} Extension."
 		echo "        -x  Reset ${PRDNAME}/Extension config."
 		echo "        -U  Uninstall ${PRDNAME} (Extension files only)."
 		echo "        -h  Display this help message."; exit 0;;
@@ -832,6 +923,7 @@ while getopts ":ospruxUvgtBRh" option; do
 		[t]) gui_disable; exit 0 ;; # For disable the addon gui.
 		[B]) jail_backup;;
 		[R]) jail_restore;;
+		[Z]) zfs_activate;;
 		[?]) echo "Invalid option, -h for usage."; exit 1;;
 	esac
 done

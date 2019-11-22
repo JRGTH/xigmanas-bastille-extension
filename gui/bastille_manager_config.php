@@ -118,15 +118,17 @@ else {
 if ($_POST) {
 	unset($input_errors);
 
-	if (isset($_POST['saveParam']) && $_POST['saveParam']) {					// saveParam s/n/v: [[outputs.influxdb]]#urls outputsinfluxdburls ["http://192.168.1.XYZ:8086"]
+	if (isset($_POST['saveParam']) && $_POST['saveParam']) {					// saveParam s/n/v
 		$buttonTag = explode("#", $_POST['saveParam']);							// buttonTag[0] = section, buttonTag[1] = paramName
 		$hashTag = str_replace(["[", "]", ".", "#"], "", $buttonTag[0]);		// create destination to jump to after post 
 		$nameTag = str_replace(["[", "]", ".", "#"], "", $_POST['saveParam']);	// nameTag = <input title='$nameTag + addParam' ... />
 		$configArray[$buttonTag[0]][$buttonTag[1]] = $_POST[$nameTag];			// save param to section
-	#	$savemsg .= "saveParam s/n/v: ".$_POST['saveParam']." ".$nameTag." ".$_POST[$nameTag];
+		#$savemsg .= "saveParam s/n/v: ".$_POST['saveParam']." ".$nameTag." ".$_POST[$nameTag];
 	}
-
 	if (empty($input_errors) && !isset($_POST['loadConfig'])) saveConfigFile($configFile, $configArray, $hashTag);
+
+	# Run bastille-init to update config.
+	exec("bastille-init");
 }
 
 bindtextdomain("xigmanas", $textdomain);

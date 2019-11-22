@@ -271,6 +271,10 @@ $(document).ready(function(){
 					<td class="vncellt"><?=gtext("Extension version");?></td>
 					<td class="vtable"><span name="getinfo_ext" id="getinfo_ext"><?=get_version_ext()?></span></td>
 				</tr>
+				<tr>
+					<td class="vncellt"><?=gtext("ZFS support");?></td>
+					<td class="vtable"><span name="getinfo_zfs" id="getinfo_zfs"><?=get_state_zfs()?></span></td>
+				</tr>
 					<?php html_filechooser("backup_path", gtext("Backup directory"), $backup_path, gtext("Directory to store containers backup archives, use as file chooser for restoring from file."), $backup_path, true, 60);?>
 			</table>
 			<div id="submit">
