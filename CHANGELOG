@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.14......Destroy ZFS dataset before rename.
 1.0.13......Add ability to enable ZFS easily.
 1.0.12......Change tar archive extension.
 1.0.11......Backup and Restore implementation changes.

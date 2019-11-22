@@ -604,8 +604,8 @@ zfs_activate()
 					zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}
 					if [ $? -ne 0 ]; then
 						echo "Failed to enable ZFS, reverting changes."
-						mv ${CWDIR}.old ${CWDIR}
 						zfs destroy ${bastille_zfs_zpool}/${bastille_zfs_prefix}
+						mv ${CWDIR}.old ${CWDIR}
 					else
 						echo "Synchronizing '${BASTILLE_DIR}' data on new dataset"
 						rsync -a ${CWDIR}.old/ ${CWDIR}/
