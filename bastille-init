@@ -510,15 +510,13 @@ jail_backup()
 				cd ${CWDIR}/jails && tar ${EXCLUDE} -zcf ${JAIL_NAME}-${DATE}.tgz ${JAIL_NAME} && mv ${JAIL_NAME}-${DATE}.tgz ${CWDIR}/backups
 			fi
 			if [ $? -ne 0 ]; then
-				echo "Failed to backup '${JAIL_NAME}' container."
-				exit 1
+				error_notify "Failed to backup '${JAIL_NAME}' container."
 			else
 				echo "Exported '${JAIL_NAME}' successfully."
 				exit 0
 			fi
 		else
-			echo "Container '${JAIL_NAME}' does not exist."
-			exit 1
+			error_notify "Container '${JAIL_NAME}' does not exist."
 		fi
 	else
 		exit 0
@@ -555,13 +553,11 @@ jail_restore()
 							tar -xf ${CWDIR}/backups/${BACKUP_FILE} --strip-components 1 -C ${CWDIR}/jails/${NAME_TRIM} ${NAME_TRIM}/jail.conf
 							tar -xf ${CWDIR}/backups/${BACKUP_FILE} --strip-components 2 -C ${CWDIR}/jails/${NAME_TRIM}/root ${NAME_TRIM}/root
 							if [ $? -ne 0 ]; then
-								echo "Failed to extract files from '${NAME_TRIM}' archive."
 								zfs destroy -r ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
-								exit 1
+								error_notify "Failed to extract files from '${NAME_TRIM}' archive."
 							fi
 						else
-							echo "Unknown archive format."
-							exit 1
+							error_notify "Unknown archive format."
 						fi
 					fi
 				else
@@ -569,8 +565,7 @@ jail_restore()
 					tar -xf  ${CWDIR}/backups/${BACKUP_FILE} -C ${CWDIR}/jails
 				fi
 				if [ $? -ne 0 ]; then
-					echo "Failed to restore '${NAME_TRIM}' container."
-					exit 1
+					error_notify "Failed to restore '${NAME_TRIM}' container."
 				else
 					mkdir -p ${CWDIR}/jails/${NAME_TRIM}/root/.bastille
 					mkdir -p ${CWDIR}/jails/${NAME_TRIM}/root/.template
@@ -578,16 +573,13 @@ jail_restore()
 					exit 0
 				fi
 			else
-				echo "Container '${NAME_TRIM}' directory/dataset already exist."
-				exit 1
+				error_notify "Container '${NAME_TRIM}' directory/dataset already exist."
 			fi
 		else
-			echo "Jails directory/dataset does not exist."
-			exit 1
+			error_notify "Jails directory/dataset does not exist."
 		fi
 	else
-		echo "Archive '${BACKUP_FILE}' does not exist."
-		exit 1
+		error_notify "Archive '${BACKUP_FILE}' does not exist."
 	fi	
 }
 
@@ -630,9 +622,11 @@ zfs_activate()
 					echo "Creating a new ZFS dataset for '${BASTILLE_DIR}'"
 					zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}
 					if [ $? -ne 0 ]; then
-						echo "Failed to enable ZFS, reverting changes."
+						MSG="Failed to enable ZFS, reverting changes."
+						echo "${MSG}"
 						zfs destroy ${bastille_zfs_zpool}/${bastille_zfs_prefix}
 						mv ${CWDIR}.old ${CWDIR}
+						logger -t "${SCRIPTNAME}" "${MSG}"
 					else
 						echo "Synchronizing '${BASTILLE_DIR}' data on new dataset"
 						rsync -a ${CWDIR}.old/ ${CWDIR}/
@@ -642,22 +636,18 @@ zfs_activate()
 						echo "Bastille ZFS is already configured."
 						exit 0
 					else
-						echo -e "ERROR: ${bastille_zfs_zpool}/${BASTILLE_DIR} is not a ZFS pool/dataset."
-						exit 1
+						error_notify "ERROR: ${bastille_zfs_zpool}/${BASTILLE_DIR} is not a ZFS pool/dataset."
 					fi
 				fi
 			else
-				echo -e "ERROR: ${bastille_zfs_zpool} is not a ZFS pool/dataset."
-				exit 1
+				error_notify "ERROR: ${bastille_zfs_zpool} is not a ZFS pool/dataset."
 			fi
 		else
-			echo "Bastille ZPOOL is not set."
-			exit 1
+			error_notify "Bastille ZPOOL is not set."
 		fi
 		echo "ZFS Enabled for ${PRDNAME} Extension successfully."
 	else
-		echo "Bastille ZFS option is not set."
-		exit 1
+		error_notify "Bastille ZFS option is not set."
 	fi
 }
 
