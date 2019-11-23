@@ -495,6 +495,7 @@ jail_backup()
 		if [ -d "${CWDIR}/jails/${JAIL_NAME}" ]; then
 			if [ "${bastille_zfs_enable}" = "YES" ]; then
 				if [ ! -z "${bastille_zfs_zpool}" ]; then
+					echo "Exporting '${JAIL_NAME}' to a compressed zfs archive..."
 					# Take a temp snapshot of the jail.
 					SNAP_NAME="bastille-$(date +%Y-%m-%d-%H%M%S)"
 					zfs snapshot -r ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${JAIL_NAME}@${SNAP_NAME}
@@ -505,12 +506,14 @@ jail_backup()
 				fi
 			else
 				# Create backup file with tar.
+				echo "Exporting '${JAIL_NAME}' to a compressed tgz archive..."
 				cd ${CWDIR}/jails && tar ${EXCLUDE} -zcf ${JAIL_NAME}-${DATE}.tgz ${JAIL_NAME} && mv ${JAIL_NAME}-${DATE}.tgz ${CWDIR}/backups
 			fi
 			if [ $? -ne 0 ]; then
 				echo "Failed to backup '${JAIL_NAME}' container."
 				exit 1
 			else
+				echo "Exported '${JAIL_NAME}' successfully."
 				exit 0
 			fi
 		else
@@ -529,14 +532,37 @@ jail_restore()
 	ZFS_RECVPARAM=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_RECVPARAM)
 	BACKUP_FILE="${ARG}"
 	NAME_TRIM=$(echo ${BACKUP_FILE} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '-' -f1)
+	FILE_EXT=$(echo ${BACKUP_FILE} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '.' -f2)
 	if [ -f "${CWDIR}/backups/${BACKUP_FILE}" ]; then
 		if [ -d "${CWDIR}/jails" ]; then
 			if [ ! -d "${CWDIR}/jails/${NAME_TRIM}" ]; then
 				if [ "${bastille_zfs_enable}" = "YES" ]; then
 					if [ ! -z "${bastille_zfs_zpool}" ]; then
-						# Restore from zfs file and mount jail/root dataset.
-						${ZFS_DECOMPRESS} ${CWDIR}/backups/${BACKUP_FILE} | zfs receive ${ZFS_RECVPARAM} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
-						zfs mount ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}/root
+						if [ "${FILE_EXT}" = "zfs" ]; then
+							# Restore from .zfs file and mount jail/root dataset.
+							echo "Restoring from .zfs archive, receiving data stream..."
+							${ZFS_DECOMPRESS} ${CWDIR}/backups/${BACKUP_FILE} | zfs receive ${ZFS_RECVPARAM} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
+							zfs mount ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}/root
+						elif [ "${FILE_EXT}" = "tgz" ]; then
+							# Prepare the zfs environment and restore from existing tgz file.
+							echo "Restoring form .tgz archive, preparing zfs environment..."
+							zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
+							zfs create ${bastille_zfs_options} -o mountpoint=${bastille_jailsdir}/${NAME_TRIM}/root ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}/root
+
+							# Extract required files to the new datasets.
+							echo "Extracting files from '${NAME_TRIM}' backup archive..."
+							tar -xf ${CWDIR}/backups/${BACKUP_FILE} --strip-components 1 -C ${CWDIR}/jails/${NAME_TRIM} ${NAME_TRIM}/fstab
+							tar -xf ${CWDIR}/backups/${BACKUP_FILE} --strip-components 1 -C ${CWDIR}/jails/${NAME_TRIM} ${NAME_TRIM}/jail.conf
+							tar -xf ${CWDIR}/backups/${BACKUP_FILE} --strip-components 2 -C ${CWDIR}/jails/${NAME_TRIM}/root ${NAME_TRIM}/root
+							if [ $? -ne 0 ]; then
+								echo "Failed to extract files from '${NAME_TRIM}' archive."
+								zfs destroy -r ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
+								exit 1
+							fi
+						else
+							echo "Unknown archive format."
+							exit 1
+						fi
 					fi
 				else
 					# Restore from tar file.
@@ -548,6 +574,7 @@ jail_restore()
 				else
 					mkdir -p ${CWDIR}/jails/${NAME_TRIM}/root/.bastille
 					mkdir -p ${CWDIR}/jails/${NAME_TRIM}/root/.template
+					echo "Container '${NAME_TRIM}' restored successfully."
 					exit 0
 				fi
 			else
