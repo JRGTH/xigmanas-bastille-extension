@@ -128,6 +128,34 @@ if($_POST):
 				endif;
 				break;
 
+			case 'base':
+				// Input validation not required
+				if(empty($input_errors)):
+					$container = [];
+					$container['uuid'] = $_POST['uuid'];
+					$container['jailname'] = $_POST['jailname'];
+					$item = $container['jailname'];
+					$current_release = exec("/usr/bin/grep '\-RELEASE' {$jail_dir}/{$item}/fstab | awk '{print $1}' | grep -o '[^/]*$'");
+					$new_release = $pconfig['release'];
+
+					if(!$current_release):
+						$savemsg .= gtext("Base release change disabled for thick containers.");
+					else:
+						$cmd = ("/usr/local/sbin/bastille-init --osrelease {$item} {$current_release} {$new_release}");
+						unset($output,$retval);mwexec2($cmd,$output,$retval);
+						if($retval == 0):
+							$savemsg .= sprintf(gtext("Container base release changed to %s successfully."),$new_release);
+							exec("echo '{$date}: {$application}: Container base release changed to {$new_release} on {$item} successfully' >> {$logfile}");
+							//header('Location: bastille_manager_gui.php');
+							//exit;
+						else:
+							$errormsg .= sprintf(gtext("Failed to change container base release to %s, either it is running or is not a thin container."),$new_release);
+							exec("echo '{$date}: {$application}: Failed to change container base release to {$new_release} on {$item}' >> {$logfile}");
+						endif;
+					endif;
+				endif;
+				break;
+
 			case 'autoboot':
 				// Input validation not required
 				if(empty($input_errors)):
@@ -253,6 +281,8 @@ function action_change() {
 	showElementById('advanced_tr', 'hide');
 	showElementById('readonly_tr', 'hide');
 	showElementById('createdir_tr', 'hide');
+	showElementById('jail_release_tr', 'hide');
+	showElementById('release_tr','hide');
 	//showElementById('dateadd_tr','hide');
 	var action = document.iform.action.value;
 	switch (action) {
@@ -260,6 +290,14 @@ function action_change() {
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
 			break;
+			
+		case "base":
+			showElementById('confirmname_tr','hide');
+			showElementById('nowstop_tr','hide');
+			showElementById('jail_release_tr', 'show');
+			showElementById('release_tr','show');
+			break;
+		
 		case "autoboot":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
@@ -329,11 +367,23 @@ $document->render();
 		</thead>
 		<tbody>
 <?php
+			$b_action = $l_release;
+			#$current_release = exec("/usr/sbin/jexec {$pconfig['jailname']} freebsd-version 2>/dev/null");
+			unset($disable_base_change);
+			$current_release = exec("/usr/bin/grep '\-RELEASE' {$jail_dir}/{$pconfig['jailname']}/fstab | awk '{print $1}' | grep -o '[^/]*$'");
+			if (!$current_release):
+				$current_release = exec("/usr/bin/grep 'releng' {$jail_dir}/{$pconfig['jailname']}/root/COPYRIGHT | cut -d '/' -f2");
+				$disable_base_change = "1";
+				if (!$current_release):
+					$current_release = "-";
+				endif;
+			endif;
 			$pconfig['source_path'] = "/mnt";
 			$pconfig['target_path'] = "{$rootfolder}/jails/{$pconfig['jailname']}/root/mnt/";
 			html_text2('jailname',gettext('Container name:'),htmlspecialchars($pconfig['jailname']));
 			$a_action = [
 				'backup' => gettext('Backup'),
+				'base' => gettext('Release'),
 				'autoboot' => gettext('Autoboot'),
 				'noauto' => gettext('Noauto'),
 				'fstab' => gettext('Fstab'),
@@ -348,6 +398,10 @@ $document->render();
 			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I understand the risks, take me to the advanced jail config files.'),'',true);
 			html_checkbox2('readonly',gettext('Read-Only Mode'),!empty($pconfig['readonly']) ? true : false,gettext('Set target directory in Read-Only mode.'),'',false);
 			html_checkbox2('createdir',gettext('Create Target Directory'),!empty($pconfig['createdir']) ? true : true,gettext('Create target directory if missing (recommended).'),'',true);
+			html_text2('jail_release',gettext('Current base release:'),htmlspecialchars($current_release));
+			if (!$disable_base_change):
+				html_combobox2('release',gettext('New base release'),$pconfig['release'],$b_action,gettext("Warning: this will change current base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues."),true,false,);
+			endif;
 			//html_checkbox2('dateadd',gettext('Date'),!empty($pconfig['dateadd']) ? true : false,gettext('Append the date in the following format: ITEM-XXXX-XX-XX-XXXXXX.'),'',false);
 ?>
 		</tbody>

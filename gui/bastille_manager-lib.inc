@@ -127,6 +127,20 @@ function get_all_interface_list() {
 	return $iflist;
 }
 
+//	list base releases
+$a_release = get_all_release_list();
+$l_release = [];
+foreach($a_release as $k_release => $release):
+	$l_release[$k_release] = $k_release;
+endforeach;
+
+//	list of configured interfaces
+$a_interface = get_all_interface_list();
+$l_interfaces = [];
+foreach($a_interface as $k_interface => $ifinfo):
+	$l_interfaces[$k_interface] = $k_interface;
+endforeach;
+
 // Get jail infos.
 function get_jail_infos() {
 	global $img_path;
@@ -162,6 +176,11 @@ function get_jail_infos() {
 		$r['ip'] = exec("/usr/bin/grep -w 'ip4.addr' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
 		if (!$r['ip']):
 			$r['ip'] = "-";
+		endif;
+		// Display release.
+		$r['rel'] = exec("/usr/sbin/jexec {$item} freebsd-version 2>/dev/null");
+		if (!$r['rel']):
+			$r['rel'] = "-";
 		endif;
 		// Display interfaces.
 		$r['nic'] = exec("/usr/bin/grep -w 'interface' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");

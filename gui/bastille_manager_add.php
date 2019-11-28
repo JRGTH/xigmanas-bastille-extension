@@ -48,20 +48,6 @@ if(!$pconfig['ipaddress']):
 	$pconfig['ipaddress'] = '';
 endif;
 
-//	list of configured interfaces
-$a_interface = get_all_interface_list();
-$l_interfaces = [];
-foreach($a_interface as $k_interface => $ifinfo):
-	$l_interfaces[$k_interface] = $k_interface;
-endforeach;
-
-//	list base releases
-$a_release = get_all_release_list();
-$l_release = [];
-foreach($a_release as $k_release => $release):
-	$l_release[$k_release] = $k_release;
-endforeach;
-
 if(!get_all_release_list()):
 	$errormsg = gtext('No base releases extracted yet.')
 			. ' '

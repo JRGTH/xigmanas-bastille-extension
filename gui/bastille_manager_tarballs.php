@@ -205,8 +205,10 @@ $document->render();
 		</colgroup>
 		<thead>
 <?php
-			if (!is_dir_empty($reldir)):
-				html_titleline2(gettext('FreeBSD Base Release Installed'));
+			if (is_dir($reldir)):
+				if (!is_dir_empty($reldir)):
+					html_titleline2(gettext('FreeBSD Base Release Installed'));
+				endif;
 			endif;
 			foreach ($sphere_array as $sphere_record):
 			if (file_exists("{$reldir}/{$sphere_record['relname']}/root/.profile")):

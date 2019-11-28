@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.17......Display container release version, ability to upgrade/downgrade container base.
 1.0.16......Enable logging on error.
 1.0.15......Ability to restore .tgz archives on ZFS, be more verbose.
 1.0.14......Destroy ZFS dataset before rename.

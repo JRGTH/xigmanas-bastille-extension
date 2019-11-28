@@ -75,7 +75,8 @@ BATSILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" #
 BASTILE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRANCH}/usr/local/bin/${APPNAME}"
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
-ARG="$2"
+OPT="${1}"
+NAME="${2}"
 
 # Required
 if [ -f "${BASTILLECONF}" ]; then
@@ -488,7 +489,7 @@ jail_backup()
 	# Backup container on request.
 	ZFS_COMPRESS=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_COMPRESS)
 	ZFS_SENDPARAMS=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_SENDPARAMS)
-	JAIL_NAME="${ARG}"
+	JAIL_NAME="${NAME}"
 	DATE=$(date +%Y-%m-%d-%H%M%S)
 	EXCLUDE="--exclude=.bastille --exclude=.template"
 	if [ -n "${JAIL_NAME}" ]; then
@@ -528,7 +529,7 @@ jail_restore()
 	# Restore container on request.
 	ZFS_DECOMPRESS=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_DECOMPRESS)
 	ZFS_RECVPARAM=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_RECVPARAM)
-	BACKUP_FILE="${ARG}"
+	BACKUP_FILE="${NAME}"
 	NAME_TRIM=$(echo ${BACKUP_FILE} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '-' -f1)
 	FILE_EXT=$(echo ${BACKUP_FILE} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '.' -f2)
 	if [ -f "${CWDIR}/backups/${BACKUP_FILE}" ]; then
@@ -581,6 +582,61 @@ jail_restore()
 	else
 		error_notify "Archive '${BACKUP_FILE}' does not exist."
 	fi	
+}
+
+jail_osrelease()
+{
+	# Verify user input and handle some errors.
+	if [ -d "${bastille_jailsdir}/${NAME}" ]; then
+		if [ -d "${bastille_releasesdir}/${RELEASE}" ]; then
+			if [ -f "${bastille_releasesdir}/${RELEASE}/COPYRIGHT" ]; then
+				if [ -d "${bastille_releasesdir}/${NEWRELEASE}" ]; then
+					if [ -f "${bastille_releasesdir}/${NEWRELEASE}/COPYRIGHT" ]; then
+						if [ -f "${bastille_jailsdir}/${NAME}/fstab" ]; then
+							# Check if the container is running.
+							if [ $(jls name | grep -w "${NAME}") ]; then
+								echo -e "Jail running."
+								echo -e "See 'bastille stop ${NAME}'."
+								exit 1
+							elif [ "${RELEASE}" = "${NEWRELEASE}" ]; then
+								echo -e "Specified releases name match."
+								exit 0
+							fi
+							# Check if is a thin container.
+							if cat "${bastille_jailsdir}/${NAME}/fstab" | grep "${RELEASE}" | grep -q ".bastille"; then
+								# If the previous conditions meets, proceed with the container fstab edit.
+								sed -i '' "s/${RELEASE}/${NEWRELEASE}/g" ${bastille_jailsdir}/${NAME}/fstab
+								echo -e "${NAME} release changed to ${NEWRELEASE}."
+							elif cat "${bastille_jailsdir}/${NAME}/fstab" | grep "${NEWRELEASE}" | grep -q ".bastille"; then
+								echo -e "${NAME} already using ${NEWRELEASE}."
+							else
+								echo -e "${NAME} is not a thin container."
+								exit 1
+							fi
+						else
+							echo -e "${NAME} fstab not found."
+							exit 1
+						fi
+					else
+						echo -e "Unknown ${NEWRELEASE}. See bootstrap."
+						exit 1
+					fi
+				else
+					echo -e "${NEWRELEASE} not found. See bootstrap."
+					exit 1
+				fi
+			else
+				echo -e "Unknown ${RELEASE}. See bootstrap."
+			fi
+		else
+			echo -e "${RELEASE} not found. See bootstrap."
+			exit 1
+		fi
+	else
+		echo -e "${NAME} not found. See create."
+		exit 1
+	fi
+	exit 0
 }
 
 zfs_activate()
@@ -911,6 +967,20 @@ bastille_init()
 # Run-time configuration.
 runtime_config
 
+# Handle additional commands.
+case "${OPT}" in
+osrelease|--osrelease)
+	if [ $# -gt 4 ] || [ $# -lt 4 ]; then
+		echo "Usage: ${SCRIPTNAME} [osrelease|--osrelease] [container] [release] [newrelease]"
+		exit 1
+	fi
+	NAME="${2}"
+	RELEASE="${3}"
+	NEWRELEASE="${4}"
+	jail_osrelease
+	;;
+esac
+
 while getopts ":ospruxUvgtBRZh" option; do
 	case ${option} in
 		[h]) echo "Usage: ${SCRIPTNAME} -[option] | [container]";
@@ -927,7 +997,11 @@ while getopts ":ospruxUvgtBRZh" option; do
 		echo "        -Z  Activate ZFS for ${PRDNAME} Extension."
 		echo "        -x  Reset ${PRDNAME}/Extension config."
 		echo "        -U  Uninstall ${PRDNAME} (Extension files only)."
-		echo "        -h  Display this help message."; exit 0;;
+		echo "        -h  Display this help message."
+		echo
+		echo "Advanced Usage: ${SCRIPTNAME} [option] [container] [argument1] [argument2]"
+		echo "Options:"
+		echo "        osrelease|--osrelease  Quickly upgrade/downgrade a thin container base release."; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.
 		[s]) bastille_start;;
 		[p]) bastille_stop;;

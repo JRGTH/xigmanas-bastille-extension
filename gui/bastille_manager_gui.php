@@ -241,6 +241,7 @@ $document->render();
 			<col style="width:5%">
 			<col style="width:10%">
 			<col style="width:10%">
+			<col style="width:10%">
 			<col style="width:5%">
 			<col style="width:25%">
 			<col style="width:5%">
@@ -251,13 +252,14 @@ $document->render();
 		<thead>
 <?php
 			html_separator2();
-			html_titleline2(gettext('Overview'), 10);
+			html_titleline2(gettext('Overview'), 11);
 ?>
 			<tr>
 				<th class="lhelc"><?=gtext('Select');?></th>
 				<th class="lhell"><?=gtext('JID');?></th>
 				<th class="lhell"><?=gtext('IPv4 Address');?></th>
 				<th class="lhell"><?=gtext('Hostname');?></th>
+				<th class="lhell"><?=gtext('Release');?></th>
 				<th class="lhell"><?=gtext('Interface');?></th>
 				<th class="lhell"><?=gtext('Path');?></th>
 				<th class="lhell"><?=gtext('Boot');?></th>
@@ -290,6 +292,7 @@ $document->render();
 					<td class="lcell"><?=htmlspecialchars($sphere_record['id']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['ip']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['name']);?>&nbsp;</td>
+					<td class="lcell"><?=htmlspecialchars($sphere_record['rel']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['nic']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['path']);?>&nbsp;</td>
 					<td class="lcell"><img src="<?=$sphere_record['boot'];?>"></td>
@@ -331,7 +334,7 @@ $document->render();
 		</tbody>
 		<tfoot>
 			<tr>
-				<td class="lcenl" colspan="9"></td>
+				<td class="lcenl" colspan="10"></td>
 				<td class="lceadd">
 					<a href="bastille_manager_add.php"><img src="<?=$img_path['add'];?>" title="<?=$gt_record_add;?>" border="0" alt="<?=$gt_record_add;?>" class="spin oneemhigh"/></a>
 				</td>
