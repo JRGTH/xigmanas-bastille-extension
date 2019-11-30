@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.19......Added freebsd-update support.
 1.0.18......Added update/upgrade handling improvements.
 1.0.17......Display container release version, ability to upgrade/downgrade container base.
 1.0.16......Enable logging on error.
