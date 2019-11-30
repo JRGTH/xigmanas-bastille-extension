@@ -141,7 +141,7 @@ if($_POST):
 					if(!$current_release):
 						$savemsg .= gtext("Base release change disabled for thick containers.");
 					else:
-						$cmd = ("/usr/local/sbin/bastille-init --osrelease {$item} {$current_release} {$new_release}");
+						$cmd = ("/usr/local/sbin/bastille-init --upgrade {$item} {$current_release} {$new_release}");
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
 							$savemsg .= sprintf(gtext("Container base release changed to %s successfully."),$new_release);

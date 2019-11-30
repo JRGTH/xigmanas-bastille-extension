@@ -47,6 +47,7 @@ PLATFORM=$(uname -m)
 PRODUCT=$(uname -i)
 PRDVERSION=$(uname -r | cut -d '-' -f1 | tr -d '.')
 PRDPLATFORM=$(cat /etc/platform)
+PRDPRODUCT=$(cat /etc/prd.name)
 SCRIPTNAME=$(basename $0)
 CONFIG="/cf/conf/config.xml"
 PRDNAME="Bastille"
@@ -584,57 +585,160 @@ jail_restore()
 	fi	
 }
 
-jail_osrelease()
+jail_update()
 {
-	# Verify user input and handle some errors.
-	if [ -d "${bastille_jailsdir}/${NAME}" ]; then
-		if [ -d "${bastille_releasesdir}/${RELEASE}" ]; then
-			if [ -f "${bastille_releasesdir}/${RELEASE}/COPYRIGHT" ]; then
-				if [ -d "${bastille_releasesdir}/${NEWRELEASE}" ]; then
-					if [ -f "${bastille_releasesdir}/${NEWRELEASE}/COPYRIGHT" ]; then
-						if [ -f "${bastille_jailsdir}/${NAME}/fstab" ]; then
-							# Check if the container is running.
-							if [ $(jls name | grep -w "${NAME}") ]; then
-								echo -e "Jail running."
-								echo -e "See 'bastille stop ${NAME}'."
-								exit 1
-							elif [ "${RELEASE}" = "${NEWRELEASE}" ]; then
-								echo -e "Specified releases name match."
-								exit 0
-							fi
-							# Check if is a thin container.
-							if cat "${bastille_jailsdir}/${NAME}/fstab" | grep "${RELEASE}" | grep -q ".bastille"; then
-								# If the previous conditions meets, proceed with the container fstab edit.
-								sed -i '' "s/${RELEASE}/${NEWRELEASE}/g" ${bastille_jailsdir}/${NAME}/fstab
-								echo -e "${NAME} release changed to ${NEWRELEASE}."
-							elif cat "${bastille_jailsdir}/${NAME}/fstab" | grep "${NEWRELEASE}" | grep -q ".bastille"; then
-								echo -e "${NAME} already using ${NEWRELEASE}."
-							else
-								echo -e "${NAME} is not a thin container."
-								exit 1
-							fi
-						else
-							echo -e "${NAME} fstab not found."
-							exit 1
-						fi
-					else
-						echo -e "Unknown ${NEWRELEASE}. See bootstrap."
+	if [ "${PRDPRODUCT}" = "XigmaNAS" -o "${PRDPRODUCT}" = "NAS4Free" ]; then
+		echo -e "${COLOR_RED}Not supported on ${PRDPRODUCT} platform.${COLOR_RESET}"
+		exit 1
+	fi
+
+	if [ ! -z "$(freebsd-version | grep -i HBSD)" ]; then
+		echo -e "${COLOR_RED}Not supported on HardenedBSD.${COLOR_RESET}"
+		exit 1
+	fi
+
+	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
+		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -q ".bastille"; then
+			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
+				if [ $(jls name | grep -w "${TARGET}") ]; then
+					# Update a thick container(securelevel/allow.chflags dependent).
+					if ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "securelevel = 0|securelevel = -1"; then
+						echo -e "${COLOR_RED}Container securelevel is greater than zero.${COLOR_RESET}"
+						exit 1
+						elif ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "allow.chflags = 1"; then
+						echo -e "${COLOR_RED}Container allow.chflags is disabled.${COLOR_RESET}"
 						exit 1
 					fi
+					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
+					jexec -l "${TARGET}" freebsd-update fetch install --currently-running "${CURRENT_VERSION}"
 				else
-					echo -e "${NEWRELEASE} not found. See bootstrap."
+					echo -e "${COLOR_RED}Container not running.${COLOR_RESET}"
+					echo -e "${COLOR_RED}See 'bastille start ${TARGET}'.${COLOR_RESET}"
 					exit 1
 				fi
 			else
-				echo -e "Unknown ${RELEASE}. See bootstrap."
+				echo -e "${COLOR_RED}${TARGET} state is unknown.${COLOR_RESET}"
+				exit 1
 			fi
 		else
-			echo -e "${RELEASE} not found. See bootstrap."
+			echo -e "${COLOR_RED}${TARGET} is not a thick container.${COLOR_RESET}"
 			exit 1
 		fi
 	else
-		echo -e "${NAME} not found. See create."
+		if [ -d "${bastille_releasesdir}/${TARGET}" ]; then
+			# Update container base(affects base child containers).
+			freebsd-update -b "${bastille_releasesdir}/${TARGET}" fetch install --currently-running "${TARGET}"
+		else
+			echo -e "${COLOR_RED}${TARGET} not found. See bootstrap.${COLOR_RESET}"
+			exit 1
+		fi
+	fi
+	exit 0
+}
+
+thinjail_upgrade()
+{
+	if [ ! -z "$(freebsd-version | grep -i HBSD)" ]; then
+		echo -e "${COLOR_RED}Not supported on HardenedBSD.${COLOR_RESET}"
 		exit 1
+	fi
+
+	## verify for user input and handle some errors
+	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then
+		if [ -d "${bastille_releasesdir}/${RELEASE}" ]; then
+			if [ -f "${bastille_releasesdir}/${RELEASE}/COPYRIGHT" ]; then
+				## check if the container is running
+				if [ $(jls name | grep -w "${TARGET}") ]; then
+					echo -e "${COLOR_RED}${TARGET} running.${COLOR_RESET}"
+					echo -e "${COLOR_RED}See 'bastille stop ${TARGET}'.${COLOR_RESET}"
+					exit 1
+				elif [ "${RELEASE}" = "${NEWRELEASE}" ]; then
+					echo -e "${COLOR_RED}Specified releases name match.${COLOR_RESET}"
+					exit 0
+				fi
+				if [ -d "${bastille_releasesdir}/${NEWRELEASE}" ]; then
+					if [ -f "${bastille_releasesdir}/${NEWRELEASE}/COPYRIGHT" ]; then
+						if [ -f "${bastille_jailsdir}/${TARGET}/fstab" ]; then
+							## check if is a thin container
+							if cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${RELEASE}" | grep -q ".bastille"; then
+								## if the previous conditions meets, proceed with the container base upgrade
+								sed -i '' "s/${RELEASE}/${NEWRELEASE}/g" ${bastille_jailsdir}/${TARGET}/fstab
+								echo -e "${COLOR_GREEN}${TARGET} release changed to ${NEWRELEASE}.${COLOR_RESET}"
+							elif cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${NEWRELEASE}" | grep -q ".bastille"; then
+								echo -e "${COLOR_GREEN}${TARGET} already using ${NEWRELEASE}.${COLOR_RESET}"
+								exit 0
+							else
+								if cat "${bastille_jailsdir}/${TARGET}/fstab" | grep -q ".bastille"; then
+									echo -e "${COLOR_RED}${TARGET} container does not use ${RELEASE}.${COLOR_RESET}"; exit 1
+								else
+									echo -e "${COLOR_RED}${TARGET} is not a thin container.${COLOR_RESET}"; exit 1
+								fi
+							fi
+						else
+							echo -e "${COLOR_RED}${TARGET} fstab not found.${COLOR_RESET}"; exit 1
+						fi
+					else
+						echo -e "${COLOR_RED}Unknown ${NEWRELEASE}. See bootstrap.${COLOR_RESET}"; exit 1
+					fi
+				else
+					echo -e "${COLOR_GREEN}${NEWRELEASE} not found, bootstrap starting....${COLOR_RESET}"
+					bastille bootstrap ${NEWRELEASE}
+					if [ ! $? -ne 0 ]; then
+						thinjail_upgrade
+					fi
+				fi
+			else
+				echo -e "${COLOR_RED}Unknown ${RELEASE}. See bootstrap.${COLOR_RESET}"; exit 1
+			fi
+		else
+			echo -e "${COLOR_RED}${RELEASE} not found. See bootstrap.${COLOR_RESET}"; exit 1
+		fi
+	else
+		echo -e "${COLOR_RED}${TARGET} not found. See create.${COLOR_RESET}"; exit 1
+	fi
+	exit 0
+}
+
+thickjail_upgrade()
+{
+	if [ "${PRDPRODUCT}" = "XigmaNAS" -o "${PRDPRODUCT}" = "NAS4Free" ]; then
+		echo -e "${COLOR_RED}Not supported on ${PRDPRODUCT} platform.${COLOR_RESET}"
+		exit 1
+	fi
+
+	if [ ! -z "$(freebsd-version | grep -i HBSD)" ]; then
+		echo -e "${COLOR_RED}Not supported on HardenedBSD.${COLOR_RESET}"
+		exit 1
+	fi
+
+	## verify for user input and handle some errors
+	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
+		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -q ".bastille"; then
+			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
+				if [ $(jls name | grep -w "${TARGET}") ]; then
+					## upgrade a thick container(securelevel/allow.chflags dependent)
+					if ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "securelevel = 0|securelevel = -1"; then
+						echo -e "${COLOR_RED}Container securelevel is greater than zero.${COLOR_RESET}"
+						exit 1
+					elif ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "allow.chflags = 1"; then
+						echo -e "${COLOR_RED}Container allow.chflags is disabled.${COLOR_RESET}"
+						exit 1
+					fi
+					echo -e "${COLOR_GREEN}Below command should be run several times when asked to finish installing updates.${COLOR_RESET}"
+					echo -e "${COLOR_GREEN}bastille cmd ${TARGET} freebsd-update install${COLOR_RESET}"
+					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
+					jexec -l "${TARGET}" freebsd-update --currently-running "${CURRENT_VERSION}" -r ${RELEASE} upgrade
+				else
+					echo -e "${COLOR_RED}Container not running.${COLOR_RESET}"
+					echo -e "${COLOR_RED}See 'bastille start ${TARGET}'.${COLOR_RESET}"
+					exit 1
+				fi
+			else
+				echo -e "${COLOR_RED}${TARGET} state is unknown.${COLOR_RESET}"; exit 1
+			fi
+		else
+			echo -e "${COLOR_RED}${TARGET} is not a thick container.${COLOR_RESET}"; exit 1
+		fi
 	fi
 	exit 0
 }
@@ -969,15 +1073,32 @@ runtime_config
 
 # Handle additional commands.
 case "${OPT}" in
-osrelease|--osrelease)
-	if [ $# -gt 4 ] || [ $# -lt 4 ]; then
-		echo "Usage: ${SCRIPTNAME} [osrelease|--osrelease] [container] [release] [newrelease]"
-		exit 1
-	fi
-	NAME="${2}"
+upgrade|--upgrade)
+	TARGET="${2}"
 	RELEASE="${3}"
 	NEWRELEASE="${4}"
-	jail_osrelease
+	## check container type to upgrade
+	if [ -z "${NEWRELEASE}" ]; then
+		if [ $# -gt 3 ] || [ $# -lt 3 ]; then
+			echo "Usage: ${SCRIPTNAME} [upgrade|--upgrade] [container] [release]"
+			exit 1
+		fi
+		thickjail_upgrade
+	else
+		if [ $# -gt 4 ] || [ $# -lt 4 ]; then
+			echo "Usage: ${SCRIPTNAME} [upgrade|--upgrade] [container] [release] [newrelease]"
+			exit 1
+		fi
+		thinjail_upgrade
+	fi
+	;;
+update|--update)
+	if [ $# -gt 2 ] || [ $# -lt 2 ]; then
+		echo "Usage: ${SCRIPTNAME} [update|--update] [container] | [release]"
+		exit 1
+	fi
+	TARGET="${2}"
+	jail_update
 	;;
 esac
 
@@ -999,9 +1120,12 @@ while getopts ":ospruxUvgtBRZh" option; do
 		echo "        -U  Uninstall ${PRDNAME} (Extension files only)."
 		echo "        -h  Display this help message."
 		echo
-		echo "Advanced Usage: ${SCRIPTNAME} [option] [container] [argument1] [argument2]"
+		echo "Advanced Usage: ${SCRIPTNAME} [option] [container] [release] | [newrelease]"
 		echo "Options:"
-		echo "        osrelease|--osrelease  Quickly upgrade/downgrade a thin container base release."; exit 0;;
+		echo "        update|--update  Update a container to base -pX release."
+		echo "        upgrade|--upgrade  Upgrade a container release to X.Y-RELEASE."
+		echo
+		echo "Note: Thick containers update/upgrade may depend on securelevel/allow.chflags."; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.
 		[s]) bastille_start;;
 		[p]) bastille_stop;;
