@@ -128,6 +128,37 @@ if($_POST):
 				endif;
 				break;
 
+			case 'update':
+				// Input validation not required
+				if(empty($input_errors)):
+					$container = [];
+					$container['uuid'] = $_POST['uuid'];
+					$container['jailname'] = $_POST['jailname'];
+					$confirm_name = $pconfig['confirmname'];
+					$item = $container['jailname'];
+					$current_release = exec("/usr/bin/grep '\-RELEASE' {$jail_dir}/{$item}/fstab | awk '{print $1}' | grep -o '[^/]*$'");
+
+					if ($_POST['update_base']):
+						$cmd = ("/usr/local/sbin/bastille-init update '{$current_release}'");
+					else:
+						$cmd = ("/usr/local/sbin/bastille-init update '{$item}'");
+					endif;
+
+					unset($output,$retval);mwexec2($cmd,$output,$retval);
+					if($retval == 0):
+						$update_release = exec("/usr/sbin/jexec -l {$item} freebsd-version");
+						$savemsg .= sprintf(gtext("Container release updated to %s successfully."),$update_release);
+						exec("echo '{$date}: {$application}: Container release updated to {$update_release} successfully for {$item}' >> {$logfile}");
+						//header('Location: bastille_manager_gui.php');
+						//exit;
+					else:
+						$errormsg .= sprintf(gtext("Failed to update container %s."),$item);
+						#$errormsg .= gtext("Failed to update container, either is not running or is highly secured (check securelevel/allow.chflags).");
+						exec("echo '{$date}: {$application}: Failed to update container {$item}' >> {$logfile}");
+					endif;
+				endif;
+				break;
+
 			case 'base':
 				// Input validation not required
 				if(empty($input_errors)):
@@ -283,6 +314,7 @@ function action_change() {
 	showElementById('createdir_tr', 'hide');
 	showElementById('jail_release_tr', 'hide');
 	showElementById('release_tr','hide');
+	showElementById('update_base_tr','hide');
 	//showElementById('dateadd_tr','hide');
 	var action = document.iform.action.value;
 	switch (action) {
@@ -290,14 +322,17 @@ function action_change() {
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
 			break;
-			
+		case "update":
+			showElementById('confirmname_tr','hide');
+			showElementById('nowstop_tr','hide');
+			showElementById('update_base_tr','show');
+			break;
 		case "base":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
 			showElementById('jail_release_tr', 'show');
 			showElementById('release_tr','show');
 			break;
-		
 		case "autoboot":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
@@ -371,6 +406,7 @@ $document->render();
 			#$current_release = exec("/usr/sbin/jexec {$pconfig['jailname']} freebsd-version 2>/dev/null");
 			unset($disable_base_change);
 			$current_release = exec("/usr/bin/grep '\-RELEASE' {$jail_dir}/{$pconfig['jailname']}/fstab | awk '{print $1}' | grep -o '[^/]*$'");
+			$is_thickjail = exec("/usr/bin/grep '.bastille' {$jail_dir}/{$pconfig['jailname']}/fstab");
 			if (!$current_release):
 				$current_release = exec("/usr/bin/grep 'releng' {$jail_dir}/{$pconfig['jailname']}/root/COPYRIGHT | cut -d '/' -f2");
 				$disable_base_change = "1";
@@ -383,6 +419,7 @@ $document->render();
 			html_text2('jailname',gettext('Container name:'),htmlspecialchars($pconfig['jailname']));
 			$a_action = [
 				'backup' => gettext('Backup'),
+				'update' => gettext('Update'),
 				'base' => gettext('Release'),
 				'autoboot' => gettext('Autoboot'),
 				'noauto' => gettext('Noauto'),
@@ -390,6 +427,7 @@ $document->render();
 				'delete' => gettext('Destroy'),
 				'advanced' => gettext('Advanced'),
 			];
+
 			html_combobox2('action',gettext('Action'),$pconfig['action'],$a_action,'',true,false,'action_change()');
 			html_inputbox2('confirmname',gettext('Enter name for confirmation'),$pconfig['confirmname'],'',true,30);
 			html_checkbox2('nowstop',gettext('Stop container'),!empty($pconfig['nowstop']) ? true : false,gettext('Stop the container if running before deletetion.'),'',false);
@@ -398,6 +436,11 @@ $document->render();
 			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I understand the risks, take me to the advanced jail config files.'),'',true);
 			html_checkbox2('readonly',gettext('Read-Only Mode'),!empty($pconfig['readonly']) ? true : false,gettext('Set target directory in Read-Only mode.'),'',false);
 			html_checkbox2('createdir',gettext('Create Target Directory'),!empty($pconfig['createdir']) ? true : true,gettext('Create target directory if missing (recommended).'),'',true);
+			if ($is_thickjail):
+			html_checkbox2('update_base',gettext('Base update confirm'),!empty($pconfig['update_base']) ? true : false,gettext('This is a thin container, therefore the base release will be updated, this affects child containers.'),'',true);
+			else:
+			html_text2('update_base',gettext('Container update confirm:'),gettext('This is a thick container, therefore the updated success will depend on its security level, i.e. securelevel and/or allow.chflags.'));
+			endif;
 			html_text2('jail_release',gettext('Current base release:'),htmlspecialchars($current_release));
 			if (!$disable_base_change):
 				html_combobox2('release',gettext('New base release'),$pconfig['release'],$b_action,gettext("Warning: this will change current base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues."),true,false,);

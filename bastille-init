@@ -751,7 +751,7 @@ thickjail_upgrade()
 					echo "bastille cmd ${TARGET} freebsd-update install"
 					echo
 					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
-					jexec -l "${TARGET}" freebsd-update --currently-running "${CURRENT_VERSION}" -r ${RELEASE} upgrade
+					jexec -l "${TARGET}" env PAGER="/bin/cat" freebsd-update --not-running-from-cron --currently-running "${CURRENT_VERSION}" -r ${RELEASE} upgrade
 				else
 					echo "Container not running."
 					echo "See 'bastille start ${TARGET}'."
