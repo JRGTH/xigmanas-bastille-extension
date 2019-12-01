@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.21......Improved jail update/upgrade code, obsolete code cleanup.
 1.0.20......Code cleanup.
 1.0.19......Added freebsd-update support.
 1.0.18......Added update/upgrade handling improvements.

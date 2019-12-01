@@ -116,6 +116,15 @@ runtime_config()
 	if [ ! -d ${CWDIR}/locale-bastille ]; then
 		mkdir -p ${CWDIR}/locale-bastille
 	fi
+	if [ ! -d "${CWDIR}/freebsd-update" ]; then
+		mkdir ${CWDIR}/freebsd-update
+	fi
+
+	# Check for permissions.
+	FREEBSD_UPDATE_PERMS=$(stat -f "%Op" ${FREEBSD_UPDATE}/freebsd-update)
+	if [ "${FREEBSD_UPDATE_PERMS}" != 100555 ]; then
+		chmod 0555 ${FREEBSD_UPDATE}/freebsd-update
+	fi
 
 	# Set rquired zfs send/recv parameters is missing.
 	if ! grep -qw "ZFS_SENDPARAMS=" ${CWDIR}${EXTCONF} >/dev/null 2>&1; then
@@ -266,6 +275,9 @@ create_addon_env()
 	fi
 	if [ ! -d "${CWDIR}/${FULLAPPNAME}/${BASTILLEPATH}" ]; then
 		mkdir -p ${CWDIR}/${FULLAPPNAME}/${BASTILLEPATH}
+	fi
+	if [ ! -d "${CWDIR}/freebsd-update" ]; then
+		mkdir ${CWDIR}/freebsd-update
 	fi
 
 	# Link bastille-init to /usr/local/sbin.
@@ -594,6 +606,8 @@ jail_update()
 			echo "Not supported on ${PRDPRODUCT} platform."
 			exit 1
 		fi
+	else
+		echo "Unsupported platform!"; exit 1
 	fi
 
 	if [ ! -z "$(freebsd-version | grep -i HBSD)" ]; then
@@ -608,42 +622,36 @@ jail_update()
 					# Update a thick container(securelevel/allow.chflags dependent).
 					if ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "securelevel = 0|securelevel = -1"; then
 						echo "Container securelevel is greater than zero."
-						disable_freebsd_update
 						exit 1
 						elif ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "allow.chflags = 1"; then
 						echo "Container allow.chflags is disabled."
-						disable_freebsd_update
 						exit 1
 					fi
 					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
-					jexec -l "${TARGET}" freebsd-update fetch install --currently-running "${CURRENT_VERSION}"
+					jexec -l "${TARGET}" env PAGER="/bin/cat" freebsd-update --not-running-from-cron fetch install --currently-running "${CURRENT_VERSION}"
 				else
 					echo "Container not running."
 					echo "See 'bastille start ${TARGET}'."
-					disable_freebsd_update
 					exit 1
 				fi
 			else
 				echo "${TARGET} state is unknown."
-				disable_freebsd_update
 				exit 1
 			fi
 		else
 			echo "${TARGET} is not a thick container."
-			disable_freebsd_update
 			exit 1
 		fi
 	else
 		if [ -d "${bastille_releasesdir}/${TARGET}" ]; then
 			# Update container base(affects base child containers).
-			freebsd-update -b "${bastille_releasesdir}/${TARGET}" fetch install --currently-running "${TARGET}"
+			env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+			-d ${CWDIR}/freebsd-update -b "${bastille_releasesdir}/${TARGET}" fetch install --currently-running "${TARGET}"
 		else
 			echo "${TARGET} not found. See bootstrap."
-			disable_freebsd_update
 			exit 1
 		fi
 	fi
-	disable_freebsd_update
 	exit 0
 }
 
@@ -717,6 +725,8 @@ thickjail_upgrade()
 			echo "Not supported on ${PRDPRODUCT} platform."
 			exit 1
 		fi
+	else
+		echo "Unsupported platform!"; exit 1
 	fi
 
 	if [ ! -z "$(freebsd-version | grep -i HBSD)" ]; then
@@ -732,57 +742,31 @@ thickjail_upgrade()
 					## upgrade a thick container(securelevel/allow.chflags dependent)
 					if ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "securelevel = 0|securelevel = -1"; then
 						echo "Container securelevel is greater than zero."
-						disable_freebsd_update
 						exit 1
 					elif ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "allow.chflags = 1"; then
 						echo "Container allow.chflags is disabled."
-						disable_freebsd_update
 						exit 1
 					fi
 					echo "Below command should be run several times when asked to finish installing updates."
 					echo "bastille cmd ${TARGET} freebsd-update install"
+					echo
 					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
 					jexec -l "${TARGET}" freebsd-update --currently-running "${CURRENT_VERSION}" -r ${RELEASE} upgrade
 				else
 					echo "Container not running."
 					echo "See 'bastille start ${TARGET}'."
-					disable_freebsd_update
 					exit 1
 				fi
 			else
 				echo "${TARGET} state is unknown."
-				disable_freebsd_update
 				exit 1
 			fi
 		else
 			echo "${TARGET} is not a thick container."
-			disable_freebsd_update
 			exit 1
 		fi
 	fi
-	disable_freebsd_update
 	exit 0
-}
-
-enable_freebsd_update()
-{
-	if [ -d "${FREEBSD_UPDATE}" ]; then
-		if [ -f "${FREEBSD_UPDATE}/freebsd-update" ] && [ -f "${FREEBSD_UPDATE}/freebsd-update.conf" ]; then
-			chmod 555 ${FREEBSD_UPDATE}/freebsd-update
-			cp ${FREEBSD_UPDATE}/freebsd-update /usr/sbin/freebsd-update
-			cp ${FREEBSD_UPDATE}/freebsd-update.conf /etc/freebsd-update.conf
-		fi
-	fi
-}
-
-disable_freebsd_update()
-{
-	if [ -f "/usr/sbin/freebsd-update" ]; then
-		rm /usr/sbin/freebsd-update
-	fi
-	if [ -f "/etc/freebsd-update.conf" ]; then
-		rm /etc/freebsd-update.conf
-	fi
 }
 
 zfs_activate()
@@ -946,7 +930,7 @@ remove_addon()
 	# Remove addon related files and folders only-
 	# to protect any user-created custom files-
 	# as well as for the containers dirs/files.
-	FILES="conf download gui locale-bastille log bastille-dist LICENSE README.md postinit CHANGELOG version bastille-init"
+	FILES="conf download freebsd-update gui locale-bastille log bastille-dist LICENSE README.md postinit CHANGELOG version bastille-init"
 	for FILE in ${FILES}; do
 		if [ -f "${CWDIR}/${file}" ] || [ -d "${CWDIR}/${file}" ]; then
 			rm -rf ${CWDIR}/${FILE}
@@ -1125,7 +1109,6 @@ upgrade|--upgrade)
 			echo "Usage: ${SCRIPTNAME} [upgrade|--upgrade] [container] [release]"
 			exit 1
 		fi
-		enable_freebsd_update
 		thickjail_upgrade
 	else
 		if [ $# -gt 4 ] || [ $# -lt 4 ]; then
@@ -1141,7 +1124,6 @@ update|--update)
 		exit 1
 	fi
 	TARGET="${2}"
-	enable_freebsd_update
 	jail_update
 	;;
 esac
