@@ -591,13 +591,13 @@ jail_update()
 {
 	if [ "${PRDPRODUCT}" = "XigmaNAS" -o "${PRDPRODUCT}" = "NAS4Free" ]; then
 		if [ ! -d "${FREEBSD_UPDATE}" ]; then
-			echo -e "Not supported on ${PRDPRODUCT} platform."
+			echo "Not supported on ${PRDPRODUCT} platform."
 			exit 1
 		fi
 	fi
 
 	if [ ! -z "$(freebsd-version | grep -i HBSD)" ]; then
-		echo -e "Not supported on HardenedBSD."
+		echo "Not supported on HardenedBSD."
 		exit 1
 	fi
 
@@ -607,29 +607,29 @@ jail_update()
 				if [ $(jls name | grep -w "${TARGET}") ]; then
 					# Update a thick container(securelevel/allow.chflags dependent).
 					if ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "securelevel = 0|securelevel = -1"; then
-						echo -e "Container securelevel is greater than zero."
+						echo "Container securelevel is greater than zero."
 						disable_freebsd_update
 						exit 1
 						elif ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "allow.chflags = 1"; then
-						echo -e "Container allow.chflags is disabled."
+						echo "Container allow.chflags is disabled."
 						disable_freebsd_update
 						exit 1
 					fi
 					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
 					jexec -l "${TARGET}" freebsd-update fetch install --currently-running "${CURRENT_VERSION}"
 				else
-					echo -e "Container not running."
-					echo -e "See 'bastille start ${TARGET}'."
+					echo "Container not running."
+					echo "See 'bastille start ${TARGET}'."
 					disable_freebsd_update
 					exit 1
 				fi
 			else
-				echo -e "${TARGET} state is unknown."
+				echo "${TARGET} state is unknown."
 				disable_freebsd_update
 				exit 1
 			fi
 		else
-			echo -e "${TARGET} is not a thick container."
+			echo "${TARGET} is not a thick container."
 			disable_freebsd_update
 			exit 1
 		fi
@@ -638,7 +638,7 @@ jail_update()
 			# Update container base(affects base child containers).
 			freebsd-update -b "${bastille_releasesdir}/${TARGET}" fetch install --currently-running "${TARGET}"
 		else
-			echo -e "${TARGET} not found. See bootstrap."
+			echo "${TARGET} not found. See bootstrap."
 			disable_freebsd_update
 			exit 1
 		fi
@@ -650,7 +650,7 @@ jail_update()
 thinjail_upgrade()
 {
 	if [ ! -z "$(freebsd-version | grep -i HBSD)" ]; then
-		echo -e "Not supported on HardenedBSD."
+		echo "Not supported on HardenedBSD."
 		exit 1
 	fi
 
@@ -660,11 +660,11 @@ thinjail_upgrade()
 			if [ -f "${bastille_releasesdir}/${RELEASE}/COPYRIGHT" ]; then
 				## check if the container is running
 				if [ $(jls name | grep -w "${TARGET}") ]; then
-					echo -e "${TARGET} running."
-					echo -e "See 'bastille stop ${TARGET}'."
+					echo "${TARGET} running."
+					echo "See 'bastille stop ${TARGET}'."
 					exit 1
 				elif [ "${RELEASE}" = "${NEWRELEASE}" ]; then
-					echo -e "Specified releases name match."
+					echo "Specified releases name match."
 					exit 0
 				fi
 				if [ -d "${bastille_releasesdir}/${NEWRELEASE}" ]; then
@@ -674,38 +674,38 @@ thinjail_upgrade()
 							if cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${RELEASE}" | grep -q ".bastille"; then
 								## if the previous conditions meets, proceed with the container base upgrade
 								sed -i '' "s/${RELEASE}/${NEWRELEASE}/g" ${bastille_jailsdir}/${TARGET}/fstab
-								echo -e "${TARGET} release changed to ${NEWRELEASE}."
+								echo "${TARGET} release changed to ${NEWRELEASE}."
 							elif cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${NEWRELEASE}" | grep -q ".bastille"; then
-								echo -e "${TARGET} already using ${NEWRELEASE}."
+								echo "${TARGET} already using ${NEWRELEASE}."
 								exit 0
 							else
 								if cat "${bastille_jailsdir}/${TARGET}/fstab" | grep -q ".bastille"; then
-									echo -e "${TARGET} container does not use ${RELEASE}."; exit 1
+									echo "${TARGET} container does not use ${RELEASE}."; exit 1
 								else
-									echo -e "${TARGET} is not a thin container."; exit 1
+									echo "${TARGET} is not a thin container."; exit 1
 								fi
 							fi
 						else
-							echo -e "${TARGET} fstab not found."; exit 1
+							echo "${TARGET} fstab not found."; exit 1
 						fi
 					else
-						echo -e "Unknown ${NEWRELEASE}. See bootstrap."; exit 1
+						echo "Unknown ${NEWRELEASE}. See bootstrap."; exit 1
 					fi
 				else
-					echo -e "${NEWRELEASE} not found, bootstrap starting...."
+					echo "${NEWRELEASE} not found, bootstrap starting...."
 					bastille bootstrap ${NEWRELEASE}
 					if [ ! $? -ne 0 ]; then
 						thinjail_upgrade
 					fi
 				fi
 			else
-				echo -e "Unknown ${RELEASE}. See bootstrap."; exit 1
+				echo "Unknown ${RELEASE}. See bootstrap."; exit 1
 			fi
 		else
-			echo -e "${RELEASE} not found. See bootstrap."; exit 1
+			echo "${RELEASE} not found. See bootstrap."; exit 1
 		fi
 	else
-		echo -e "${TARGET} not found. See create."; exit 1
+		echo "${TARGET} not found. See create."; exit 1
 	fi
 	exit 0
 }
@@ -714,13 +714,13 @@ thickjail_upgrade()
 {
 	if [ "${PRDPRODUCT}" = "XigmaNAS" -o "${PRDPRODUCT}" = "NAS4Free" ]; then
 		if [ ! -d "${FREEBSD_UPDATE}" ]; then
-			echo -e "Not supported on ${PRDPRODUCT} platform."
+			echo "Not supported on ${PRDPRODUCT} platform."
 			exit 1
 		fi
 	fi
 
 	if [ ! -z "$(freebsd-version | grep -i HBSD)" ]; then
-		echo -e "Not supported on HardenedBSD."
+		echo "Not supported on HardenedBSD."
 		exit 1
 	fi
 
@@ -731,31 +731,31 @@ thickjail_upgrade()
 				if [ $(jls name | grep -w "${TARGET}") ]; then
 					## upgrade a thick container(securelevel/allow.chflags dependent)
 					if ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "securelevel = 0|securelevel = -1"; then
-						echo -e "Container securelevel is greater than zero."
+						echo "Container securelevel is greater than zero."
 						disable_freebsd_update
 						exit 1
 					elif ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "allow.chflags = 1"; then
-						echo -e "Container allow.chflags is disabled."
+						echo "Container allow.chflags is disabled."
 						disable_freebsd_update
 						exit 1
 					fi
-					echo -e "Below command should be run several times when asked to finish installing updates."
-					echo -e "bastille cmd ${TARGET} freebsd-update install"
+					echo "Below command should be run several times when asked to finish installing updates."
+					echo "bastille cmd ${TARGET} freebsd-update install"
 					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
 					jexec -l "${TARGET}" freebsd-update --currently-running "${CURRENT_VERSION}" -r ${RELEASE} upgrade
 				else
-					echo -e "Container not running."
-					echo -e "See 'bastille start ${TARGET}'."
+					echo "Container not running."
+					echo "See 'bastille start ${TARGET}'."
 					disable_freebsd_update
 					exit 1
 				fi
 			else
-				echo -e "${TARGET} state is unknown."
+				echo "${TARGET} state is unknown."
 				disable_freebsd_update
 				exit 1
 			fi
 		else
-			echo -e "${TARGET} is not a thick container."
+			echo "${TARGET} is not a thick container."
 			disable_freebsd_update
 			exit 1
 		fi
