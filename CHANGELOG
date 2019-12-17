@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.23......Improved container/base update process.
 1.0.22......Handle container/base updates from the UI.
 1.0.21......Improved jail update/upgrade code, obsolete code cleanup.
 1.0.20......Code cleanup.

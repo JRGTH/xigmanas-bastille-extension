@@ -439,7 +439,7 @@ $document->render();
 			if ($is_thickjail):
 			html_checkbox2('update_base',gettext('Base update confirm'),!empty($pconfig['update_base']) ? true : false,gettext('This is a thin container, therefore the base release will be updated, this affects child containers.'),'',true);
 			else:
-			html_text2('update_base',gettext('Container update confirm:'),gettext('This is a thick container, therefore the updated success will depend on its security level, i.e. securelevel and/or allow.chflags.'));
+			html_text2('update_base',gettext('Container update confirm:'),gettext('This is a thick container, therefore the update will be performed within its root, current containers are not affected.'));
 			endif;
 			html_text2('jail_release',gettext('Current base release:'),htmlspecialchars($current_release));
 			if (!$disable_base_change):

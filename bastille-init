@@ -601,6 +601,8 @@ jail_restore()
 
 jail_update()
 {
+	# Workaround since XigmaNAS does not ship with freebsd-update command.
+
 	if [ "${PRDPRODUCT}" = "XigmaNAS" -o "${PRDPRODUCT}" = "NAS4Free" ]; then
 		if [ ! -d "${FREEBSD_UPDATE}" ]; then
 			echo "Not supported on ${PRDPRODUCT} platform."
@@ -619,16 +621,15 @@ jail_update()
 		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -q ".bastille"; then
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
 				if [ $(jls name | grep -w "${TARGET}") ]; then
-					# Update a thick container(securelevel/allow.chflags dependent).
-					if ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "securelevel = 0|securelevel = -1"; then
-						echo "Container securelevel is greater than zero."
-						exit 1
-						elif ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "allow.chflags = 1"; then
-						echo "Container allow.chflags is disabled."
-						exit 1
-					fi
+					# Update a thick container.
 					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
-					jexec -l "${TARGET}" env PAGER="/bin/cat" freebsd-update --not-running-from-cron fetch install --currently-running "${CURRENT_VERSION}"
+					if [ -z "${CURRENT_VERSION}" ]; then
+						echo "Can't determine '${TARGET}' version."
+						exit 1
+					else
+						env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+						-d ${CWDIR}/freebsd-update -b "${bastille_jailsdir}/${TARGET}/root" fetch install --currently-running "${CURRENT_VERSION}"
+					fi
 				else
 					echo "Container not running."
 					echo "See 'bastille start ${TARGET}'."
@@ -662,11 +663,11 @@ thinjail_upgrade()
 		exit 1
 	fi
 
-	## verify for user input and handle some errors
+	# Verify for user input and handle some errors.
 	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then
 		if [ -d "${bastille_releasesdir}/${RELEASE}" ]; then
 			if [ -f "${bastille_releasesdir}/${RELEASE}/COPYRIGHT" ]; then
-				## check if the container is running
+				# Check if the container is running.
 				if [ $(jls name | grep -w "${TARGET}") ]; then
 					echo "${TARGET} running."
 					echo "See 'bastille stop ${TARGET}'."
@@ -678,9 +679,9 @@ thinjail_upgrade()
 				if [ -d "${bastille_releasesdir}/${NEWRELEASE}" ]; then
 					if [ -f "${bastille_releasesdir}/${NEWRELEASE}/COPYRIGHT" ]; then
 						if [ -f "${bastille_jailsdir}/${TARGET}/fstab" ]; then
-							## check if is a thin container
+							# Check if is a thin container.
 							if cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${RELEASE}" | grep -q ".bastille"; then
-								## if the previous conditions meets, proceed with the container base upgrade
+								# If the previous conditions meets, proceed with the container base upgrade.
 								sed -i '' "s/${RELEASE}/${NEWRELEASE}/g" ${bastille_jailsdir}/${TARGET}/fstab
 								echo "${TARGET} release changed to ${NEWRELEASE}."
 							elif cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${NEWRELEASE}" | grep -q ".bastille"; then
@@ -720,6 +721,8 @@ thinjail_upgrade()
 
 thickjail_upgrade()
 {
+	# Workaround since XigmaNAS does not ship with freebsd-update command.
+
 	if [ "${PRDPRODUCT}" = "XigmaNAS" -o "${PRDPRODUCT}" = "NAS4Free" ]; then
 		if [ ! -d "${FREEBSD_UPDATE}" ]; then
 			echo "Not supported on ${PRDPRODUCT} platform."
@@ -734,12 +737,12 @@ thickjail_upgrade()
 		exit 1
 	fi
 
-	## verify for user input and handle some errors
+	# Verify for user input and handle some errors.
 	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
 		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -q ".bastille"; then
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
 				if [ $(jls name | grep -w "${TARGET}") ]; then
-					## upgrade a thick container(securelevel/allow.chflags dependent)
+					# Upgrade a thick container(securelevel/allow.chflags dependent).
 					if ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "securelevel = 0|securelevel = -1"; then
 						echo "Container securelevel is greater than zero."
 						exit 1
