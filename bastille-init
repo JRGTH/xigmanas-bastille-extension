@@ -741,20 +741,58 @@ thickjail_upgrade()
 	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
 		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -q ".bastille"; then
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
-				if [ $(jls name | grep -w "${TARGET}") ]; then
-					# Upgrade a thick container(securelevel/allow.chflags dependent).
-					if ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "securelevel = 0|securelevel = -1"; then
-						echo "Container securelevel is greater than zero."
-						exit 1
-					elif ! cat "${bastille_jailsdir}/${TARGET}/jail.conf" | grep -qwE "allow.chflags = 1"; then
-						echo "Container allow.chflags is disabled."
-						exit 1
-					fi
-					echo "Below command should be run several times when asked to finish installing updates."
-					echo "bastille cmd ${TARGET} freebsd-update install"
+				if [ "$(jls name | grep -w "${TARGET}")" ]; then
+					# Upgrade a thick container.
+					echo "=> Run the command below several times when asked to finish installing updates."
+					echo "bastille-init upgrade_install ${TARGET}"
 					echo
 					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
-					jexec -l "${TARGET}" env PAGER="/bin/cat" freebsd-update --not-running-from-cron --currently-running "${CURRENT_VERSION}" -r ${RELEASE} upgrade
+					env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+					-d ${CWDIR}/freebsd-update -b "${bastille_jailsdir}/${TARGET}/root" --currently-running "${CURRENT_VERSION}" -r ${RELEASE} upgrade
+					echo
+					echo "=> Please run: 'bastille-init upgrade_install ${TARGET}' to finish installing updates."
+				else
+					echo "Container not running."
+					echo "See 'bastille start ${TARGET}'."
+					exit 1
+				fi
+			else
+				echo "${TARGET} state is unknown."
+				exit 1
+			fi
+		else
+			echo "${TARGET} is not a thick container."
+			exit 1
+		fi
+	fi
+	exit 0
+}
+
+thickjail_upgrade_install()
+{
+	# Workaround since XigmaNAS does not ship with freebsd-update command.
+
+	if [ "${PRDPRODUCT}" = "XigmaNAS" -o "${PRDPRODUCT}" = "NAS4Free" ]; then
+		if [ ! -d "${FREEBSD_UPDATE}" ]; then
+			echo "Not supported on ${PRDPRODUCT} platform."
+			exit 1
+		fi
+	else
+		echo "Unsupported platform!"; exit 1
+	fi
+
+	if [ ! -z "$(freebsd-version | grep -i HBSD)" ]; then
+		echo "Not supported on HardenedBSD."
+		exit 1
+	fi
+
+	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
+		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -q ".bastille"; then
+			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
+				if [ "$(jls name | grep -w "${TARGET}")" ]; then
+					# Finish installing upgrade on a thick container.
+					env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+					-d ${CWDIR}/freebsd-update -b "${bastille_jailsdir}/${TARGET}/root" install
 				else
 					echo "Container not running."
 					echo "See 'bastille start ${TARGET}'."
@@ -1100,13 +1138,21 @@ bastille_init()
 # Run-time configuration.
 runtime_config
 
+TARGET="${2}"
+RELEASE="${3}"
+NEWRELEASE="${4}"
+
 # Handle additional commands.
 case "${OPT}" in
+upgrade_install|--upgrade_install)
+	if [ $# -gt 2 ] || [ $# -lt 2 ]; then
+		echo "Usage: ${SCRIPTNAME} [upgrade_install|--upgrade_install] [container]"
+		exit 1
+	fi
+	thickjail_upgrade_install
+	;;
 upgrade|--upgrade)
-	TARGET="${2}"
-	RELEASE="${3}"
-	NEWRELEASE="${4}"
-	## check container type to upgrade
+	# Check container type to upgrade
 	if [ -z "${NEWRELEASE}" ]; then
 		if [ $# -gt 3 ] || [ $# -lt 3 ]; then
 			echo "Usage: ${SCRIPTNAME} [upgrade|--upgrade] [container] [release]"
@@ -1126,8 +1172,13 @@ update|--update)
 		echo "Usage: ${SCRIPTNAME} [update|--update] [container] | [release]"
 		exit 1
 	fi
-	TARGET="${2}"
 	jail_update
+	;;
+clean|--clean)
+	for file in ${CWDIR}/freebsd-update/*; do
+		rm -rf ${file}
+	done
+	exit 0
 	;;
 esac
 
@@ -1151,10 +1202,11 @@ while getopts ":ospruxUvgtBRZh" option; do
 		echo
 		echo "Advanced Usage: ${SCRIPTNAME} [option] [container] [release] | [newrelease]"
 		echo "Options:"
-		echo "        update|--update  Update a container to base -pX release."
-		echo "        upgrade|--upgrade  Upgrade a container release to X.Y-RELEASE."
-		echo
-		echo "Note: Thick containers update/upgrade may depend on securelevel/allow.chflags."; exit 0;;
+		echo "        update|--update Update a container/release to base -pX release."
+		echo "        upgrade|--upgrade Upgrade a container release to X.Y-RELEASE."
+		echo "        upgrade_install|--upgrade_install Finish installing pending updates on Thick containers."
+		echo "        clean|--clean Cleanup the FreeBSD update/upgrade cached files/folders."
+		echo ""; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.
 		[s]) bastille_start;;
 		[p]) bastille_stop;;
