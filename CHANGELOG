@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.28......Improve fstab utility error handling.
 1.0.27......Improved fstab utility, don't allow blank fields. 
 1.0.26......Improved jail IP search during import.
 1.0.25......Add foreign jail import support, improved fstab utility.

@@ -101,7 +101,7 @@ if($_POST):
 						header('Location: bastille_manager_editor.php');
 						exit;
 					else:
-						$errormsg .= gtext("Failed to open editor, confirmation is required.");
+						$input_errors[] = gtext("Failed to open editor, confirmation is required.");
 					endif;
 				endif;
 				break;
@@ -122,7 +122,7 @@ if($_POST):
 						//header('Location: bastille_manager_gui.php');
 						//exit;
 					else:
-						$errormsg .= gtext("Failed to backup container.");
+						$input_errors[] = gtext("Failed to backup container.");
 						exec("echo '{$date}: {$application}: Failed to backup container {$item}' >> {$logfile}");
 					endif;
 				endif;
@@ -152,8 +152,8 @@ if($_POST):
 						//header('Location: bastille_manager_gui.php');
 						//exit;
 					else:
-						$errormsg .= sprintf(gtext("Failed to update container %s."),$item);
-						#$errormsg .= gtext("Failed to update container, either is not running or is highly secured (check securelevel/allow.chflags).");
+						$input_errors[] = sprintf(gtext("Failed to update container %s."),$item);
+						#$input_errors[] = gtext("Failed to update container, either is not running or is highly secured (check securelevel/allow.chflags).");
 						exec("echo '{$date}: {$application}: Failed to update container {$item}' >> {$logfile}");
 					endif;
 				endif;
@@ -180,7 +180,7 @@ if($_POST):
 							//header('Location: bastille_manager_gui.php');
 							//exit;
 						else:
-							$errormsg .= sprintf(gtext("Failed to change container base release to %s, either it is running or is not a thin container."),$new_release);
+							$input_errors[] = sprintf(gtext("Failed to change container base release to %s, either it is running or is not a thin container."),$new_release);
 							exec("echo '{$date}: {$application}: Failed to change container base release to {$new_release} on {$item}' >> {$logfile}");
 						endif;
 					endif;
@@ -201,7 +201,7 @@ if($_POST):
 						header('Location: bastille_manager_gui.php');
 						exit;
 					else:
-						$errormsg .= gtext("Failed to set auto-boot.");
+						$input_errors[] = gtext("Failed to set auto-boot.");
 					endif;
 				endif;
 				break;
@@ -220,7 +220,7 @@ if($_POST):
 						header('Location: bastille_manager_gui.php');
 						exit;
 					else:
-						$errormsg .= gtext("Failed to set no-auto.");
+						$input_errors[] = gtext("Failed to set no-auto.");
 					endif;
 				endif;
 				break;
@@ -244,33 +244,39 @@ if($_POST):
 						$dir_mode = "rw";
 					endif;
 
-					if ((!$sourcedir) || (!$targetdir)): 
-						$errormsg .= gtext("Soure/Target directory can't be left blank.");
+					if ((!$sourcedir) || (!$targetdir)):
+						$input_errors[] = gtext("Soure/Target directory can't be left blank.");
 					else:
-						if (!$paths_exist):
-							$cmd = ("/bin/echo	\"{$sourcedir}    {$targetdir}    nullfs    {$dir_mode}    0    0\" >> {$rootfolder}/jails/{$item}/fstab");
-							unset($output,$retval);mwexec2($cmd,$output,$retval);
-							if($retval == 0):
-
-								if ($_POST['createdir']):
-									if (!is_dir("{$targetdir}")):
-										mkdir("$targetdir");
-									endif;
-									if ($_POST['automount']):
-										if ($is_running):
-											exec("/sbin/mount_nullfs -o {$dir_mode} {$sourcedir} {$targetdir}");
-										endif;
-									endif;
-								endif;
-
-								$savemsg .= gtext("Edited the fstab successfully.");
-								//header('Location: bastille_manager_gui.php');
-								//exit;
-							else:
-								$errormsg .= gtext("Failed to edit the fstab.");
-							endif;
+						if (!isset($_POST['path_check']) && (!preg_match( '/\/mnt\/(.*\S)/', $sourcedir))):
+							$input_errors[] = gtext("The Source directory MUST be set to a directory below '/mnt/'.");
+						elseif (!isset($_POST['path_check']) && (!preg_match( '/\/(.*\S)\/mnt\/(.*\S)/', $targetdir))):
+							$input_errors[] = sprintf(gtext("The Target directory MUST be set to a directory below '/mnt/'."),$targetdir);
 						else:
-							$savemsg .= gtext("Directories already exist in the fstab.");
+							if (!is_dir("{$sourcedir}")):
+								$input_errors[] = sprintf(gtext("Soure directory: %s does not exist."),$sourcedir);
+							else:
+								if (!$paths_exist):
+									$cmd = ("/bin/echo	\"{$sourcedir}    {$targetdir}    nullfs    {$dir_mode}    0    0\" >> {$rootfolder}/jails/{$item}/fstab");
+									unset($output,$retval);mwexec2($cmd,$output,$retval);
+									if($retval == 0):
+										if ($_POST['createdir']):
+											if (!is_dir("{$targetdir}")):
+												mkdir("$targetdir");
+											endif;
+											if ($_POST['automount']):
+												if ($is_running):
+													exec("/sbin/mount_nullfs -o {$dir_mode} {$sourcedir} {$targetdir}");
+												endif;
+											endif;
+										endif;
+										$savemsg .= gtext("Edited the fstab successfully.");
+									else:
+										$input_errors[] = gtext("Failed to edit the fstab.");
+									endif;
+								else:
+									$savemsg .= gtext("Directories already exist in the fstab.");
+								endif;
+							endif;
 						endif;
 					endif;
 				endif;
@@ -286,7 +292,7 @@ if($_POST):
 					$item = $container['jailname'];
 
 					if(strcmp($confirm_name, $item) !== 0):
-						$errormsg .= gtext("Failed to destroy container, name confirmation is required.");
+						$input_errors[] = gtext("Failed to destroy container, name confirmation is required.");
 						break;
 					else:
 						if ($_POST['nowstop']):
@@ -300,7 +306,7 @@ if($_POST):
 							header('Location: bastille_manager_gui.php');
 							exit;
 						else:
-							$errormsg .= gtext("Failed to destroy container, make sure this container is stopped.");
+							$input_errors[] = gtext("Failed to destroy container, make sure this container is stopped.");
 						endif;
 					endif;
 				endif;
@@ -327,6 +333,7 @@ function action_change() {
 	showElementById('nowstop_tr', 'hide');
 	showElementById('source_path_tr', 'hide');
 	showElementById('target_path_tr', 'hide');
+	showElementById('path_check_tr', 'hide');
 	showElementById('advanced_tr', 'hide');
 	showElementById('readonly_tr', 'hide');
 	showElementById('createdir_tr', 'hide');
@@ -365,6 +372,7 @@ function action_change() {
 			showElementById('nowstop_tr','hide');
 			showElementById('source_path_tr','show');
 			showElementById('target_path_tr','show');
+			showElementById('path_check_tr','show');
 			showElementById('readonly_tr','show');
 			showElementById('createdir_tr','show');
 			showElementById('automount_tr','show');
@@ -451,9 +459,10 @@ $document->render();
 			html_combobox2('action',gettext('Action'),$pconfig['action'],$a_action,'',true,false,'action_change()');
 			html_inputbox2('confirmname',gettext('Enter name for confirmation'),$pconfig['confirmname'],'',true,30);
 			html_checkbox2('nowstop',gettext('Stop container'),!empty($pconfig['nowstop']) ? true : false,gettext('Stop the container if running before deletetion.'),'',false);
-			html_filechooser("source_path", gtext("Source Data Directory"), $pconfig['source_path'], gtext("Source data directory to be shared, full path here."), $source_path, true, 60);
-			html_filechooser("target_path", gtext("Target Data Directory"), $pconfig['target_path'], gtext("Target data directory to be mapped, path within the jail only."), $target_path, true, 60);
-			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I understand the risks, take me to the advanced jail config files.'),'',true);
+			html_filechooser("source_path", gtext("Source Data Directory"), $pconfig['source_path'], gtext("Source data directory to be shared, full path here."), $source_path, false, 60);
+			html_filechooser("target_path", gtext("Target Data Directory"), $pconfig['target_path'], gtext("Target data directory to be mapped, full path to jail here."), $target_path, false, 60);		
+			html_checkbox2("path_check", gettext("Source/Target path check"),!empty($pconfig['path_check']) ? true : false, gettext("If this option is selected no examination of the source/target directory paths will be performed."), "<b><font color='red'>".gettext("Please use this option only if you know what you are doing here!")."</font></b>", false);			
+			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I want to edit the jail files manually.'),'',true);
 			html_checkbox2('readonly',gettext('Read-Only Mode'),!empty($pconfig['readonly']) ? true : false,gettext('Set target directory in Read-Only mode.'),'',true);
 			html_checkbox2('automount',gettext('Auto-mount Nullfs'),!empty($pconfig['automount']) ? true : false,gettext('Auto-mount the nullfs mountpoint if the container is already running.'),'',true);
 			html_checkbox2('createdir',gettext('Create Target Directory'),!empty($pconfig['createdir']) ? true : true,gettext('Create target directory if missing (recommended).'),'',true);
