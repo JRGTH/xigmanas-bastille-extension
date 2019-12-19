@@ -235,6 +235,8 @@ if($_POST):
 					$item = $container['jailname'];
 					$sourcedir = $pconfig['source_path'];
 					$targetdir = $pconfig['target_path'];
+					$is_running = exec("/usr/sbin/jls | /usr/bin/grep -w '{$item}'");
+					$paths_exist = exec("/bin/cat {$rootfolder}/jails/{$item}/fstab | /usr/bin/grep -w '{$sourcedir}    {$targetdir}'");
 
 					if ($_POST['readonly']):
 						$dir_mode = "ro";
@@ -242,19 +244,32 @@ if($_POST):
 						$dir_mode = "rw";
 					endif;
 
-					$cmd = ("/bin/echo	\"{$sourcedir}    {$targetdir}    nullfs    {$dir_mode}    0    0\" >> {$rootfolder}/jails/{$item}/fstab");
-					unset($output,$retval);mwexec2($cmd,$output,$retval);
-					if($retval == 0):
-						if ($_POST['createdir']):
-							mkdir("$targetdir");
+					if (!$paths_exist):
+						$cmd = ("/bin/echo	\"{$sourcedir}    {$targetdir}    nullfs    {$dir_mode}    0    0\" >> {$rootfolder}/jails/{$item}/fstab");
+						unset($output,$retval);mwexec2($cmd,$output,$retval);
+						if($retval == 0):
+
+							if ($_POST['createdir']):
+								if (!is_dir("{$targetdir}")):
+									mkdir("$targetdir");
+								endif;
+								if ($_POST['automount']):
+									if ($is_running):
+										exec("/sbin/mount_nullfs -o {$dir_mode} {$sourcedir} {$targetdir}");
+									endif;
+								endif;
+							endif;
+
+							$savemsg .= gtext("Edited the fstab successfully.");
+							//header('Location: bastille_manager_gui.php');
+							//exit;
+						else:
+							$errormsg .= gtext("Failed to edit the fstab.");
 						endif;
-						
-						$savemsg .= gtext("Container backup process completed successfully.");
-						//header('Location: bastille_manager_gui.php');
-						//exit;
 					else:
-						$errormsg .= gtext("Failed to backup container.");
+						$savemsg .= gtext("Directories already exist in the fstab.");
 					endif;
+
 				endif;
 				break;
 
@@ -312,6 +327,7 @@ function action_change() {
 	showElementById('advanced_tr', 'hide');
 	showElementById('readonly_tr', 'hide');
 	showElementById('createdir_tr', 'hide');
+	showElementById('automount_tr', 'hide');
 	showElementById('jail_release_tr', 'hide');
 	showElementById('release_tr','hide');
 	showElementById('update_base_tr','hide');
@@ -348,6 +364,7 @@ function action_change() {
 			showElementById('target_path_tr','show');
 			showElementById('readonly_tr','show');
 			showElementById('createdir_tr','show');
+			showElementById('automount_tr','show');
 			break;
 		case "delete":
 			showElementById('confirmname_tr','show');
@@ -434,7 +451,8 @@ $document->render();
 			html_filechooser("source_path", gtext("Source Data Directory"), $pconfig['source_path'], gtext("Source data directory to be shared, full path here."), $source_path, true, 60);
 			html_filechooser("target_path", gtext("Target Data Directory"), $pconfig['target_path'], gtext("Target data directory to be mapped, path within the jail only."), $target_path, true, 60);
 			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I understand the risks, take me to the advanced jail config files.'),'',true);
-			html_checkbox2('readonly',gettext('Read-Only Mode'),!empty($pconfig['readonly']) ? true : false,gettext('Set target directory in Read-Only mode.'),'',false);
+			html_checkbox2('readonly',gettext('Read-Only Mode'),!empty($pconfig['readonly']) ? true : false,gettext('Set target directory in Read-Only mode.'),'',true);
+			html_checkbox2('automount',gettext('Auto-mount Nullfs'),!empty($pconfig['automount']) ? true : false,gettext('Auto-mount the nullfs mountpoint if the container is already running.'),'',true);
 			html_checkbox2('createdir',gettext('Create Target Directory'),!empty($pconfig['createdir']) ? true : true,gettext('Create target directory if missing (recommended).'),'',true);
 			if ($is_thickjail):
 			html_checkbox2('update_base',gettext('Base update confirm'),!empty($pconfig['update_base']) ? true : false,gettext('This is a thin container, therefore the base release will be updated, this affects child containers.'),'',true);

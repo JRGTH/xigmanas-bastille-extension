@@ -744,13 +744,13 @@ thickjail_upgrade()
 				if [ "$(jls name | grep -w "${TARGET}")" ]; then
 					# Upgrade a thick container.
 					echo "=> Run the command below several times when asked to finish installing updates."
-					echo "bastille-init upgrade_install ${TARGET}"
+					echo "bastille-init install ${TARGET}"
 					echo
 					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
 					env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
 					-d ${CWDIR}/freebsd-update -b "${bastille_jailsdir}/${TARGET}/root" --currently-running "${CURRENT_VERSION}" -r ${RELEASE} upgrade
 					echo
-					echo "=> Please run: 'bastille-init upgrade_install ${TARGET}' to finish installing updates."
+					echo "=> Please run: 'bastille-init install ${TARGET}' to finish installing updates."
 				else
 					echo "Container not running."
 					echo "See 'bastille start ${TARGET}'."
@@ -768,7 +768,7 @@ thickjail_upgrade()
 	exit 0
 }
 
-thickjail_upgrade_install()
+thickjail_install()
 {
 	# Workaround since XigmaNAS does not ship with freebsd-update command.
 
@@ -875,6 +875,187 @@ zfs_activate()
 		echo "ZFS Enabled for ${PRDNAME} Extension successfully."
 	else
 		error_notify "Bastille ZFS option is not set."
+	fi
+}
+
+jail_import()
+{
+	# Foreign jail import support using rsync.
+
+	USAGE="Usage: ${SCRIPTNAME} -I [path]"
+	if [ -z "${TARGET}" ]; then
+		echo "${USAGE}"; exit 1
+	elif [ ! -d "${TARGET}" ]; then
+		echo "${USAGE}"; exit 1
+	elif [ "$(echo ${TARGET} | grep -w '\/')" ]; then
+		echo "${USAGE}"; exit 1
+	fi
+
+	if [ -d "${CWDIR}/jails" ]; then
+		# Check jail type and version.
+		THICK_JAIL="1"
+		EXCLUDE=""
+		if [ -d "${TARGET}/basejail" ]; then
+			THICK_JAIL=""
+			EXCLUDE="--exclude=rescue --exclude=usr/libdata"
+			RELENG=$(cat ${TARGET}/etc/freebsd-update.conf | grep -owE '\$FreeBSD\: releng/[0-9]{2}\.[0-9]' | cut -d '/' -f2)
+			if [ -z "${RELENG}" ]; then
+				# Just use/try the host version.
+				RELENG=${HOSTVERSION}
+			fi
+
+			RELEASE="${RELENG}-RELEASE"
+			if [ ! -d "${bastille_releasesdir}/${RELEASE}" ]; then
+				echo "${RELEASE} base not found."
+				# Ask to fetch/extract new release.
+				while :
+					do
+						read -p "Do you want to bootstrap a new ${RELEASE} base now?? [y/N]:" yn
+						case ${yn} in
+						[Yy]) break;;
+						[Nn]) exit 0;;
+						esac
+					done
+				echo "Proceeding..."
+				bastille bootstrap ${RELEASE}
+				if [ ! $? -ne 0 ]; then
+					error_notify "An error has occurred while bootstrapping ${RELEASE} release."
+				fi
+			fi
+		fi
+
+		# Get some jail info.
+		NAME_TRIM=$(echo ${TARGET} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '-' -f1)
+		PATH_TRIM=$(echo ${TARGET} | sed "s/${NAME_TRIM}//g")
+		IPV4_ADDR=$(cat ${PATH_TRIM}conf/thebrig.conf | grep -wE "${NAME_TRIM}1|ip4.addr" | tail -n 1 | cut -d '|' -f2 | cut -d '/' -f1)
+		if [ -z "${IPV4_ADDR}" ]; then
+			# The user should manually set a new IP.
+			IPV4_ADDR="0.0.0.0"
+		fi
+
+		# Check if ZFS is enabled on this system.
+		if [ "${bastille_zfs_enable}" = "YES" ]; then
+			if [ ! -z "${bastille_zfs_zpool}" ]; then
+				# ZFS importing.
+				if [ -f "${TARGET}/root/.profile" ]; then
+					if [ -d "${bastille_jailsdir}" ]; then
+						if [ ! -d "${bastille_jailsdir}/${NAME_TRIM}" ]; then
+							# Create required ZFS datasets.
+							echo "Creating required ZFS datasets..."
+							zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
+							zfs create ${bastille_zfs_options} -o mountpoint=${bastille_jailsdir}/${NAME_TRIM}/root ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}/root
+							echo "Importing foreign jail '${NAME_TRIM}' to ${PRDNAME}..."
+							echo "Synchronizing '${NAME_TRIM}' data to ${bastille_jailsdir}/${NAME_TRIM}..."
+							rsync -a ${EXCLUDE} ${TARGET}/ ${bastille_jailsdir}/${NAME_TRIM}/root/
+							echo "Generating new jail.conf file for ${NAME_TRIM}..."
+							generate_jailconf
+						else
+							error_notify "Looks like the jail '${NAME_TRIM}' already exist."
+						fi
+					else
+						error_notify "Looks like ${PRDNAME} isn't bootstrapped yet."
+					fi
+				else
+					error_notify "Looks like jail '${NAME_TRIM}' is incomplete/corrupted."
+				fi
+			fi
+		else
+			# Standard importing.
+			if [ -f "${TARGET}/root/.profile" ]; then
+				if [ -d "${bastille_jailsdir}" ]; then
+					if [ ! -d "${bastille_jailsdir}/${NAME_TRIM}" ]; then
+						echo "Importing foreign jail '${NAME_TRIM}' to ${PRDNAME}..."
+						echo "Synchronizing '${NAME_TRIM}' data to ${bastille_jailsdir}/${NAME_TRIM}..."
+						mkdir -p "${bastille_jailsdir}/${NAME_TRIM}/root"
+						rsync -a ${EXCLUDE} ${TARGET}/ ${bastille_jailsdir}/${NAME_TRIM}/root/
+						echo "Generating new jail.conf file for ${NAME_TRIM}..."
+						generate_jailconf
+					else
+						error_notify "Looks like the jail '${NAME_TRIM}' already exist."
+					fi
+				else
+					error_notify "Looks ${PRDNAME} isn't bootstrapped yet."
+				fi
+			else
+				error_notify "Looks like jail '${NAME_TRIM}' is incomplete/corrupted."
+			fi
+		fi
+	else
+		error_notify "Looks like ${PRDNAME} isn't bootstrapped yet."
+	fi
+
+	# Check the exit status.
+	if [ $? -ne 0 ]; then
+		error_notify "An error has occurred while importing ${NAME_TRIM}."
+	else
+		echo "Foreign jail '${NAME_TRIM}' imported successfully!"
+		exit 0
+	fi
+}
+
+generate_jailconf()
+{
+	if [ ! -f "${bastille_jail_conf}" ]; then
+		if [ -z "${bastille_jail_loopback}" ] && [ ! -z "${bastille_jail_external}" ]; then
+			local bastille_jail_conf_interface=${bastille_jail_external}
+		fi
+		if [ ! -z "${bastille_jail_loopback}" ] && [ -z "${bastille_jail_external}" ]; then
+			local bastille_jail_conf_interface=${bastille_jail_interface}
+		fi
+
+		# Generate the jail configuration file.
+		cat << EOF > ${bastille_jailsdir}/${NAME_TRIM}/jail.conf
+interface = ${bastille_jail_conf_interface};
+host.hostname = ${NAME_TRIM};
+exec.consolelog = ${bastille_logsdir}/${NAME_TRIM}_console.log;
+path = ${bastille_jailsdir}/${NAME_TRIM}/root;
+ip6 = disable;
+securelevel = 2;
+devfs_ruleset = 4;
+enforce_statfs = 2;
+exec.start = '/bin/sh /etc/rc';
+exec.stop = '/bin/sh /etc/rc.shutdown';
+exec.clean;
+mount.devfs;
+mount.fstab = ${bastille_jailsdir}/${NAME_TRIM}/fstab;
+
+${NAME_TRIM} {
+	ip4.addr = ${IPV4_ADDR};
+}
+EOF
+	fi
+
+	# Generate the fstab file.
+	if [ ! -f "${bastille_jailsdir}/${NAME_TRIM}/fstab" ]; then
+		echo "Generating new fstab file for ${NAME_TRIM}..."
+		if [ -z "${THICK_JAIL}" ]; then
+			echo -e "${bastille_releasesdir}/${RELEASE} ${bastille_jailsdir}/${NAME_TRIM}/root/.bastille nullfs ro 0 0" \
+			> ${bastille_jailsdir}/${NAME_TRIM}/fstab
+		else
+			touch ${bastille_jailsdir}/${NAME_TRIM}/fstab
+		fi
+	fi
+
+	# Symlinks required for thin jails.
+	if [ -z "${THICK_JAIL}" ]; then
+		cd ${bastille_jailsdir}/${NAME_TRIM}/root
+		USR_LIB32="usr/lib32"
+		if [ -d "${USR_LIB32}" ]; then
+			# Skip usr/lib32 symlink if the libs already exist.
+			USR_LIB32=""
+		fi
+
+		for _link in bin boot lib libexec rescue sbin usr/bin usr/include usr/lib ${USR_LIB32} usr/libdata usr/libexec usr/sbin usr/share usr/src; do
+			ln -Ffhs /.bastille/${_link} ${_link}
+		done
+		mkdir -p usr/home
+		ln -fhs usr/home home
+		mv ${bastille_jailsdir}/${NAME_TRIM}/root/basejail ${bastille_jailsdir}/${NAME_TRIM}/root/.bastille
+	fi
+
+	# Include the old fstab file for user reference.
+	if [ -f "${PATH_TRIM}conf/jails/fstab.${NAME_TRIM}" ]; then
+		cp ${PATH_TRIM}conf/jails/fstab.${NAME_TRIM} ${bastille_jailsdir}/${NAME_TRIM}/fstab.sample
 	fi
 }
 
@@ -1144,12 +1325,12 @@ NEWRELEASE="${4}"
 
 # Handle additional commands.
 case "${OPT}" in
-upgrade_install|--upgrade_install)
+install|--install)
 	if [ $# -gt 2 ] || [ $# -lt 2 ]; then
-		echo "Usage: ${SCRIPTNAME} [upgrade_install|--upgrade_install] [container]"
+		echo "Usage: ${SCRIPTNAME} [install|--install] [container]"
 		exit 1
 	fi
-	thickjail_upgrade_install
+	thickjail_install
 	;;
 upgrade|--upgrade)
 	# Check container type to upgrade
@@ -1182,9 +1363,9 @@ clean|--clean)
 	;;
 esac
 
-while getopts ":ospruxUvgtBRZh" option; do
+while getopts ":ospruxUvgtBRZIh" option; do
 	case ${option} in
-		[h]) echo "Usage: ${SCRIPTNAME} -[option] | [container]";
+		[h]) echo "Usage: ${SCRIPTNAME} -[option] | [container] | [path]";
 		echo "Options:"
 		echo "        -s  Start All ${PRDNAME} Containers."
 		echo "        -p  Stop All ${PRDNAME} Containers."
@@ -1196,16 +1377,17 @@ while getopts ":ospruxUvgtBRZh" option; do
 		echo "        -B  Backup a ${PRDNAME} container."
 		echo "        -R  Restore a ${PRDNAME} container."
 		echo "        -Z  Activate ZFS for ${PRDNAME} Extension."
+		echo "        -I  Import a foreign container to ${PRDNAME}."
 		echo "        -x  Reset ${PRDNAME}/Extension config."
 		echo "        -U  Uninstall ${PRDNAME} (Extension files only)."
 		echo "        -h  Display this help message."
 		echo
 		echo "Advanced Usage: ${SCRIPTNAME} [option] [container] [release] | [newrelease]"
 		echo "Options:"
-		echo "        update|--update Update a container/release to base -pX release."
-		echo "        upgrade|--upgrade Upgrade a container release to X.Y-RELEASE."
-		echo "        upgrade_install|--upgrade_install Finish installing pending updates on Thick containers."
-		echo "        clean|--clean Cleanup the FreeBSD update/upgrade cached files/folders."
+		echo "        update|--update    Update a container/release to base -pX release."
+		echo "        upgrade|--upgrade  Upgrade a container release to X.Y-RELEASE."
+		echo "        install|--install  Finish installing pending updates on Thick containers."
+		echo "        clean|--clean      Cleanup the FreeBSD update/upgrade cached files/folders."
 		echo ""; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.
 		[s]) bastille_start;;
@@ -1220,6 +1402,7 @@ while getopts ":ospruxUvgtBRZh" option; do
 		[B]) jail_backup;;
 		[R]) jail_restore;;
 		[Z]) zfs_activate;;
+		[I]) jail_import;;
 		[?]) echo "Invalid option, -h for usage."; exit 1;;
 	esac
 done
