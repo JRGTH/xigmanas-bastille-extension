@@ -244,32 +244,35 @@ if($_POST):
 						$dir_mode = "rw";
 					endif;
 
-					if (!$paths_exist):
-						$cmd = ("/bin/echo	\"{$sourcedir}    {$targetdir}    nullfs    {$dir_mode}    0    0\" >> {$rootfolder}/jails/{$item}/fstab");
-						unset($output,$retval);mwexec2($cmd,$output,$retval);
-						if($retval == 0):
+					if ((!$sourcedir) || (!$targetdir)): 
+						$errormsg .= gtext("Soure/Target directory can't be left blank.");
+					else:
+						if (!$paths_exist):
+							$cmd = ("/bin/echo	\"{$sourcedir}    {$targetdir}    nullfs    {$dir_mode}    0    0\" >> {$rootfolder}/jails/{$item}/fstab");
+							unset($output,$retval);mwexec2($cmd,$output,$retval);
+							if($retval == 0):
 
-							if ($_POST['createdir']):
-								if (!is_dir("{$targetdir}")):
-									mkdir("$targetdir");
-								endif;
-								if ($_POST['automount']):
-									if ($is_running):
-										exec("/sbin/mount_nullfs -o {$dir_mode} {$sourcedir} {$targetdir}");
+								if ($_POST['createdir']):
+									if (!is_dir("{$targetdir}")):
+										mkdir("$targetdir");
+									endif;
+									if ($_POST['automount']):
+										if ($is_running):
+											exec("/sbin/mount_nullfs -o {$dir_mode} {$sourcedir} {$targetdir}");
+										endif;
 									endif;
 								endif;
+
+								$savemsg .= gtext("Edited the fstab successfully.");
+								//header('Location: bastille_manager_gui.php');
+								//exit;
+							else:
+								$errormsg .= gtext("Failed to edit the fstab.");
 							endif;
-
-							$savemsg .= gtext("Edited the fstab successfully.");
-							//header('Location: bastille_manager_gui.php');
-							//exit;
 						else:
-							$errormsg .= gtext("Failed to edit the fstab.");
+							$savemsg .= gtext("Directories already exist in the fstab.");
 						endif;
-					else:
-						$savemsg .= gtext("Directories already exist in the fstab.");
 					endif;
-
 				endif;
 				break;
 
@@ -431,7 +434,7 @@ $document->render();
 					$current_release = "-";
 				endif;
 			endif;
-			$pconfig['source_path'] = "/mnt";
+			$pconfig['source_path'] = "";
 			$pconfig['target_path'] = "{$rootfolder}/jails/{$pconfig['jailname']}/root/mnt/";
 			html_text2('jailname',gettext('Container name:'),htmlspecialchars($pconfig['jailname']));
 			$a_action = [
