@@ -927,7 +927,7 @@ jail_import()
 		# Get some jail info.
 		NAME_TRIM=$(echo ${TARGET} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '-' -f1)
 		PATH_TRIM=$(echo ${TARGET} | sed "s/${NAME_TRIM}//g")
-		IPV4_ADDR=$(cat ${PATH_TRIM}conf/thebrig.conf | grep -wE "${NAME_TRIM}1|ip4.addr" | tail -n 1 | cut -d '|' -f2 | cut -d '/' -f1)
+		IPV4_ADDR=$(cat ${PATH_TRIM}conf/thebrig.conf | awk "/${NAME_TRIM}/,/ip4.addr/" | tail -n 1 | cut -d '|' -f2 | cut -d '/' -f1)
 		if [ -z "${IPV4_ADDR}" ]; then
 			# The user should manually set a new IP.
 			IPV4_ADDR="0.0.0.0"
