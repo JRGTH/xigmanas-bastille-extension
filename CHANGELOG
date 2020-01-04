@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.32......Code improvements.
 1.0.31......Fix issue with names containing dashes.
 1.0.30......Ability to convert thin jail to thick jail.
 1.0.29......Added Chinese (Simplified) translation, thanks to lijinbiao.

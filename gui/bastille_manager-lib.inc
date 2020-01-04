@@ -202,7 +202,7 @@ function get_jail_infos() {
 			$r['boot'] = $img_path['dis'];
 		}
 		// Display running status icons.
-		$jail_running = exec("/usr/sbin/jls | /usr/bin/grep -w {$item}");
+		$jail_running = exec("/usr/sbin/jls name | /usr/bin/awk '/^{$item}\$/'");
 		if ($jail_running):
 			$r['stat'] = $img_path['ena'];
 		else:
