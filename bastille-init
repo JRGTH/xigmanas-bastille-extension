@@ -812,7 +812,7 @@ thickjail_install()
 
 convert_symlinks()
 {
-	# Work with the symlinks, revert on first cp error.
+	# Work with the symlinks, revert on first rsync error.
 	if [ -d "${bastille_releasesdir}/${RELEASE}" ]; then
 		# Retrieve old symlinks temporarily.
 		for _link in ${SYMLYNKS}; do
@@ -824,7 +824,7 @@ convert_symlinks()
 		# Copy new files to destination jail.
 		for _link in ${SYMLYNKS}; do
 			if [ ! -d "${_link}" ]; then
-				cp -a "${bastille_releasesdir}/${RELEASE}/${_link}" "${bastille_jailsdir}/${TARGET}/root/${_link}"
+				rsync -a "${bastille_releasesdir}/${RELEASE}/${_link}/" "${bastille_jailsdir}/${TARGET}/root/${_link}/"
 				if [ $? -ne 0 ]; then
 					revert_convert
 				fi
@@ -844,7 +844,7 @@ convert_symlinks()
 
 revert_convert()
 {
-	# Revert the conversion on first cp error.
+	# Revert the conversion on first rsync error.
 	echo -e "A problem has occurred while copying the files, reverting changes..."
 	for _link in ${SYMLYNKS}; do
 		if [ -d "${_link}" ]; then
