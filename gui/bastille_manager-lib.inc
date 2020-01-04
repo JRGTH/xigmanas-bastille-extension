@@ -167,7 +167,7 @@ function get_jail_infos() {
 
 		// Set the JID on the running jails.
 		$item = $r['jailname'];
-		$r['id'] = exec("/usr/sbin/jls | /usr/bin/grep {$item} | /usr/bin/awk '{print $1}'");
+		$r['id'] = exec("/usr/sbin/jls | /usr/bin/awk '/{$item}\ /{print $1}'");
 		if (!$r['id']):
 			$r['id'] = "-";
 		endif;
