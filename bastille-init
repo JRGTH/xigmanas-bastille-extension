@@ -810,6 +810,110 @@ thickjail_install()
 	exit 0
 }
 
+convert_symlinks()
+{
+	# Work with the symlinks, revert on first cp error.
+	if [ -d "${bastille_releasesdir}/${RELEASE}" ]; then
+		# Retrieve old symlinks temporarily.
+		for _link in ${SYMLYNKS}; do
+			if [ -L "${_link}" ]; then
+				mv ${_link} ${_link}.old
+			fi
+		done
+
+		# Copy new files to destination jail.
+		for _link in ${SYMLYNKS}; do
+			if [ ! -d "${_link}" ]; then
+				cp -a "${bastille_releasesdir}/${RELEASE}/${_link}" "${bastille_jailsdir}/${TARGET}/root/${_link}"
+				if [ $? -ne 0 ]; then
+					revert_convert
+				fi
+			fi
+		done
+
+		# Remove the old symlinks.
+		for _link in ${SYMLYNKS}; do
+			if [ -L "${_link}.old" ]; then
+				rm -r ${_link}.old
+			fi
+		done
+	else
+		error_notify "Release must be bootstrapped first, See `bastille bootstrap`."
+	fi
+}
+
+revert_convert()
+{
+	# Revert the conversion on first cp error.
+	echo -e "A problem has occurred while copying the files, reverting changes..."
+	for _link in ${SYMLYNKS}; do
+		if [ -d "${_link}" ]; then
+			chflags -R noschg "${bastille_jailsdir}/${TARGET}/root/${_link}"
+			rm -rf "${bastille_jailsdir}/${TARGET}/root/${_link}"
+		fi
+	done
+
+	# Restore previously retrieved symlinks.
+	for _link in ${SYMLYNKS}; do
+		if [ -L "${_link}.old" ]; then
+			mv ${_link}.old ${_link}
+		fi
+	done
+	error_notify "Changes for '${TARGET}' has been reverted."
+}
+
+start_convert()
+{
+	# Check if is a thin container first.
+	if [ ! -d "${bastille_jailsdir}/${TARGET}/root/.bastille" ]; then
+		error_notify "${COLOR_RED}${TARGET} is not a thin container.${COLOR_RESET}"
+	elif ! grep -qw ".bastille" "${bastille_jailsdir}/${TARGET}/fstab"; then
+		error_notify "${COLOR_RED}${TARGET} is not a thin container.${COLOR_RESET}"
+	fi
+
+	# Make sure the user agree with the conversion.
+	# Be interactive here since this cannot be easily undone.
+	while :; do
+		read -p "Do you really wish to convert '${TARGET}' into a thick container? [y/N]:" yn
+		case ${yn} in
+		[Yy]) break;;
+		[Nn]) exit 0;;
+		esac
+	done
+
+	# Attempt container conversion and handle some errors.
+	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then
+		if [ -z "$(jls name | awk "/^${TARGET}$/")" ]; then
+			echo -e "Converting '${TARGET}' into a thickjail, this may take a while..."
+
+			# Get some variables.
+			RELEASE=$(grep -owE '([1-9]{2,2})\.[0-9](-RELEASE|-RC[1-2])' ${bastille_jailsdir}/${TARGET}/fstab)
+			FSTABMOD=$(grep -w "${bastille_releasesdir}/${RELEASE} ${bastille_jailsdir}/${TARGET}/root/.bastille" ${bastille_jailsdir}/${TARGET}/fstab)
+			SYMLYNKS="bin boot lib libexec rescue sbin usr/bin usr/include usr/lib usr/lib32 usr/libdata usr/libexec usr/sbin usr/share usr/src"
+
+			if [ -n "${RELEASE}" ]; then
+				cd "${bastille_jailsdir}/${TARGET}/root"
+
+				# Work with the symlinks.
+				convert_symlinks
+
+				# Comment the line containing .bastille and rename mountpoint.
+				sed -i '' -E "s|${FSTABMOD}|#Converted from thin to thick container|g" "${bastille_jailsdir}/${TARGET}/fstab"
+				mv ${bastille_jailsdir}/${TARGET}/root/.bastille ${bastille_jailsdir}/${TARGET}/root/.bastille.old
+
+				echo -e "Conversion of '${TARGET}' completed successfully!"
+				exit 0
+			else
+				error_notify "Can't determine release version, See `bastille bootstrap`."
+			fi
+		else
+			error_notify "${TARGET} is running, See `bastille stop`."
+		fi
+	else
+		error_notify "${TARGET} not found. See bootstrap."
+	fi
+}
+
 zfs_activate()
 {
 	# Check if ZFS is already configured.
@@ -1355,6 +1459,13 @@ update|--update)
 	fi
 	jail_update
 	;;
+convert|--convert)
+	if [ $# -gt 2 ] || [ $# -lt 2 ]; then
+		echo "Usage: ${SCRIPTNAME} [convert|--convert] [container]"
+		exit 1
+	fi
+	start_convert
+	;;
 clean|--clean)
 	for file in ${CWDIR}/freebsd-update/*; do
 		rm -rf ${file}
@@ -1387,6 +1498,7 @@ while getopts ":ospruxUvgtBRZIh" option; do
 		echo "        update|--update    Update a container/release to base -pX release."
 		echo "        upgrade|--upgrade  Upgrade a container release to X.Y-RELEASE."
 		echo "        install|--install  Finish installing pending updates on Thick containers."
+		echo "        convert|--convert  Convert a Thin container into a Thick container."
 		echo "        clean|--clean      Cleanup the FreeBSD update/upgrade cached files/folders."
 		echo ""; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.

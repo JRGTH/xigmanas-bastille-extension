@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.30......Ability to convert thin jail to thick jail.
 1.0.29......Added Chinese (Simplified) translation, thanks to lijinbiao.
 1.0.28......Improve fstab utility error handling.
 1.0.27......Improved fstab utility, don't allow blank fields. 
