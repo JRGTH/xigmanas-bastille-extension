@@ -53,10 +53,6 @@ SCRIPTNAME=$(basename $0)
 CONFIG="/cf/conf/config.xml"
 PRDNAME="Bastille"
 APPNAME="bastille"
-DEF_ZFS_SENDPARAMS=""
-DEF_ZFS_RECVPARAM=""
-DEF_ZFS_COMPRESS="xz -0 -v --threads=0"
-DEF_ZFS_DECOMPRESS="xz -c -d -v --threads=0"
 EXTLOGFILE="${CWDIR}/log/bastille_ext.log"
 FULLAPPNAME="${APPNAME}-dist"
 WWWPATH="/usr/local/www"
@@ -79,7 +75,6 @@ BASTILE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRAN
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
 OPT="${1}"
-NAME="${2}"
 
 # Required
 if [ -f "${BASTILLECONF}" ]; then
@@ -124,21 +119,7 @@ runtime_config()
 	FREEBSD_UPDATE_PERMS=$(stat -f "%Op" ${FREEBSD_UPDATE}/freebsd-update)
 	if [ "${FREEBSD_UPDATE_PERMS}" != 100555 ]; then
 		chmod 0555 ${FREEBSD_UPDATE}/freebsd-update
-	fi
-
-	# Set rquired zfs send/recv parameters is missing.
-	if ! grep -qw "ZFS_SENDPARAMS=" ${CWDIR}${EXTCONF} >/dev/null 2>&1; then
-		sysrc -f ${CWDIR}${EXTCONF} ZFS_SENDPARAMS="${DEF_ZFS_SENDPARAMS}" >/dev/null 2>&1
-	fi
-	if ! grep -qw "ZFS_RECVPARAM=" ${CWDIR}${EXTCONF} >/dev/null 2>&1; then
-		sysrc -f ${CWDIR}${EXTCONF} ZFS_RECVPARAM="${DEF_ZFS_RECVPARAM}" >/dev/null 2>&1
-	fi
-	if ! grep -qw "DEFAULT_COMPRESS=" ${CWDIR}${EXTCONF} >/dev/null 2>&1; then
-		sysrc -f ${CWDIR}${EXTCONF} ZFS_COMPRESS="${DEF_ZFS_COMPRESS}" >/dev/null 2>&1
-	fi
-	if ! grep -qw "DEFAULT_DECOMPRESS=" ${CWDIR}${EXTCONF} >/dev/null 2>&1; then
-		sysrc -f ${CWDIR}${EXTCONF} ZFS_DECOMPRESS="${DEF_ZFS_DECOMPRESS}" >/dev/null 2>&1
-	fi
+	fi	
 }
 
 bastille_initial_download()
