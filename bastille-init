@@ -499,106 +499,6 @@ gui_disable()
 	fi
 }
 
-jail_backup()
-{
-	# Backup container on request.
-	ZFS_COMPRESS=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_COMPRESS)
-	ZFS_SENDPARAMS=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_SENDPARAMS)
-	JAIL_NAME="${NAME}"
-	DATE=$(date +%Y-%m-%d-%H%M%S)
-	EXCLUDE="--exclude=.bastille --exclude=.template"
-	if [ -n "${JAIL_NAME}" ]; then
-		if [ -d "${CWDIR}/jails/${JAIL_NAME}" ]; then
-			if [ "${bastille_zfs_enable}" = "YES" ]; then
-				if [ ! -z "${bastille_zfs_zpool}" ]; then
-					echo "Exporting '${JAIL_NAME}' to a compressed zfs archive..."
-					# Take a temp snapshot of the jail.
-					SNAP_NAME="bastille-$(date +%Y-%m-%d-%H%M%S)"
-					zfs snapshot -r ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${JAIL_NAME}@${SNAP_NAME}
-
-					# Backup the jail then cleanup temp zfs snapshots.
-					zfs send ${ZFS_SENDPARAMS} -R ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${JAIL_NAME}@${SNAP_NAME} | ${ZFS_COMPRESS} > ${CWDIR}/backups/${JAIL_NAME}-${DATE}.zfs
-					zfs destroy -r ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${JAIL_NAME}@${SNAP_NAME}
-				fi
-			else
-				# Create backup file with tar.
-				echo "Exporting '${JAIL_NAME}' to a compressed tgz archive..."
-				cd ${CWDIR}/jails && tar ${EXCLUDE} -zcf ${JAIL_NAME}-${DATE}.tgz ${JAIL_NAME} && mv ${JAIL_NAME}-${DATE}.tgz ${CWDIR}/backups
-			fi
-			if [ $? -ne 0 ]; then
-				error_notify "Failed to backup '${JAIL_NAME}' container."
-			else
-				echo "Exported '${JAIL_NAME}' successfully."
-				exit 0
-			fi
-		else
-			error_notify "Container '${JAIL_NAME}' does not exist."
-		fi
-	else
-		exit 0
-	fi
-}
-
-jail_restore()
-{
-	# Restore container on request.
-	ZFS_DECOMPRESS=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_DECOMPRESS)
-	ZFS_RECVPARAM=$(sysrc -f ${CWDIR}${EXTCONF} -qn ZFS_RECVPARAM)
-	BACKUP_FILE="${NAME}"
-	NAME_TRIM=$(echo ${BACKUP_FILE} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '-' -f1)
-	FILE_EXT=$(echo ${BACKUP_FILE} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '.' -f2)
-	if [ -f "${CWDIR}/backups/${BACKUP_FILE}" ]; then
-		if [ -d "${CWDIR}/jails" ]; then
-			if [ ! -d "${CWDIR}/jails/${NAME_TRIM}" ]; then
-				if [ "${bastille_zfs_enable}" = "YES" ]; then
-					if [ ! -z "${bastille_zfs_zpool}" ]; then
-						if [ "${FILE_EXT}" = "zfs" ]; then
-							# Restore from .zfs file and mount jail/root dataset.
-							echo "Restoring from .zfs archive, receiving data stream..."
-							${ZFS_DECOMPRESS} ${CWDIR}/backups/${BACKUP_FILE} | zfs receive ${ZFS_RECVPARAM} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
-							zfs mount ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}/root
-						elif [ "${FILE_EXT}" = "tgz" ]; then
-							# Prepare the zfs environment and restore from existing tgz file.
-							echo "Restoring form .tgz archive, preparing zfs environment..."
-							zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
-							zfs create ${bastille_zfs_options} -o mountpoint=${bastille_jailsdir}/${NAME_TRIM}/root ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}/root
-
-							# Extract required files to the new datasets.
-							echo "Extracting files from '${NAME_TRIM}' backup archive..."
-							tar -xf ${CWDIR}/backups/${BACKUP_FILE} --strip-components 1 -C ${CWDIR}/jails/${NAME_TRIM} ${NAME_TRIM}/fstab
-							tar -xf ${CWDIR}/backups/${BACKUP_FILE} --strip-components 1 -C ${CWDIR}/jails/${NAME_TRIM} ${NAME_TRIM}/jail.conf
-							tar -xf ${CWDIR}/backups/${BACKUP_FILE} --strip-components 2 -C ${CWDIR}/jails/${NAME_TRIM}/root ${NAME_TRIM}/root
-							if [ $? -ne 0 ]; then
-								zfs destroy -r ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
-								error_notify "Failed to extract files from '${NAME_TRIM}' archive."
-							fi
-						else
-							error_notify "Unknown archive format."
-						fi
-					fi
-				else
-					# Restore from tar file.
-					tar -xf  ${CWDIR}/backups/${BACKUP_FILE} -C ${CWDIR}/jails
-				fi
-				if [ $? -ne 0 ]; then
-					error_notify "Failed to restore '${NAME_TRIM}' container."
-				else
-					mkdir -p ${CWDIR}/jails/${NAME_TRIM}/root/.bastille
-					mkdir -p ${CWDIR}/jails/${NAME_TRIM}/root/.template
-					echo "Container '${NAME_TRIM}' restored successfully."
-					exit 0
-				fi
-			else
-				error_notify "Container '${NAME_TRIM}' directory/dataset already exist."
-			fi
-		else
-			error_notify "Jails directory/dataset does not exist."
-		fi
-	else
-		error_notify "Archive '${BACKUP_FILE}' does not exist."
-	fi	
-}
-
 jail_update()
 {
 	# Workaround since XigmaNAS does not ship with freebsd-update command.
@@ -1474,7 +1374,7 @@ clean|--clean)
 	;;
 esac
 
-while getopts ":ospruxUvgtBRZIh" option; do
+while getopts ":ospruxUvgtZIh" option; do
 	case ${option} in
 		[h]) echo "Usage: ${SCRIPTNAME} -[option] | [container] | [path]";
 		echo "Options:"
@@ -1511,8 +1411,6 @@ while getopts ":ospruxUvgtBRZIh" option; do
 		[v]) get_versions;;
 		[g]) gui_enable; exit 0 ;; # For enable the addon gui.
 		[t]) gui_disable; exit 0 ;; # For disable the addon gui.
-		[B]) jail_backup;;
-		[R]) jail_restore;;
 		[Z]) zfs_activate;;
 		[I]) jail_import;;
 		[?]) echo "Invalid option, -h for usage."; exit 1;;

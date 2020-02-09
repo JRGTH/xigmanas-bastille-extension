@@ -114,7 +114,7 @@ if($_POST):
 					$container['jailname'] = $_POST['jailname'];
 					$confirm_name = $pconfig['confirmname'];
 					$item = $container['jailname'];
-					$cmd = ("/usr/local/sbin/bastille-init -B '{$item}'");
+					$cmd = ("/usr/local/bin/bastille export '{$item}'");
 					unset($output,$retval);mwexec2($cmd,$output,$retval);
 					if($retval == 0):
 						$savemsg .= gtext("Container backup process completed successfully.");

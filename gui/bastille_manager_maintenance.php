@@ -153,7 +153,7 @@ if ($_POST) {
 		// Ensure to have NO whitespace & trailing slash.
 		$backup_file = rtrim(trim($_POST['backup_path']),'/');
 		$filename_trim = exec("echo {$backup_file} | awk '{print $1}' | grep -o '[^/]*$'");
-		$jailname_trim = exec("echo {$backup_file} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '-' -f1");
+		$jailname_trim = exec("echo {$backup_file} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '_' -f1");
 
 		if ("{$backup_file}" == "") {
 			$input_errors[] = gtext("Error: backup file undefined.");
@@ -163,7 +163,7 @@ if ($_POST) {
 			$input_errors[] = gtext("Container directory/dataset already exist.");
 		else:
 		if (is_file($backup_file)) {
-			$cmd = ("/usr/local/sbin/bastille-init -R '{$filename_trim}'");
+			$cmd = ("/usr/local/bin/bastille import '{$filename_trim}'");
 			unset($retval);mwexec($cmd,$retval);
 			if ($retval == 0) {
 				$savemsg .= gtext("Container restored successfully.");
