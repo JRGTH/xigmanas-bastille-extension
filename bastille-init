@@ -762,6 +762,9 @@ zfs_activate()
 jail_import()
 {
 	# Foreign jail import support using rsync.
+	# This will attempt to import a foreign(Thebrig) jail into Bastille,
+	# however only basic IOcage jails are officially supported by Bastille import.
+	# Since importing Thebrig jails is almost unsupported/untested, this function may be deprecated at any time.
 
 	USAGE="Usage: ${SCRIPTNAME} -I [path]"
 	if [ -z "${TARGET}" ]; then
@@ -821,10 +824,10 @@ jail_import()
 				if [ -f "${TARGET}/root/.profile" ]; then
 					if [ -d "${bastille_jailsdir}" ]; then
 						if [ ! -d "${bastille_jailsdir}/${NAME_TRIM}" ]; then
-							# Create required ZFS datasets.
+							# Create required ZFS datasets, mountpoint should be inherited.
 							echo "Creating required ZFS datasets..."
 							zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
-							zfs create ${bastille_zfs_options} -o mountpoint=${bastille_jailsdir}/${NAME_TRIM}/root ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}/root
+							zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}/root
 							echo "Importing foreign jail '${NAME_TRIM}' to ${PRDNAME}..."
 							echo "Synchronizing '${NAME_TRIM}' data to ${bastille_jailsdir}/${NAME_TRIM}..."
 							rsync -a ${EXCLUDE} ${TARGET}/ ${bastille_jailsdir}/${NAME_TRIM}/root/

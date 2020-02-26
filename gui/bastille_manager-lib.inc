@@ -56,7 +56,7 @@ $config_path = exec("/bin/cat {$configfile} | /usr/bin/grep 'BASTILLE_CONFIG=' |
 $default_distfiles = exec("/bin/cat {$config_path} | /usr/bin/grep 'bastille_bootstrap_archives=' | /usr/bin/cut -d'\"' -f2");
 $jail_dir = "{$rootfolder}/jails";
 $image_dir = "ext/bastille/images";
-$thick_jail = exec("/usr/local/bin/bastille create | grep -wo '\[option\]'");
+$options_support = exec("/usr/local/bin/bastille create | grep -wo '\[option\]'");
 $reldir = "{$rootfolder}/releases";
 $zfs_support = exec("/bin/cat {$configfile} | /usr/bin/grep 'ZFS_SUPPORT=' | /usr/bin/cut -d'\"' -f2");
 
@@ -174,6 +174,9 @@ function get_jail_infos() {
 		// Set the IPv4 on the running jails.
 		//$r['ip'] = exec("/usr/sbin/jls | /usr/bin/grep {$item} | /usr/bin/awk '{print $2}'");
 		$r['ip'] = exec("/usr/bin/grep -w 'ip4.addr' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
+		if (!$r['ip']):
+			$r['ip'] = exec("/usr/bin/grep -w 'ip6.addr' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
+		endif;
 		if (!$r['ip']):
 			$r['ip'] = "-";
 		endif;

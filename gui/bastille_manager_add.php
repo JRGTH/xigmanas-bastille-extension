@@ -81,10 +81,16 @@ if($_POST):
 			$thick_jail = "";
 		endif;
 
-		if ($_POST['nowstart']):
-			$cmd = ("/usr/local/bin/bastille create {$thick_jail} {$jname} {$release} {$ipaddr} {$interface} && /usr/local/bin/bastille start {$jname}");
+		if($_POST['vnetjail']):
+			$vnet_jail = "-V";
 		else:
-			$cmd = ("/usr/local/bin/bastille create {$thick_jail} {$jname} {$release} {$ipaddr} {$interface}");
+			$vnet_jail = "";
+		endif;
+
+		if ($_POST['nowstart']):
+			$cmd = ("/usr/local/bin/bastille create {$thick_jail} {$vnet_jail} {$jname} {$release} {$ipaddr} {$interface} && /usr/local/bin/bastille start {$jname}");
+		else:
+			$cmd = ("/usr/local/bin/bastille create {$thick_jail} {$vnet_jail} {$jname} {$release} {$ipaddr} {$interface}");
 		endif;
 
 		if ($_POST['Create']):
@@ -156,13 +162,14 @@ $document->render();
 		<tbody>
 <?php
 			html_inputbox2('jailname',gettext('Friendly name'),$pconfig['jailname'],'',true,20);
-			html_inputbox2('ipaddress',gettext('IPv4 Address'),$pconfig['ipaddress'],'',true,20);
+			html_inputbox2('ipaddress',gettext('IP Address'),$pconfig['ipaddress'],'',true,20);
 			$a_action = $l_interfaces;
 			$b_action = $l_release;
 			html_combobox2('interface',gettext('Network interface'),$pconfig['interface'],$a_action,'',true,false,'action_change()');
 			html_combobox2('release',gettext('Base release'),$pconfig['release'],$b_action,'',true,false,'action_change()');
-			if($thick_jail):
+			if($options_support):
 				html_checkbox2('thickjail',gettext('Create a thick container'),!empty($pconfig['thickjail']) ? true : false,gettext('These containers consume more space, but are self contained.'),'',false);
+				html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Advanced).'),'',false);			
 			endif;
 			html_checkbox2('nowstart',gettext('Start after creation'),!empty($pconfig['nowstart']) ? true : false,gettext('Start the container after creation.'),'',false);
 			html_checkbox2('autostart',gettext('Auto start on boot'),!empty($pconfig['autostart']) ? true : false,gettext('Automatically start the container at boot time.'),'',false);

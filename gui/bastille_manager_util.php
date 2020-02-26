@@ -296,7 +296,7 @@ if($_POST):
 						break;
 					else:
 						if ($_POST['nowstop']):
-							$cmd = ("/usr/local/bin/bastille stop {$item} && /usr/local/bin/bastille destroy {$item}");
+							$cmd = ("/usr/local/bin/bastille destroy -f {$item}");
 						else:
 							$cmd = ("/usr/local/bin/bastille destroy {$item}");
 						endif;

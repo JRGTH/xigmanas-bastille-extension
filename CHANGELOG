@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.37......Add initial support for IPv6 and VNET.
 1.0.36......Remove obsolete code, update config.
 1.0.35......Use bastille built-in convert function.
 1.0.34......Use bastille built-in export/import functions.

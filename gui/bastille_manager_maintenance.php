@@ -164,7 +164,7 @@ if ($_POST) {
 		else:
 		if (is_file($backup_file)) {
 			$cmd = ("/usr/local/bin/bastille import '{$filename_trim}'");
-			unset($retval);mwexec($cmd,$retval);
+			unset($output,$retval);mwexec2($cmd,$output,$retval);
 			if ($retval == 0) {
 				$savemsg .= gtext("Container restored successfully.");
 				exec("echo '{$date}: {$application}: Container restored successfully from {$filename_trim}' >> {$logfile}");

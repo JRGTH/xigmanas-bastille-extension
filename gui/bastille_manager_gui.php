@@ -239,10 +239,10 @@ $document->render();
 		<colgroup>
 			<col style="width:5%">
 			<col style="width:5%">
+			<col style="width:12%">
 			<col style="width:10%">
 			<col style="width:10%">
 			<col style="width:10%">
-			<col style="width:5%">
 			<col style="width:25%">
 			<col style="width:5%">
 			<col style="width:5%">
@@ -257,7 +257,7 @@ $document->render();
 			<tr>
 				<th class="lhelc"><?=gtext('Select');?></th>
 				<th class="lhell"><?=gtext('JID');?></th>
-				<th class="lhell"><?=gtext('IPv4 Address');?></th>
+				<th class="lhell"><?=gtext('IP Address');?></th>
 				<th class="lhell"><?=gtext('Hostname');?></th>
 				<th class="lhell"><?=gtext('Release');?></th>
 				<th class="lhell"><?=gtext('Interface');?></th>
