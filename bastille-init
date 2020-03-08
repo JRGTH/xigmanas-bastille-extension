@@ -323,18 +323,18 @@ sys_symlinkdir()
 	fi
 
 	# Link bastile config file.
-	if [ -f "${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf.sample" ]; then
-		cd ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}
-		if [ ! -f "${APPNAME}.conf" ]; then
-			cp ${APPNAME}.conf.sample ${APPNAME}.conf
-		fi
-	else
+	#if [ -f "${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf.sample" ]; then
+	#	cd ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}
+	#	if [ ! -f "${APPNAME}.conf" ]; then
+	#		cp ${APPNAME}.conf.sample ${APPNAME}.conf
+	#	fi
+	#else
 		if [ -f "${BASTILLECONF_EXT}" ]; then
 			if [ ! -f "${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf" ]; then
 				cp ${BASTILLECONF_EXT} ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf
 			fi
 		fi
-	fi
+	#fi
 
 	# Copy bastille shared.
 	if [ -d "${INSTALLPATH}/${USRLOCAL}/share/${APPNAME}" ]; then
