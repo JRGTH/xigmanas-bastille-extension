@@ -1,4 +1,5 @@
 bastille_prefix="/usr/local/bastille"
+bastille_backupsdir=${bastille_prefix}/backups
 bastille_cachedir="${bastille_prefix}/cache"
 bastille_jailsdir="${bastille_prefix}/jails"
 bastille_logsdir="${bastille_prefix}/logs"
@@ -13,7 +14,6 @@ bastille_url_hardenedbsd="http://installer.hardenedbsd.org/pub/hardenedbsd/"
 bastille_zfs_enable=""
 bastille_zfs_zpool=""
 bastille_zfs_prefix="bastille"
-bastille_zfs_mountpoint="${bastille_prefix}"
 bastille_zfs_options="-o compress=lz4 -o atime=off"
 bastille_compress_xz_options="-0 -v"
 bastille_decompress_xz_options="-c -d -v"
