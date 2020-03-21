@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.41......Set target jail path on advanced config editor by default.
 1.0.40......Cleanup, remove obsolete file
 1.0.39......Update config, remove unused variable.
 1.0.38......Always pre-configure bastille.conf on new installs.

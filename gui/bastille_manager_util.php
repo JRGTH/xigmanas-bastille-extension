@@ -97,6 +97,7 @@ if($_POST):
 					$container['jailname'] = $_POST['jailname'];
 					$confirm_name = $pconfig['confirmname'];
 					$item = $container['jailname'];
+					$_SESSION['item'] = $item;
 					if ($_POST['advanced']):
 						header('Location: bastille_manager_editor.php');
 						exit;

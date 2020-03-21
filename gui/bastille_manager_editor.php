@@ -39,7 +39,8 @@ require_once 'auth.inc';
 require_once 'guiconfig.inc';
 require_once("bastille_manager-lib.inc");
 
-$savetopath = "{$rootfolder}/jails/";
+$item = $_SESSION['item'];
+$savetopath = "{$rootfolder}/jails/{$item}";
 if (isset($_POST['savetopath']))  {
 	$savetopath = htmlspecialchars($_POST['savetopath']);
 }
