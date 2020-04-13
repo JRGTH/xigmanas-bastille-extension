@@ -184,6 +184,11 @@ bastille_upgrade()
 			echo "${APPNAME} is on the latest version!"
 			rm -R ${CWDIR}/update
 		fi
+
+		# Temporal workaround to update legacy config.
+		if [ "${UPDATEVER}" -gt "0620200202" ]; then
+			update_config
+		fi
 	fi
 }
 
@@ -759,190 +764,6 @@ zfs_activate()
 	fi
 }
 
-jail_import()
-{
-	# Foreign jail import support using rsync.
-	# This will attempt to import a foreign(Thebrig) jail into Bastille,
-	# however only basic IOcage jails are officially supported by Bastille import.
-	# Since importing Thebrig jails is almost unsupported/untested, this function may be deprecated at any time.
-
-	USAGE="Usage: ${SCRIPTNAME} -I [path]"
-	if [ -z "${TARGET}" ]; then
-		echo "${USAGE}"; exit 1
-	elif [ ! -d "${TARGET}" ]; then
-		echo "${USAGE}"; exit 1
-	elif [ "$(echo ${TARGET} | grep -w '\/')" ]; then
-		echo "${USAGE}"; exit 1
-	fi
-
-	if [ -d "${CWDIR}/jails" ]; then
-		# Check jail type and version.
-		THICK_JAIL="1"
-		EXCLUDE=""
-		if [ -d "${TARGET}/basejail" ]; then
-			THICK_JAIL=""
-			EXCLUDE="--exclude=rescue --exclude=usr/libdata"
-			RELENG=$(cat ${TARGET}/etc/freebsd-update.conf | grep -owE '\$FreeBSD\: releng/[0-9]{2}\.[0-9]' | cut -d '/' -f2)
-			if [ -z "${RELENG}" ]; then
-				# Just use/try the host version.
-				RELENG=${HOSTVERSION}
-			fi
-
-			RELEASE="${RELENG}-RELEASE"
-			if [ ! -d "${bastille_releasesdir}/${RELEASE}" ]; then
-				echo "${RELEASE} base not found."
-				# Ask to fetch/extract new release.
-				while :
-					do
-						read -p "Do you want to bootstrap a new ${RELEASE} base now?? [y/N]:" yn
-						case ${yn} in
-						[Yy]) break;;
-						[Nn]) exit 0;;
-						esac
-					done
-				echo "Proceeding..."
-				bastille bootstrap ${RELEASE}
-				if [ ! $? -ne 0 ]; then
-					error_notify "An error has occurred while bootstrapping ${RELEASE} release."
-				fi
-			fi
-		fi
-
-		# Get some jail info.
-		NAME_TRIM=$(echo ${TARGET} | awk '{print $1}' | grep -o '[^/]*$' | cut -d '-' -f1)
-		PATH_TRIM=$(echo ${TARGET} | sed "s/${NAME_TRIM}//g")
-		IPV4_ADDR=$(cat ${PATH_TRIM}conf/thebrig.conf | awk "/${NAME_TRIM}/,/ip4.addr/" | tail -n 1 | cut -d '|' -f2 | cut -d '/' -f1)
-		if [ -z "${IPV4_ADDR}" ]; then
-			# The user should manually set a new IP.
-			IPV4_ADDR="0.0.0.0"
-		fi
-
-		# Check if ZFS is enabled on this system.
-		if [ "${bastille_zfs_enable}" = "YES" ]; then
-			if [ ! -z "${bastille_zfs_zpool}" ]; then
-				# ZFS importing.
-				if [ -f "${TARGET}/root/.profile" ]; then
-					if [ -d "${bastille_jailsdir}" ]; then
-						if [ ! -d "${bastille_jailsdir}/${NAME_TRIM}" ]; then
-							# Create required ZFS datasets, mountpoint should be inherited.
-							echo "Creating required ZFS datasets..."
-							zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}
-							zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}/jails/${NAME_TRIM}/root
-							echo "Importing foreign jail '${NAME_TRIM}' to ${PRDNAME}..."
-							echo "Synchronizing '${NAME_TRIM}' data to ${bastille_jailsdir}/${NAME_TRIM}..."
-							rsync -a ${EXCLUDE} ${TARGET}/ ${bastille_jailsdir}/${NAME_TRIM}/root/
-							echo "Generating new jail.conf file for ${NAME_TRIM}..."
-							generate_jailconf
-						else
-							error_notify "Looks like the jail '${NAME_TRIM}' already exist."
-						fi
-					else
-						error_notify "Looks like ${PRDNAME} isn't bootstrapped yet."
-					fi
-				else
-					error_notify "Looks like jail '${NAME_TRIM}' is incomplete/corrupted."
-				fi
-			fi
-		else
-			# Standard importing.
-			if [ -f "${TARGET}/root/.profile" ]; then
-				if [ -d "${bastille_jailsdir}" ]; then
-					if [ ! -d "${bastille_jailsdir}/${NAME_TRIM}" ]; then
-						echo "Importing foreign jail '${NAME_TRIM}' to ${PRDNAME}..."
-						echo "Synchronizing '${NAME_TRIM}' data to ${bastille_jailsdir}/${NAME_TRIM}..."
-						mkdir -p "${bastille_jailsdir}/${NAME_TRIM}/root"
-						rsync -a ${EXCLUDE} ${TARGET}/ ${bastille_jailsdir}/${NAME_TRIM}/root/
-						echo "Generating new jail.conf file for ${NAME_TRIM}..."
-						generate_jailconf
-					else
-						error_notify "Looks like the jail '${NAME_TRIM}' already exist."
-					fi
-				else
-					error_notify "Looks ${PRDNAME} isn't bootstrapped yet."
-				fi
-			else
-				error_notify "Looks like jail '${NAME_TRIM}' is incomplete/corrupted."
-			fi
-		fi
-	else
-		error_notify "Looks like ${PRDNAME} isn't bootstrapped yet."
-	fi
-
-	# Check the exit status.
-	if [ $? -ne 0 ]; then
-		error_notify "An error has occurred while importing ${NAME_TRIM}."
-	else
-		echo "Foreign jail '${NAME_TRIM}' imported successfully!"
-		exit 0
-	fi
-}
-
-generate_jailconf()
-{
-	if [ ! -f "${bastille_jail_conf}" ]; then
-		if [ -z "${bastille_jail_loopback}" ] && [ ! -z "${bastille_jail_external}" ]; then
-			local bastille_jail_conf_interface=${bastille_jail_external}
-		fi
-		if [ ! -z "${bastille_jail_loopback}" ] && [ -z "${bastille_jail_external}" ]; then
-			local bastille_jail_conf_interface=${bastille_jail_interface}
-		fi
-
-		# Generate the jail configuration file.
-		cat << EOF > ${bastille_jailsdir}/${NAME_TRIM}/jail.conf
-interface = ${bastille_jail_conf_interface};
-host.hostname = ${NAME_TRIM};
-exec.consolelog = ${bastille_logsdir}/${NAME_TRIM}_console.log;
-path = ${bastille_jailsdir}/${NAME_TRIM}/root;
-ip6 = disable;
-securelevel = 2;
-devfs_ruleset = 4;
-enforce_statfs = 2;
-exec.start = '/bin/sh /etc/rc';
-exec.stop = '/bin/sh /etc/rc.shutdown';
-exec.clean;
-mount.devfs;
-mount.fstab = ${bastille_jailsdir}/${NAME_TRIM}/fstab;
-
-${NAME_TRIM} {
-	ip4.addr = ${IPV4_ADDR};
-}
-EOF
-	fi
-
-	# Generate the fstab file.
-	if [ ! -f "${bastille_jailsdir}/${NAME_TRIM}/fstab" ]; then
-		echo "Generating new fstab file for ${NAME_TRIM}..."
-		if [ -z "${THICK_JAIL}" ]; then
-			echo -e "${bastille_releasesdir}/${RELEASE} ${bastille_jailsdir}/${NAME_TRIM}/root/.bastille nullfs ro 0 0" \
-			> ${bastille_jailsdir}/${NAME_TRIM}/fstab
-		else
-			touch ${bastille_jailsdir}/${NAME_TRIM}/fstab
-		fi
-	fi
-
-	# Symlinks required for thin jails.
-	if [ -z "${THICK_JAIL}" ]; then
-		cd ${bastille_jailsdir}/${NAME_TRIM}/root
-		USR_LIB32="usr/lib32"
-		if [ -d "${USR_LIB32}" ]; then
-			# Skip usr/lib32 symlink if the libs already exist.
-			USR_LIB32=""
-		fi
-
-		for _link in bin boot lib libexec rescue sbin usr/bin usr/include usr/lib ${USR_LIB32} usr/libdata usr/libexec usr/sbin usr/share usr/src; do
-			ln -Ffhs /.bastille/${_link} ${_link}
-		done
-		mkdir -p usr/home
-		ln -fhs usr/home home
-		mv ${bastille_jailsdir}/${NAME_TRIM}/root/basejail ${bastille_jailsdir}/${NAME_TRIM}/root/.bastille
-	fi
-
-	# Include the old fstab file for user reference.
-	if [ -f "${PATH_TRIM}conf/jails/fstab.${NAME_TRIM}" ]; then
-		cp ${PATH_TRIM}conf/jails/fstab.${NAME_TRIM} ${bastille_jailsdir}/${NAME_TRIM}/fstab.sample
-	fi
-}
-
 pkg_upgrade()
 {
 	# Re-fetch bastille package and extract.
@@ -1105,14 +926,14 @@ rc_params()
 
 	# Default first network interface.
 	ACTIVE_NETIF=$(ifconfig | grep "UP,BROADCAST" | awk -F":" '{print $1}' | sed 1q)
-	if ! sysrc -f ${BASTILLECONF} -qn bastille_jail_external | grep -q "${ACTIVE_NETIF}" >/dev/null 2>&1; then
+	if ! sysrc -f ${BASTILLECONF} -qn bastille_network_shared | grep -q "${ACTIVE_NETIF}" >/dev/null 2>&1; then
 		#echo "" >> ${BASTILLECONF} && echo "## default network interface" >> ${BASTILLECONF}
-		sysrc -f ${BASTILLECONF} bastille_jail_external="${ACTIVE_NETIF}" >/dev/null 2>&1
+		sysrc -f ${BASTILLECONF} bastille_network_shared="${ACTIVE_NETIF}" >/dev/null 2>&1
 	else
-		EXT_NETIF=$(sysrc -f ${BASTILLECONF} -qn bastille_jail_external)
+		EXT_NETIF=$(sysrc -f ${BASTILLECONF} -qn bastille_network_shared)
 		if [ -z "${EXT_NETIF}" ]; then
 			#echo "" >> ${BASTILLECONF} && echo "## default network interface" >> ${BASTILLECONF}
-			sysrc -f ${BASTILLECONF} bastille_jail_external="${ACTIVE_NETIF}" >/dev/null 2>&1
+			sysrc -f ${BASTILLECONF} bastille_network_shared="${ACTIVE_NETIF}" >/dev/null 2>&1
 		fi
 	fi
 
@@ -1139,6 +960,28 @@ rc_params()
 		fi
 	else
 		sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="NO" >/dev/null 2>&1
+	fi
+}
+
+update_config()
+{
+	# Update config based on minimum version.
+	if grep -qw 'bastille_jail_loopback=' ${BASTILLECONF}; then
+		sed -i '' 's/bastille_jail_loopback=/bastille_network_loopback=/' ${BASTILLECONF}
+	fi
+	if grep -qw 'bastille_jail_external=' ${BASTILLECONF}; then
+		sed -i '' 's/bastille_jail_external=/bastille_network_shared=/' ${BASTILLECONF}
+	fi
+	if grep -qw 'bastille_jail_gateway=' ${BASTILLECONF}; then
+		sed -i '' 's/bastille_jail_gateway=/bastille_network_gateway=/' ${BASTILLECONF}
+	fi
+
+	# Remove deprecated parameters based on minimum version.
+	if grep -qw 'bastille_jail_interface' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} -x bastille_jail_interface
+	fi
+	if grep -qw 'bastille_jail_addr' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} -x bastille_jail_addr
 	fi
 }
 
@@ -1247,7 +1090,7 @@ clean|--clean)
 	;;
 esac
 
-while getopts ":ospruxUvgtZIh" option; do
+while getopts ":ospruxUvgtZh" option; do
 	case ${option} in
 		[h]) echo "Usage: ${SCRIPTNAME} -[option] | [container] | [path]";
 		echo "Options:"
@@ -1258,10 +1101,7 @@ while getopts ":ospruxUvgtZIh" option; do
 		echo "        -v  Display product versions."
 		echo "        -g  Enables the addon GUI."
 		echo "        -t  Disable the addon GUI."
-		echo "        -B  Backup a ${PRDNAME} container."
-		echo "        -R  Restore a ${PRDNAME} container."
 		echo "        -Z  Activate ZFS for ${PRDNAME} Extension."
-		echo "        -I  Import a foreign container to ${PRDNAME}."
 		echo "        -x  Reset ${PRDNAME}/Extension config."
 		echo "        -U  Uninstall ${PRDNAME} (Extension files only)."
 		echo "        -h  Display this help message."
@@ -1284,7 +1124,6 @@ while getopts ":ospruxUvgtZIh" option; do
 		[g]) gui_enable; exit 0 ;; # For enable the addon gui.
 		[t]) gui_disable; exit 0 ;; # For disable the addon gui.
 		[Z]) zfs_activate;;
-		[I]) jail_import;;
 		[?]) echo "Invalid option, -h for usage."; exit 1;;
 	esac
 done
