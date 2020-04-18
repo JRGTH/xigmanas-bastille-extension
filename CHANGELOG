@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.43......Add Swedish translation, thanks to Anders Malm.
 1.0.42......Update to new simplified bastille config, obsolete code cleanup.
 1.0.41......Set target jail path on advanced config editor by default.
 1.0.40......Cleanup, remove obsolete file
