@@ -291,6 +291,7 @@ if($_POST):
 					$container['jailname'] = $_POST['jailname'];
 					$confirm_name = $pconfig['confirmname'];
 					$item = $container['jailname'];
+					$plugin_icon = "{$image_dir}/{$item}_icon.png";
 
 					if(strcmp($confirm_name, $item) !== 0):
 						$input_errors[] = gtext("Failed to destroy container, name confirmation is required.");
@@ -304,6 +305,9 @@ if($_POST):
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
 							exec("/usr/sbin/sysrc -f {$configfile} -qx {$item}_AUTO_START");
+							if(file_exists($plugin_icon)):
+								unlink($plugin_icon);
+							endif;
 							header('Location: bastille_manager_gui.php');
 							exit;
 						else:

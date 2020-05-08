@@ -212,9 +212,11 @@ function get_jail_infos() {
 			$r['stat'] = $img_path['dis'];
 		endif;
 		// Display custom template icons if available.
-		$item = $item;
-		$template_icon = "{$image_dir}/{$item}_icon.png";
+		$template_icon = "{$jail_dir}/{$item}/plugin_icon.png";
 		if(file_exists($template_icon)):
+			if(!file_exists("{$image_dir}/{$item}_icon.png")):
+				copy("$template_icon", "{$image_dir}/{$item}_icon.png");
+			endif;
 			$r['logo'] = "{$image_dir}/{$item}_icon.png";
 		else:
 			// Display standard FreeBSD icon.
@@ -225,5 +227,4 @@ function get_jail_infos() {
 	endforeach;
 	return $result;
 }
-
 ?>
