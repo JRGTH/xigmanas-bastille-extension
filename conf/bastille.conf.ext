@@ -1,5 +1,5 @@
 bastille_prefix="/usr/local/bastille"
-bastille_backupsdir=${bastille_prefix}/backups
+bastille_backupsdir="${bastille_prefix}/backups"
 bastille_cachedir="${bastille_prefix}/cache"
 bastille_jailsdir="${bastille_prefix}/jails"
 bastille_logsdir="${bastille_prefix}/logs"

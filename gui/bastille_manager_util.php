@@ -467,7 +467,7 @@ $document->render();
 			html_filechooser("source_path", gtext("Source Data Directory"), $pconfig['source_path'], gtext("Source data directory to be shared, full path here."), $source_path, false, 60);
 			html_filechooser("target_path", gtext("Target Data Directory"), $pconfig['target_path'], gtext("Target data directory to be mapped, full path to jail here."), $target_path, false, 60);		
 			html_checkbox2("path_check", gettext("Source/Target path check"),!empty($pconfig['path_check']) ? true : false, gettext("If this option is selected no examination of the source/target directory paths will be performed."), "<b><font color='red'>".gettext("Please use this option only if you know what you are doing here!")."</font></b>", false);			
-			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I want to edit the jail files manually.'),'',true);
+			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I want to edit the jail files manually, Warning: It is recommended to stop the jail before config edit to prevent issues.'),'',true);
 			html_checkbox2('readonly',gettext('Read-Only Mode'),!empty($pconfig['readonly']) ? true : false,gettext('Set target directory in Read-Only mode.'),'',true);
 			html_checkbox2('automount',gettext('Auto-mount Nullfs'),!empty($pconfig['automount']) ? true : false,gettext('Auto-mount the nullfs mountpoint if the container is already running.'),'',true);
 			html_checkbox2('createdir',gettext('Create Target Directory'),!empty($pconfig['createdir']) ? true : true,gettext('Create target directory if missing (recommended).'),'',true);
