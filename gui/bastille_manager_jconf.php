@@ -100,6 +100,12 @@ if ($_POST):
 
 	// Input validation.
 	// Perform some simple validations for now.
+	if(isset($_POST['jname']) && ($pconfig['jname'])):
+		if(!preg_match('/^[A-Za-z0-9-_]+$/D', $pconfig['jname'])):
+			$input_errors[] = gtext("A valid jail name must be specified.");
+		endif;
+	endif;
+
 	if(isset($_POST['hostname']) && ($pconfig['hostname'])):
 		if(preg_match('/\s/', $pconfig['hostname'])):
 			$input_errors[] = gtext("A valid hostname must be specified.");
