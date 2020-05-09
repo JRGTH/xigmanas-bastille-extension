@@ -53,6 +53,7 @@ $gt_record_mod = gtext('Utilities');
 $gt_selection_start = gtext('Start Selected');
 $gt_selection_stop = gtext('Stop Selected');
 $gt_selection_restart = gtext('Restart Selected');
+$gt_record_conf = gtext('Jail Configuration');
 $gt_record_inf = gtext('Information');
 $gt_selection_start_confirm = gtext('Do you really want to start selected jail(s)?');
 $gt_selection_stop_confirm = gtext('Do you want to stop the selected jail(s)?');
@@ -258,7 +259,7 @@ $document->render();
 				<th class="lhelc"><?=gtext('Select');?></th>
 				<th class="lhell"><?=gtext('JID');?></th>
 				<th class="lhell"><?=gtext('IP Address');?></th>
-				<th class="lhell"><?=gtext('Hostname');?></th>
+				<th class="lhell"><?=gtext('Name');?></th>
 				<th class="lhell"><?=gtext('Release');?></th>
 				<th class="lhell"><?=gtext('Interface');?></th>
 				<th class="lhell"><?=gtext('Path');?></th>
@@ -318,9 +319,8 @@ $document->render();
 									endif;
 								endif;
 ?>
-							</td>
-							<td></td>
 							<td>
+								<a href="bastille_manager_jconf.php?jailname=<?=urlencode($sphere_record['jailname']);?>"><img src="<?=$g_img['mod'];?>" title="<?=$gt_record_conf?>" alt="<?=$gt_record_conf?>"/></a>
 							</td>
 							<td>
 								<a href="bastille_manager_info.php?uuid=<?=urlencode($sphere_record['jailname']);?>"><img src="<?=$g_img['inf'];?>" title="<?=$gt_record_inf?>" alt="<?=$gt_record_inf?>"/></a>

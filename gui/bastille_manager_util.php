@@ -64,9 +64,6 @@ if(isset($container) && !empty($container)):
 	else:
 		$pconfig['name'] = 'unknown';
 	endif;
-	$pconfig['newname'] = '';
-	$pconfig['recursive'] = false;
-	$pconfig['action'] = 'activate';
 else:
 	// not supported
 	$pconfig = [];
