@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.49......Don't allow for blank fields in the jail config page.
 1.0.48......Added jail name validation.
 1.0.47......Cosmetic changes, display notify on success.
 1.0.46......Added simple page for quick jail config, cosmetic changes.

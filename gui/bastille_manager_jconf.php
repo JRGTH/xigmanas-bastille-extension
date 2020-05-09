@@ -104,40 +104,43 @@ if ($_POST):
 		if(!preg_match('/^[A-Za-z0-9-_]+$/D', $pconfig['jname'])):
 			$input_errors[] = gtext("A valid jail name must be specified.");
 		endif;
+	else:
+		$input_errors[] = gtext("A valid jail name must be specified, it can't be left blank.");
 	endif;
 
 	if(isset($_POST['hostname']) && ($pconfig['hostname'])):
 		if(preg_match('/\s/', $pconfig['hostname'])):
 			$input_errors[] = gtext("A valid hostname must be specified.");
 		endif;
+	else:
+		$input_errors[] = gtext("A valid hostname must be specified, it can't be left blank.");
 	endif;
 
-	if(isset($_POST['ipv4']) && ($pconfig['ipv4'])):
+	if(isset($_POST['ipv4'])):
 		if(!preg_match('/^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))?$/', $pconfig['ipv4'])):
 			$input_errors[] = gtext("A valid IPv4 address must be specified.");
-			
 		endif;
 	endif;
 
-	if(isset($_POST['ipv6']) && ($pconfig['ipv6'])):
+	if(isset($_POST['ipv6'])):
 		if(!preg_match('/^(([a-fA-F0-9:]+$)|([a-fA-F0-9:]+\/[0-9]{1,3}$))/', $pconfig['ipv6'])):
 			$input_errors[] = gtext("A valid IPv6 address must be specified.");
 		endif;
 	endif;
 
-	if(isset($_POST['securelevel']) && ($pconfig['securelevel'])):
+	if(isset($_POST['securelevel'])):
 		if(!preg_match('/^[0-3]$/', $pconfig['securelevel'])):
 			$input_errors[] = gtext("A valid number must be specified for securelevel, between 0-3.");
 		endif;
 	endif;
 
-	if(isset($_POST['devfs_ruleset']) && ($pconfig['devfs_ruleset'])):
+	if(isset($_POST['devfs_ruleset'])):
 		if(!preg_match('/^([0-9]{1,3})$/', $pconfig['devfs_ruleset'])):
 			$input_errors[] = gtext("A valid number must be specified for devfs_ruleset.");
 		endif;
 	endif;
 
-	if(isset($_POST['enforce_statfs']) && ($pconfig['enforce_statfs'])):
+	if(isset($_POST['enforce_statfs'])):
 		if(!preg_match('/^[0-2]$/', $pconfig['enforce_statfs'])):
 			$input_errors[] = gtext("A valid number must be specified for enforce_statfs, between 0-2.");
 		endif;
@@ -304,14 +307,14 @@ endif;
 					<?php
 					$a_action = $l_interfaces;
 					html_titleline2(gtext("Jail Configuration"));
-					html_inputbox("jname", gtext("Name"), $pconfig['jname'], gtext("Set the desired jail name, for example jail_1. Warning: renaming a jail will also rename the directory/dataset."), true, 40);
+					html_inputbox("jname", gtext("Name"), $pconfig['jname'], gtext("Set the desired jail name, for example: jail_1. Warning: renaming a jail will also rename the directory/dataset."), true, 40);
 
-					html_inputbox("hostname", gtext("Hostname"), $pconfig['hostname'], gtext("Set the desired jail hostname, for example jail.com, not to be confused with the jail name."), true, 40);
-					if ($pconfig['ipv4']):
-						html_inputbox("ipv4", gtext("IPv4"), $pconfig['ipv4'], gtext("Set the desired jail IPv4 address, for example 192.168.1.100, or 192.168.1.100/24."), true, 40);
+					html_inputbox("hostname", gtext("Hostname"), $pconfig['hostname'], gtext("Set the desired jail hostname, for example: jail.com, not to be confused with the jail name."), true, 40);
+					if ($jail_ipv4_def):
+						html_inputbox("ipv4", gtext("IPv4"), $pconfig['ipv4'], gtext("Set the desired jail IPv4 address, for example: 192.168.1.100, or 192.168.1.100/24."), true, 40);
 					endif;
-					if ($pconfig['ipv6']):
-						html_inputbox("ipv6", gtext("IPv6"), $pconfig['ipv6'], gtext("IPv6 address."), true, 40);
+					if ($jail_ipv6_def):
+						html_inputbox("ipv6", gtext("IPv6"), $pconfig['ipv6'], gtext("Set the desired jail IPv4 address, for example: 2001:cdba::3257:9652, or 2001:cdba::3257:9652/64."), true, 40);
 					endif;
 					if (!$is_vnet):
 						html_combobox('interface', gtext('Interface'),$pconfig['interface'], $a_action, gtext("Set the network interface available from the dropdown menu, usually should not be changed unless replacing/renaming interface or moving jail from host."), true, false, 'action_change()');
