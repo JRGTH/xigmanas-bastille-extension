@@ -120,8 +120,8 @@ if ($_POST):
 	endif;
 
 	if(isset($_POST['securelevel']) && ($pconfig['securelevel'])):
-		if(!preg_match('/^[1-3]$/', $pconfig['securelevel'])):
-			$input_errors[] = gtext("A valid number must be specified for securelevel, between 1-3.");
+		if(!preg_match('/^[0-3]$/', $pconfig['securelevel'])):
+			$input_errors[] = gtext("A valid number must be specified for securelevel, between 0-3.");
 		endif;
 	endif;
 
@@ -132,8 +132,8 @@ if ($_POST):
 	endif;
 
 	if(isset($_POST['enforce_statfs']) && ($pconfig['enforce_statfs'])):
-		if(!preg_match('/^[1-2]$/', $pconfig['enforce_statfs'])):
-			$input_errors[] = gtext("A valid number must be specified for enforce_statfs, between 1-2.");
+		if(!preg_match('/^[0-2]$/', $pconfig['enforce_statfs'])):
+			$input_errors[] = gtext("A valid number must be specified for enforce_statfs, between 0-2.");
 		endif;
 	endif;
 
@@ -167,7 +167,7 @@ if ($_POST):
 						$cmd = "/usr/bin/sed -i '' 's/.*host.hostname.*=.*;/  host.hostname = $jail_hostname;/' $jail_config";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
-							$savemsg .= gtext("Hostname changed successfully.");
+							//$savemsg .= gtext("Hostname changed successfully.");
 						else:
 							$input_errors[] = gtext("Failed to save hostname.");
 						endif;
@@ -179,7 +179,7 @@ if ($_POST):
 						$cmd = "/usr/local/bin/bastille rename $jail_name_def $jail_name";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
-							$savemsg .= gtext("Jail name changed successfully.");
+							//$savemsg .= gtext("Jail name changed successfully.");
 						else:
 							$input_errors[] = gtext("Failed to save jail name.");
 						endif;
@@ -191,7 +191,7 @@ if ($_POST):
 						$cmd = "/usr/bin/sed -i '' 's|.*ip4.addr.*=.*;|  ip4.addr = $jail_ipv4;|' $jail_config";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
-							$savemsg .= gtext("IPv4 changed successfully.");
+							//$savemsg .= gtext("IPv4 changed successfully.");
 						else:
 							$input_errors[] = gtext("Failed to save IPv4.");
 						endif;
@@ -203,7 +203,7 @@ if ($_POST):
 						$cmd = "/usr/bin/sed -i '' 's|.*ip6.addr.*=.*;|  ip6.addr = $jail_ipv6;|' $jail_config";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
-							$savemsg .= gtext("IPv6 changed successfully.");
+							//$savemsg .= gtext("IPv6 changed successfully.");
 						else:
 							$input_errors[] = gtext("Failed to save IPv6.");
 						endif;
@@ -216,7 +216,7 @@ if ($_POST):
 							$cmd = "/usr/bin/sed -i '' 's|.*interface.*=.*;|  interface = $jail_interface;|' $jail_config";
 							unset($output,$retval);mwexec2($cmd,$output,$retval);
 							if($retval == 0):
-								$savemsg .= gtext("Interface changed successfully.");
+								//$savemsg .= gtext("Interface changed successfully.");
 							else:
 								$input_errors[] = gtext("Failed to save interface.");
 							endif;
@@ -230,7 +230,7 @@ if ($_POST):
 							$cmd = "/usr/bin/sed -i '' 's|.*vnet.interface.*=.*;|  vnet.interface = $jail_vnet_interface;|' $jail_config";
 							unset($output,$retval);mwexec2($cmd,$output,$retval);
 							if($retval == 0):
-								$savemsg .= gtext("VNET Interface changed successfully.");
+								//$savemsg .= gtext("VNET Interface changed successfully.");
 							else:
 								$input_errors[] = gtext("Failed to save VNET Interface.");
 							endif;
@@ -238,43 +238,43 @@ if ($_POST):
 					endif;
 				endif;
 
-				if (isset($_POST['securelevel']) && $_POST['securelevel']):
+				if (isset($_POST['securelevel']) || $_POST['securelevel']):
 					if($jail_securelevel_def !== $jail_securelevel):
 						$cmd = "/usr/bin/sed -i '' 's/.*securelevel.*=.*;/  securelevel = $jail_securelevel;/' $jail_config";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
-							$savemsg .= gtext("Securelevel changed successfully.");
+							//$savemsg .= gtext("Securelevel changed successfully.");
 						else:
 							$input_errors[] = gtext("Failed to save securelevel.");
 						endif;
 					endif;
 				endif;
 
-				if (isset($_POST['devfs_ruleset']) && $_POST['devfs_ruleset']):
+				if (isset($_POST['devfs_ruleset']) || $_POST['devfs_ruleset']):
 					if($jail_devfs_ruleset_def !== $jail_devfs_ruleset):
 						$cmd = "/usr/bin/sed -i '' 's/.*devfs_ruleset.*=.*;/  devfs_ruleset = $jail_devfs_ruleset;/' $jail_config";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
-							$savemsg .= gtext("Devfs_ruleset changed successfully.");
+							//$savemsg .= gtext("Devfs_ruleset changed successfully.");
 						else:
 							$input_errors[] = gtext("Failed to save devfs_ruleset.");
 						endif;
 					endif;
 				endif;
 
-				if (isset($_POST['enforce_statfs']) && $_POST['enforce_statfs']):
+				if (isset($_POST['enforce_statfs']) || $_POST['enforce_statfs']):
 					if($jail_enforce_statfs_def !== $jail_enforce_statfs):
 						$cmd = "/usr/bin/sed -i '' 's/.*enforce_statfs.*=.*;/  enforce_statfs = $jail_enforce_statfs;/' $jail_config";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
-							$savemsg .= gtext("Enforce_statfs changed successfully.");
+							//$savemsg .= gtext("Enforce_statfs changed successfully.");
 						else:
 							$input_errors[] = gtext("Failed to save enforce_statfs.");
 						endif;
 					endif;
 				endif;
 				//header("Location: bastille_manager_gui.php");
-				//$savemsg .= gtext("successfully.");
+				$savemsg .= gtext("Configuration has been saved successfully.");
 			endif;
 		endif;
 	endif;
@@ -336,6 +336,8 @@ endif;
 				<?php include 'formend.inc';?>
 			</form>
 		</td>
+		<tr>
 	</tr>
+<table>
 </table>
 <?php include 'fend.inc';?>
