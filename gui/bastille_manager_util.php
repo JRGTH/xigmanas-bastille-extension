@@ -185,43 +185,43 @@ if($_POST):
 				endif;
 				break;
 
-			case 'autoboot':
-				// Input validation not required
-				if(empty($input_errors)):
-					$container = [];
-					$container['uuid'] = $_POST['uuid'];
-					$container['jailname'] = $_POST['jailname'];
-					$confirm_name = $pconfig['confirmname'];
-					$item = $container['jailname'];
-					$cmd = ("/usr/sbin/sysrc -f {$configfile} {$item}_AUTO_START=\"YES\"");
-					unset($output,$retval);mwexec2($cmd,$output,$retval);
-					if($retval == 0):
-						header('Location: bastille_manager_gui.php');
-						exit;
-					else:
-						$input_errors[] = gtext("Failed to set auto-boot.");
-					endif;
-				endif;
-				break;
+			//case 'autoboot':
+			//	// Input validation not required
+			//	if(empty($input_errors)):
+			//		$container = [];
+			//		$container['uuid'] = $_POST['uuid'];
+			//		$container['jailname'] = $_POST['jailname'];
+			//		$confirm_name = $pconfig['confirmname'];
+			//		$item = $container['jailname'];
+			//		$cmd = ("/usr/sbin/sysrc -f {$configfile} {$item}_AUTO_START=\"YES\"");
+			//		unset($output,$retval);mwexec2($cmd,$output,$retval);
+			//		if($retval == 0):
+			//			header('Location: bastille_manager_gui.php');
+			//			exit;
+			//		else:
+			//			$input_errors[] = gtext("Failed to set auto-boot.");
+			//		endif;
+			//	endif;
+			//	break;
 
-			case 'noauto':
-				// Input validation not required
-				if(empty($input_errors)):
-					$container = [];
-					$container['uuid'] = $_POST['uuid'];
-					$container['jailname'] = $_POST['jailname'];
-					$confirm_name = $pconfig['confirmname'];
-					$item = $container['jailname'];
-					$cmd = ("/usr/sbin/sysrc -f {$configfile} {$item}_AUTO_START=\"NO\"");
-					unset($output,$retval);mwexec2($cmd,$output,$retval);
-					if($retval == 0):
-						header('Location: bastille_manager_gui.php');
-						exit;
-					else:
-						$input_errors[] = gtext("Failed to set no-auto.");
-					endif;
-				endif;
-				break;
+			//case 'noauto':
+			//	// Input validation not required
+			//	if(empty($input_errors)):
+			//		$container = [];
+			//		$container['uuid'] = $_POST['uuid'];
+			//		$container['jailname'] = $_POST['jailname'];
+			//		$confirm_name = $pconfig['confirmname'];
+			//		$item = $container['jailname'];
+			//		$cmd = ("/usr/sbin/sysrc -f {$configfile} {$item}_AUTO_START=\"NO\"");
+			//		unset($output,$retval);mwexec2($cmd,$output,$retval);
+			//		if($retval == 0):
+			//			header('Location: bastille_manager_gui.php');
+			//			exit;
+			//		else:
+			//			$input_errors[] = gtext("Failed to set no-auto.");
+			//		endif;
+			//	endif;
+			//	break;
 
 			case 'fstab':
 				// Input validation not required
@@ -361,14 +361,14 @@ function action_change() {
 			showElementById('jail_release_tr', 'show');
 			showElementById('release_tr','show');
 			break;
-		case "autoboot":
-			showElementById('confirmname_tr','hide');
-			showElementById('nowstop_tr','hide');
-			break;
-		case "noauto":
-			showElementById('confirmname_tr','hide');
-			showElementById('nowstop_tr','hide');
-			break;
+		//case "autoboot":
+		//	showElementById('confirmname_tr','hide');
+		//	showElementById('nowstop_tr','hide');
+		//	break;
+		//case "noauto":
+		//	showElementById('confirmname_tr','hide');
+		//	showElementById('nowstop_tr','hide');
+		//	break;
 		case "fstab":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
@@ -451,8 +451,8 @@ $document->render();
 				'backup' => gettext('Backup'),
 				'update' => gettext('Update'),
 				'base' => gettext('Release'),
-				'autoboot' => gettext('Autoboot'),
-				'noauto' => gettext('Noauto'),
+				//'autoboot' => gettext('Autoboot'),
+				//'noauto' => gettext('Noauto'),
 				'fstab' => gettext('Fstab'),
 				'delete' => gettext('Destroy'),
 				'advanced' => gettext('Advanced'),

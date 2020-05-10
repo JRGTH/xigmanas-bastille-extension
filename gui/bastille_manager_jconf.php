@@ -63,9 +63,12 @@ endif;
 $pgtitle = [gtext('Extensions'),gtext('Bastille'),gtext('Configuration'), $container];
 $jail_config = "$jail_dir/$container/jail.conf";
 
+// Get some jail system settings.
+$is_vnet = exec("/usr/bin/grep '.*vnet;' $jail_config");
+$pconfig['autostart'] =  exec("/usr/bin/grep '{$container}_AUTO_START=\"YES\"' $bastille_config");
+
 // Get some jail config parameters.
 // This could be done with a nice php preg loop in the future.
-$is_vnet = exec("/usr/bin/grep '.*vnet;' $jail_config");
 $pconfig['jname'] = "$container";
 $pconfig['hostname'] = exec("/usr/bin/grep '.*host.hostname.*=' $jail_config | /usr/bin/sed 's/.*host.hostname.*= //;s/;//'");
 $pconfig['ipv4'] = exec("/usr/bin/grep '.*ip4.addr.*=' $jail_config | /usr/bin/sed 's/.*ip4.addr.*= //;s/;//'");
@@ -88,6 +91,7 @@ $jail_enforce_statfs_def = $pconfig['enforce_statfs'];
 $jail_vnet_interface_def = $pconfig['vnet_interface'];
 
 if ($_POST):
+	global $configfile;
 	unset($savemsg);
 	unset($input_errors);
 	$pconfig = $_POST;
@@ -153,24 +157,50 @@ if ($_POST):
 	else:
 		if(isset($_POST['Submit']) && $_POST['Submit']):
 
-			// Check if the jail is running.
-			$cmd = "/usr/sbin/jls -j $container >/dev/null 2>&1";
-			unset($output,$retval);mwexec2($cmd,$output,$retval);
-			if($retval == 0):
-				$savemsg .= gtext("This jail is running, please stop it before making config changes.");
+			// Set current config values.
+			$jail_name = $pconfig['jname'];
+			$jail_hostname = $pconfig['hostname'];
+			$jail_ipv4 = $pconfig['ipv4'];
+			$jail_ipv6 = $pconfig['ipv6'];
+			$jail_interface = $pconfig['interface'];
+			$jail_securelevel = $pconfig['securelevel'];
+			$jail_devfs_ruleset = $pconfig['devfs_ruleset'];
+			$jail_enforce_statfs = $pconfig['enforce_statfs'];
+			$jail_vnet_interface = $pconfig['vnet_interface'];
+
+			// Check if the config has changed.
+			// This could be done with a nice foreach loop in the future.
+			if($jail_name_def !== $jail_name):
+				$is_changed = "1";
+			elseif($jail_hostname_def !== $jail_hostname):
+				$is_changed = "1";
+			elseif(isset($_POST['ipv4']) && ($jail_ipv4_def !== $jail_ipv4)):
+				$is_changed = "1";
+			elseif(isset($_POST['ipv6']) && ($jail_ipv6_def !== $jail_ipv6)):
+				$is_changed = "1";
+			elseif(isset($_POST['interface']) && ($jail_interface_def !== $jail_interface)):
+				$is_changed = "1";
+			elseif($jail_securelevel_def !== $jail_securelevel):
+				$is_changed = "1";
+			elseif($jail_devfs_ruleset_def !== $jail_devfs_ruleset):
+				$is_changed = "1";
+			elseif($jail_enforce_statfs_def !== $jail_enforce_statfs):
+				$is_changed = "1";
+			elseif(isset($_POST['vnet_interface']) && ($jail_vnet_interface_def !== $jail_vnet_interface)):
+				$is_changed = "1";
+			endif;
+
+			if($is_changed):
+				// Check if the jail is running.
+				$cmd = "/usr/sbin/jls -j $container >/dev/null 2>&1";
+				unset($output,$retval);mwexec2($cmd,$output,$retval);
 			else:
-
-				// Set current config values.
-				$jail_name = $pconfig['jname'];
-				$jail_hostname = $pconfig['hostname'];
-				$jail_ipv4 = $pconfig['ipv4'];
-				$jail_ipv6 = $pconfig['ipv6'];
-				$jail_interface = $pconfig['interface'];
-				$jail_securelevel = $pconfig['securelevel'];
-				$jail_devfs_ruleset = $pconfig['devfs_ruleset'];
-				$jail_enforce_statfs = $pconfig['enforce_statfs'];
-				$jail_vnet_interface = $pconfig['vnet_interface'];
-
+				// Skip jail running check.
+				$retval = "1";
+			endif;
+			if($retval == 0):
+				$input_errors[] = gtext("This jail is running, please stop it before making jail.conf changes.");
+			else:
 				if (isset($_POST['hostname']) && $_POST['hostname']):
 					if($jail_hostname_def !== $jail_hostname):
 						$cmd = "/usr/bin/sed -i '' 's/.*host.hostname.*=.*;/  host.hostname = $jail_hostname;/' $jail_config";
@@ -282,6 +312,24 @@ if ($_POST):
 						endif;
 					endif;
 				endif;
+
+				if (isset($_POST['autostart']) && $_POST['autostart']):
+					$cmd = ("/usr/sbin/sysrc -f $configfile {$container}_AUTO_START=\"YES\"");
+					unset($output,$retval);mwexec2($cmd,$output,$retval);
+					if($retval == 0):
+						//$savemsg .= gtext("Autostart changed successfully.");
+					else:
+						$input_errors[] = gtext("Failed to enable autostart.");
+					endif;
+				else:
+					$cmd = ("/usr/sbin/sysrc -f $configfile {$container}_AUTO_START=\"NO\"");
+					unset($output,$retval);mwexec2($cmd,$output,$retval);
+					if($retval == 0):
+						//$savemsg .= gtext("Autostart changed successfully.");
+					else:
+						$input_errors[] = gtext("Failed to disable autostart.");
+					endif;
+				endif;
 				//header("Location: bastille_manager_gui.php");
 				$savemsg .= gtext("Configuration has been saved successfully.");
 			endif;
@@ -294,11 +342,11 @@ endif;
 <table width="100%" border="0" cellpadding="0" cellspacing="0">
 	<tr>
 		<tr><td class="tabnavtbl">
-    		<ul id="tabnav">
-    			<li class="tabinact"><a href="bastille_manager_gui.php"><span><?=gettext("Containers");?></span></a></li>
-    			<li class="tabact"><a href="bastille_manager_maintenance.php"><span><?=gettext("Maintenance");?></span></a></li>
-    		</ul>
-    	</td></tr>
+			<ul id="tabnav">
+				<li class="tabinact"><a href="bastille_manager_gui.php"><span><?=gtext("Containers");?></span></a></li>
+				<li class="tabact"><a href="bastille_manager_maintenance.php"><span><?=gtext("Maintenance");?></span></a></li>
+			</ul>
+		</td></tr>
 		<td class="tabcont">
 			<form action="bastille_manager_jconf.php" method="post" name="iform" id="iform" onsubmit="spinner()">
 				<?php if(!empty($savemsg)) print_info_box($savemsg); ?>
@@ -325,6 +373,12 @@ endif;
 					if ($is_vnet):
 						html_inputbox("vnet_interface", gtext("VNET Interface"), $pconfig['vnet_interface'], gtext("Set the VNET interface manually, usually should not be changed unless renaming the interface or moving jail from host."), false, 20);
 					endif;
+					?>
+					<?php
+					html_separator2();
+					html_titleline2(gtext("Misc Configuration"));
+					html_checkbox2('autostart',gtext('Autoboot'),!empty($pconfig['autostart']) ? true : false,gtext('Autoboot this jail after system reboot.'),'',false);
+					//html_checkbox2('force_edit',gtext('Force edit'),!empty($pconfig['force_edit']) ? true : false,gtext('Automatically stop and start this jail if is already running.'),'',false);
 					?>
 				</table>
 				<div id="submit">
