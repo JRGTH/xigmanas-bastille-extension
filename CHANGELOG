@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.51......Jail rename to last position, prevent for null autoboot variables.
 1.0.50......Cosmetic changes, add misc configuration row to jail quick config.
 1.0.49......Don't allow for blank fields in the jail config page.
 1.0.48......Added jail name validation.

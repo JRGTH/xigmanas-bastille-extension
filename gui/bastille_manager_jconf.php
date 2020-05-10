@@ -213,18 +213,6 @@ if ($_POST):
 					endif;
 				endif;
 
-				if (isset($_POST['jname']) && $_POST['jname']):
-					if($jail_name_def !== $jail_name):
-						$cmd = "/usr/local/bin/bastille rename $jail_name_def $jail_name";
-						unset($output,$retval);mwexec2($cmd,$output,$retval);
-						if($retval == 0):
-							//$savemsg .= gtext("Jail name changed successfully.");
-						else:
-							$input_errors[] = gtext("Failed to save jail name.");
-						endif;
-					endif;
-				endif;
-
 				if (isset($_POST['ipv4']) && $_POST['ipv4']):
 					if($jail_ipv4_def !== $jail_ipv4):
 						$cmd = "/usr/bin/sed -i '' 's|.*ip4.addr.*=.*;|  ip4.addr = $jail_ipv4;|' $jail_config";
@@ -314,7 +302,11 @@ if ($_POST):
 				endif;
 
 				if (isset($_POST['autostart']) && $_POST['autostart']):
-					$cmd = ("/usr/sbin/sysrc -f $configfile {$container}_AUTO_START=\"YES\"");
+					if($jail_name_def !== $jail_name):
+						// Remove obsolete variable.
+						exec("/usr/sbin/sysrc -f $configfile -qx {$jail_name_def}_AUTO_START");
+					endif;
+					$cmd = ("/usr/sbin/sysrc -f $configfile {$jail_name}_AUTO_START=\"YES\"");
 					unset($output,$retval);mwexec2($cmd,$output,$retval);
 					if($retval == 0):
 						//$savemsg .= gtext("Autostart changed successfully.");
@@ -322,12 +314,28 @@ if ($_POST):
 						$input_errors[] = gtext("Failed to enable autostart.");
 					endif;
 				else:
-					$cmd = ("/usr/sbin/sysrc -f $configfile {$container}_AUTO_START=\"NO\"");
+					if($jail_name_def !== $jail_name):
+						// Remove obsolete variable.
+						exec("/usr/sbin/sysrc -f $configfile -qx {$jail_name_def}_AUTO_START");
+					endif;
+					$cmd = ("/usr/sbin/sysrc -f {$configfile} {$jail_name}_AUTO_START=\"NO\"");
 					unset($output,$retval);mwexec2($cmd,$output,$retval);
 					if($retval == 0):
 						//$savemsg .= gtext("Autostart changed successfully.");
 					else:
 						$input_errors[] = gtext("Failed to disable autostart.");
+					endif;
+				endif;
+
+				if (isset($_POST['jname']) && $_POST['jname']):
+					if($jail_name_def !== $jail_name):
+						$cmd = "/usr/local/bin/bastille rename $jail_name_def $jail_name";
+						unset($output,$retval);mwexec2($cmd,$output,$retval);
+						if($retval == 0):
+							//$savemsg .= gtext("Jail name changed successfully.");
+						else:
+							$input_errors[] = gtext("Failed to save jail name.");
+						endif;
 					endif;
 				endif;
 				//header("Location: bastille_manager_gui.php");
