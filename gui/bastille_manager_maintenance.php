@@ -94,48 +94,52 @@ if ($_POST) {
 
 	// Remove only extension related files during cleanup.
 	if (isset($_POST['uninstall']) && $_POST['uninstall']) {
-		bindtextdomain("xigmanas", $textdomain);
-		if (is_link($textdomain_bastille)) mwexec("rm -f {$textdomain_bastille}", true);
-		if (is_dir($confdir)) mwexec("rm -Rf {$confdir}", true);
-		mwexec("rm /usr/local/www/bastille_manager_gui.php && rm -R /usr/local/www/ext/bastille", true);
-		mwexec("{$rootfolder}/usr/local/sbin/bastille-init -t", true);		
-		$uninstall_cmd = "echo 'y' | /usr/local/sbin/bastille-init -U";
-		mwexec($uninstall_cmd, true);
-		if (is_link("/usr/local/share/{$prdname}")) mwexec("rm /usr/local/share/{$prdname}", true);
-		if (is_link("/var/cache/pkg")) mwexec("rm /var/cache/pkg", true);
-		if (is_link("/var/db/pkg")) mwexec("rm /var/db/pkg && mkdir /var/db/pkg", true);
+		if(isset($_POST['delete_confirm']) && $_POST['delete_confirm']):
+			bindtextdomain("xigmanas", $textdomain);
+			if (is_link($textdomain_bastille)) mwexec("rm -f {$textdomain_bastille}", true);
+			if (is_dir($confdir)) mwexec("rm -Rf {$confdir}", true);
+			mwexec("rm /usr/local/www/bastille_manager_gui.php && rm -R /usr/local/www/ext/bastille", true);
+			mwexec("{$rootfolder}/usr/local/sbin/bastille-init -t", true);		
+			$uninstall_cmd = "echo 'y' | /usr/local/sbin/bastille-init -U";
+			mwexec($uninstall_cmd, true);
+			if (is_link("/usr/local/share/{$prdname}")) mwexec("rm /usr/local/share/{$prdname}", true);
+			if (is_link("/var/cache/pkg")) mwexec("rm /var/cache/pkg", true);
+			if (is_link("/var/db/pkg")) mwexec("rm /var/db/pkg && mkdir /var/db/pkg", true);
 
-		// Remove start postinit cmd in later product versions.
-		if (is_array($config['rc']) && is_array($config['rc']['param'])) {
-			$postinit_cmd = "{$rootfolder}/bastille-init";
-			$value = $postinit_cmd;
-			$sphere_array = &$config['rc']['param'];
-			$updateconfigfile = false;
-			if (false !== ($index = array_search_ex($value, $sphere_array, 'value'))) {
-				unset($sphere_array[$index]);
-				$updateconfigfile = true;
-			}
-			if ($updateconfigfile) {
-				write_config();
+			// Remove start postinit cmd in later product versions.
+			if (is_array($config['rc']) && is_array($config['rc']['param'])) {
+				$postinit_cmd = "{$rootfolder}/bastille-init";
+				$value = $postinit_cmd;
+				$sphere_array = &$config['rc']['param'];
 				$updateconfigfile = false;
+				if (false !== ($index = array_search_ex($value, $sphere_array, 'value'))) {
+					unset($sphere_array[$index]);
+					$updateconfigfile = true;
+				}
+				if ($updateconfigfile) {
+					write_config();
+					$updateconfigfile = false;
+				}
 			}
-		}
-		// Remove stop postinit cmd in later product versions.
-		if (is_array($config['rc']) && is_array($config['rc']['param'])) {
-			$shutdown_cmd = "{$rootfolder}/bastille-init -p";
-			$value = $shutdown_cmd;
-			$sphere_array = &$config['rc']['param'];
-			$updateconfigfile = false;
-			if (false !== ($index = array_search_ex($value, $sphere_array, 'value'))) {
-				unset($sphere_array[$index]);
-				$updateconfigfile = true;
-			}
-			if ($updateconfigfile) {
-				write_config();
+			// Remove stop postinit cmd in later product versions.
+			if (is_array($config['rc']) && is_array($config['rc']['param'])) {
+				$shutdown_cmd = "{$rootfolder}/bastille-init -p";
+				$value = $shutdown_cmd;
+				$sphere_array = &$config['rc']['param'];
 				$updateconfigfile = false;
+				if (false !== ($index = array_search_ex($value, $sphere_array, 'value'))) {
+					unset($sphere_array[$index]);
+					$updateconfigfile = true;
+				}
+				if ($updateconfigfile) {
+					write_config();
+					$updateconfigfile = false;
+				}
 			}
-		}
-		header("Location:index.php");
+			header("Location:index.php");
+		else:
+			$input_errors[] = gtext('Confirmation is required for extension removal.');
+		endif;
 	}
 
 	if (isset($_POST['save']) && $_POST['save']) {
@@ -347,6 +351,7 @@ $(document).ready(function(){
 			<table width="100%" border="0" cellpadding="6" cellspacing="0">
 				<?php html_separator();?>
 				<?php html_titleline(gtext("Uninstall"));?>
+				<?php html_checkbox2('delete_confirm',gtext('Uninstall confirm'),'' ? true : false,gtext('Check to confirm extension uninstall. Note: Jail related content will be preserved by default.'),'',false);?>
 				<?php html_separator();?>
 			</table>
 			<div id="submit1">

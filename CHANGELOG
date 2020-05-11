@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.56......Add extra confirmation before extension removal.
 1.0.55......Add backup path config check.
 1.0.54......Don't skip ZFS activation if "Available but not enabled" status displayed.
 1.0.53......Add initial ZFS activation guided support.
