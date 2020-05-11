@@ -2,7 +2,7 @@
 /*
 	bastille_manager-lib.inc
 
-	Copyright (c) 2019 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2020 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without
@@ -43,22 +43,24 @@ require_once 'system.inc';
 $application = "Bastille Manager";
 $restore_name = "restore";
 $confdir = "/var/etc/bastille_conf";
-$cwdir = exec("/usr/bin/grep 'INSTALL_DIR=' {$confdir}/conf/bastille_config | /usr/bin/cut -d'\"' -f2");
+$cwdir = exec("/usr/bin/grep 'INSTALL_DIR=' $confdir/conf/bastille_config | /usr/bin/cut -d'\"' -f2");
 $rootfolder = $cwdir;
-$configfile = "{$rootfolder}/conf/bastille_config";
-$versionfile = "{$rootfolder}/version";
+$configfile = "$rootfolder/conf/bastille_config";
+$versionfile = "$rootfolder/version";
 $date = strftime('%c');
-$logfile = "{$rootfolder}/log/bastille_ext.log";
-$logevent = "{$rootfolder}/log/bastille_last_event.log";
-$backup_path = exec("/bin/cat {$configfile} | /usr/bin/grep 'BACKUP_DIR=' | /usr/bin/cut -d'\"' -f2");
-$bastille_config = "{$rootfolder}/conf/bastille_config";
-$config_path = exec("/bin/cat {$configfile} | /usr/bin/grep 'BASTILLE_CONFIG=' | /usr/bin/cut -d'\"' -f2");
-$default_distfiles = exec("/bin/cat {$config_path} | /usr/bin/grep 'bastille_bootstrap_archives=' | /usr/bin/cut -d'\"' -f2");
+$logfile = "$rootfolder/log/bastille_ext.log";
+$logevent = "$rootfolder/log/bastille_last_event.log";
+$backup_path = exec("/usr/bin/grep 'BACKUP_DIR=' $configfile | /usr/bin/cut -d'\"' -f2");
+$bastille_config = "$rootfolder/conf/bastille_config";
+$config_path = exec("/usr/bin/grep 'BASTILLE_CONFIG=' $configfile | /usr/bin/cut -d'\"' -f2");
+$default_distfiles = exec("/usr/bin/grep 'bastille_bootstrap_archives=' $config_path | /usr/bin/cut -d'\"' -f2");
 $jail_dir = "{$rootfolder}/jails";
 $image_dir = "ext/bastille/images";
 $options_support = exec("/usr/local/bin/bastille create | grep -wo '\[option\]'");
 $reldir = "{$rootfolder}/releases";
-$zfs_support = exec("/bin/cat {$configfile} | /usr/bin/grep 'ZFS_SUPPORT=' | /usr/bin/cut -d'\"' -f2");
+//$zfs_already = exec("/sbin/zfs list | /usr/bin/grep -w $rootfolder/bastille");
+$zfs_support = exec("/usr/bin/grep 'ZFS_SUPPORT=' $configfile | /usr/bin/cut -d'\"' -f2");
+$zfs_activated = exec("/usr/bin/grep 'ZFS_ACTIVATED=' $configfile | /usr/bin/cut -d'\"' -f2");
 
 // Ensure the root directory is configured.
 if ($rootfolder == "")
@@ -76,6 +78,32 @@ if (is_file("{$rootfolder}/postinit")) unlink("{$rootfolder}/postinit");
 function is_dir_empty($reldir) {
 	if (!is_readable($reldir)) return NULL; 
 	return (count(scandir($reldir)) == 2);
+}
+
+// Initial install banner
+function initial_install_banner() {
+	// Never display this if bastille is already bootstraped/activated.
+	global $rootfolder;
+	global $zfs_activated;
+	$is_activated = "";
+	$is_bootstrapped = "";
+
+	// Check activation
+	if ($zfs_activated == "YES"):
+		return $is_activated = "YES";
+	elseif ($zfs_activated == "NO"):
+		return $is_activated = "NO";
+	else:
+		// Check for bootstrap directories.
+		exec("/bin/echo ' cache jails logs releases templates ' | /usr/bin/tr -s ' ' '\n'", $bastille_dirs);
+		array_shift($bastille_dirs);
+		foreach($bastille_dirs as $dir):
+			if(is_dir("$rootfolder/$dir")):
+			return $is_bootstrapped = "YES";
+			break;
+			endif;
+		endforeach;	
+	endif;
 }
 
 // Check for sane ZFS settings.

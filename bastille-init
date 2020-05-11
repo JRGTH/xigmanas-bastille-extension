@@ -9,7 +9,7 @@
 # Debug script
 #set -x
 
-# Copyright (c) 2019, José Rivera (joserprg@gmail.com).
+# Copyright (c) 2019-2020, José Rivera (joserprg@gmail.com).
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,7 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 CWDIR=$(dirname $(realpath $0))
 
 # Global variables.
+CWDIR_TRIM=""
 PLATFORM=$(uname -m)
 PRODUCT=$(uname -i)
 PRDVERSION=$(uname -r | cut -d '-' -f1 | tr -d '.')
@@ -76,9 +77,13 @@ GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
 OPT="${1}"
 
-# Required
+# Bastille required
 if [ -f "${BASTILLECONF}" ]; then
 	. /${BASTILLECONF}
+	# Always enforce ZFS activation below "/mnt/" from the extension.
+	if echo "${CWDIR}" | grep -q '/mnt/'; then
+		CWDIR_TRIM=$(echo "${CWDIR}" | sed "s|/mnt/||;s|/${bastille_zfs_prefix}||")
+	fi
 fi
 
 error_notify()
@@ -102,13 +107,13 @@ runtime_config()
 	if [ ! -d ${CWDIR}/backups ]; then
 		mkdir -p ${CWDIR}/backups
 	fi
-	if [ ! -d ${CWDIR}/conf ]; then
+	if [ ! -d "${CWDIR}/conf" ]; then
 		mkdir -p ${CWDIR}/conf
 	fi
-	if [ ! -d ${CWDIR}/log ]; then
+	if [ ! -d "${CWDIR}/log" ]; then
 		mkdir -p ${CWDIR}/log
 	fi
-	if [ ! -d ${CWDIR}/locale-bastille ]; then
+	if [ ! -d "${CWDIR}/locale-bastille" ]; then
 		mkdir -p ${CWDIR}/locale-bastille
 	fi
 	if [ ! -d "${CWDIR}/freebsd-update" ]; then
@@ -116,10 +121,12 @@ runtime_config()
 	fi
 
 	# Check for permissions.
-	FREEBSD_UPDATE_PERMS=$(stat -f "%Op" ${FREEBSD_UPDATE}/freebsd-update)
-	if [ "${FREEBSD_UPDATE_PERMS}" != 100555 ]; then
-		chmod 0555 ${FREEBSD_UPDATE}/freebsd-update
-	fi	
+	if [ -f "${FREEBSD_UPDATE}/freebsd-update" ]; then
+		FREEBSD_UPDATE_PERMS=$(stat -f "%Op" ${FREEBSD_UPDATE}/freebsd-update)
+		if [ "${FREEBSD_UPDATE_PERMS}" != 100555 ]; then
+			chmod 0555 ${FREEBSD_UPDATE}/freebsd-update
+		fi
+	fi
 }
 
 bastille_initial_download()
@@ -699,69 +706,75 @@ thickjail_install()
 zfs_activate()
 {
 	# Check if ZFS is already configured.
-	BASTILLE_DIR=$(echo ${CWDIR} | grep -o '[^/]*$')
-	if zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
-		echo "Bastille ZFS is already configured."
-		exit 0
-	else
-		BASTILLE_DIRS="cache jails logs releases templates"
-		for dir in ${BASTILLE_DIRS}; do
-			if [ -d "${CWDIR}/${dir}" ]; then
-				# Stop if any of the listed dirs already exist.
-				echo "Bastille has been bootstrapped already, aborting."
-				exit 0
-			fi
-		done
-	fi
+	# Always enforce ZFS activation below "/mnt/" from the extension.
+	if echo "${bastille_zfs_zpool}" | grep -qw "${CWDIR_TRIM}$"; then
 
-	echo "Enabling ZFS on ${PRDNAME} Extension..."
-	# Confirm before conversion.
-	while :
-		do
-			read -p "Do you really wish to enable ZFS for ${PRDNAME} Extension? [y/N]:" yn
-			case ${yn} in
-			[Yy]) break;;
-			[Nn]) exit 0;;
-			esac
-		done
-	echo "Proceeding..."
+		BASTILLE_DIR=$(echo "${CWDIR}" | grep -o '[^/]*$')
+		if [ "${bastille_zfs_prefix}" != "${BASTILLE_DIR}" ]; then
+			error_notify "Invalid ZFS configuration."
+		fi
+		if zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
+			echo "Bastille ZFS is already configured."
+			sysrc -f ${CWDIR}${EXTCONF} ZFS_ACTIVATED="YES" >/dev/null 2>&1
+			exit 0
+		else
+			BASTILLE_DIRS="cache jails logs releases templates"
+			for dir in ${BASTILLE_DIRS}; do
+				if [ -d "${CWDIR}/${dir}" ]; then
+					# Stop if any of the listed dirs already exist.
+					error_notify "Bastille has been bootstrapped already, aborting."
+				fi
+			done
+		fi
 
-	if [ "${bastille_zfs_enable}" = "YES" ]; then
-		if [ ! -z "${bastille_zfs_zpool}" ]; then
-			if zfs list "${bastille_zfs_zpool}" > /dev/null 2>&1; then
-				if ! zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
-					echo "Renaming existing '${BASTILLE_DIR}' directory"
-					mv ${CWDIR} ${CWDIR}.old
-					echo "Creating a new ZFS dataset for '${BASTILLE_DIR}'"
-					zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}
-					if [ $? -ne 0 ]; then
-						MSG="Failed to enable ZFS, reverting changes."
-						echo "${MSG}"
-						zfs destroy ${bastille_zfs_zpool}/${bastille_zfs_prefix}
-						mv ${CWDIR}.old ${CWDIR}
-						logger -t "${SCRIPTNAME}" "${MSG}"
-					else
-						echo "Synchronizing '${BASTILLE_DIR}' data on new dataset"
-						rsync -a ${CWDIR}.old/ ${CWDIR}/
+		echo "Enabling ZFS on ${PRDNAME} Extension..."
+		# Confirm before conversion.
+		while :
+			do
+				read -p "Do you really wish to enable ZFS for ${PRDNAME} Extension? [y/N]:" yn
+				case ${yn} in
+				[Yy]) break;;
+				[Nn]) exit 0;;
+				esac
+			done
+		echo "Proceeding..."
+
+		if [ "${bastille_zfs_enable}" = "YES" ]; then
+			if [ ! -z "${bastille_zfs_zpool}" ]; then
+				if zfs list "${bastille_zfs_zpool}" > /dev/null 2>&1; then
+					if ! zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
+						echo "Renaming existing '${BASTILLE_DIR}' directory"
+						mv ${CWDIR} ${CWDIR}.old
+						echo "Creating a new ZFS dataset for '${BASTILLE_DIR}'"
+						zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}
+						if [ $? -ne 0 ]; then
+							MSG="Failed to enable ZFS, reverting changes."
+							echo "${MSG}"
+							mv ${CWDIR}.old ${CWDIR}
+							logger -t "${SCRIPTNAME}" "${MSG}"
+							error_notify "${MSG}"
+						else
+							echo "Synchronizing '${BASTILLE_DIR}' data on new dataset"
+							rsync -a ${CWDIR}.old/ ${CWDIR}/
+						fi
+					else	
+						echo "Bastille ZFS is already configured."
 					fi
 				else
-					if zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
-						echo "Bastille ZFS is already configured."
-						exit 0
-					else
-						error_notify "ERROR: ${bastille_zfs_zpool}/${BASTILLE_DIR} is not a ZFS pool/dataset."
-					fi
+					error_notify "ERROR: ${bastille_zfs_zpool} is not a ZFS pool/dataset."
 				fi
 			else
-				error_notify "ERROR: ${bastille_zfs_zpool} is not a ZFS pool/dataset."
+				error_notify "Bastille ZPOOL is not set."
 			fi
+			echo "ZFS Enabled for ${PRDNAME} Extension successfully."
 		else
-			error_notify "Bastille ZPOOL is not set."
+			error_notify "Bastille ZFS option is not set."
 		fi
-		echo "ZFS Enabled for ${PRDNAME} Extension successfully."
 	else
-		error_notify "Bastille ZFS option is not set."
+		error_notify "Invalid ZFS configuration."
 	fi
+	sysrc -f ${CWDIR}${EXTCONF} ZFS_ACTIVATED="YES" >/dev/null 2>&1
+	exit 0
 }
 
 pkg_upgrade()
@@ -944,19 +957,23 @@ rc_params()
 
 	# Check if sane ZFS is enabled in this setup.
 	if [ "${bastille_zfs_enable}" = "YES" ]; then
-		if [ ! -z "${bastille_zfs_zpool}" ]; then
+		if [ -n "${bastille_zfs_zpool}" ]; then
 			if zfs list "${bastille_zfs_zpool}" > /dev/null 2>&1; then
 				BASTILLE_DIR=$(echo ${CWDIR} | grep -o '[^/]*$')
 				if zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
 					sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="YES" >/dev/null 2>&1
 				else
-					sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="AVA" >/dev/null 2>&1
+					if echo "${bastille_zfs_zpool}" | grep -qw "${CWDIR_TRIM}$"; then
+						sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="AVA" >/dev/null 2>&1
+					else
+						sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="ERR" >/dev/null 2>&1
+					fi
 				fi
 			else
 				sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="ERR" >/dev/null 2>&1
 			fi
 		else
-			sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="NO" >/dev/null 2>&1
+			sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="ERR" >/dev/null 2>&1
 		fi
 	else
 		sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="NO" >/dev/null 2>&1

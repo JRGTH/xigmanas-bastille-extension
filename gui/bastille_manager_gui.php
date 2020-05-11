@@ -2,7 +2,7 @@
 /*
 	bastille_manager_gui.php
 
-	Copyright (c) 2019 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2020 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Portions of XigmaNAS® (https://www.xigmanas.com).
@@ -74,6 +74,15 @@ $img_path = [
 
 $jls_list = get_jail_infos();
 $sphere_array = $jls_list;
+
+if(!initial_install_banner()):
+	$errormsg = gtext('Bastille Initial Configuration.')
+			. ' '
+			. '<a href="' . 'bastille_manager_config.php' . '">'
+			. gtext('Please check and configure ZFS support option first.')
+			. '</a>';
+		$prerequisites_ok = false;
+endif;
 
 if($_POST):
 	if(isset($_POST['apply']) && $_POST['apply']):

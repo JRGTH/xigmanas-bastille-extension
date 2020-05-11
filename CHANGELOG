@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.53......Add initial ZFS activation guided support.
 1.0.52......Switch repository for early updates and bug fixes.
 1.0.51......Jail rename to last position, prevent for null autoboot variables.
 1.0.50......Cosmetic changes, add misc configuration row to jail quick config.

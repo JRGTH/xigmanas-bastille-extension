@@ -48,7 +48,21 @@ $pgtitle = array(gtext("Extensions"), gtext("Bastille"), gtext("Configuration"))
 
 $wSpace = "&nbsp;&nbsp;";
 $wSpaceEqual = "&nbsp;&nbsp;=&nbsp;&nbsp;";
-$paramNameSize = 30;	//length of parameter name input field, default for parameter value input field is '80' 
+$paramNameSize = 30;	//length of parameter name input field, default for parameter value input field is '80'
+
+if(!initial_install_banner()):
+	$errormsg = gtext('Bastille Initial Configuration.')
+			. ' '
+			. '</br>'
+			. gtext('Please check and configure the following ZFS options: BASTILLE_ZFS_ENABLE and BASTILLE_ZFS_ZPOOL.')
+			.'</br>'
+			. gtext('Where BASTILLE_ZFS_ENABLE can be set to "YES", and BASTILLE_ZFS_ZPOOL can be set to "tank" or even "tank/dataset1/dataset2" accordingly.')
+			.'</br>'
+			. '<a href="' . 'bastille_manager_maintenance.php' . '">'
+			. gtext('After either configuring or skip this ZFS option, please visit this link to Enable/Disable ZFS Support on Bastille.')
+			. '</a>';
+		$prerequisites_ok = false;
+endif;
 
 function htmlInput($name, $title, $value="", $size=80) {
 	$result = "<input name='{$name}' size='{$size}' title='{$title}' placeholder='{$title}' value='{$value}' />";
@@ -145,6 +159,7 @@ bindtextdomain("xigmanas", $textdomain_bastille);
 	</td></tr>
 	<tr><td class="tabcont">
 		<table width="100%" border="0" cellpadding="6" cellspacing="0">
+				<?php if(!empty($errormsg)): print_error_box($errormsg); endif; ?>
 			<?php																			// create table from configuration
 				echo "<tr><td colspan='2' style='padding-left:0px; padding-right:0px;'>";
 					if (!empty($input_errors)) print_input_errors($input_errors);
