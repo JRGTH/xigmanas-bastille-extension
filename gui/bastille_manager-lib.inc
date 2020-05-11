@@ -58,7 +58,7 @@ $jail_dir = "{$rootfolder}/jails";
 $image_dir = "ext/bastille/images";
 $options_support = exec("/usr/local/bin/bastille create | grep -wo '\[option\]'");
 $reldir = "{$rootfolder}/releases";
-//$zfs_already = exec("/sbin/zfs list | /usr/bin/grep -w $rootfolder/bastille");
+$backup_path_bastille = exec("/usr/sbin/sysrc -f $rootfolder/bastille-dist/usr/local/etc/bastille/bastille.conf -qn bastille_backupsdir");
 $zfs_support = exec("/usr/bin/grep 'ZFS_SUPPORT=' $configfile | /usr/bin/cut -d'\"' -f2");
 $zfs_activated = exec("/usr/bin/grep 'ZFS_ACTIVATED=' $configfile | /usr/bin/cut -d'\"' -f2");
 

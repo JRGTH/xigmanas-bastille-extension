@@ -73,6 +73,7 @@ $tarballversion = "/usr/local/bin/bastille";
 
 if ($_POST) {
 	global $zfs_activated;
+	global $backup_path_bastille;
 	if(isset($_POST['upgrade']) && $_POST['upgrade']):
 		$cmd = sprintf('%1$s/bastille-init -u > %2$s',$rootfolder,$logevent);
 		$return_val = 0;
@@ -144,6 +145,13 @@ if ($_POST) {
 			$backup_path = "{$rootfolder}/backups";
 			}
 		if (!is_file($backup_path)) {
+			if($backup_path_bastille !== $backup_path):
+				$errormsg = gtext('Selected backup path does not match with bastille_backupsdir in bastille.conf.')
+				. ' '
+				. '<a href="' . 'bastille_manager_config.php' . '">'
+				. gtext('Please set the bastille_backupsdir in bastille.conf first.')
+				. '</a>';
+			else:
 			$cmd = "/usr/sbin/sysrc -f {$configfile} BACKUP_DIR={$backup_path}";
 			unset($retval);mwexec($cmd,$retval);
 			if ($retval == 0) {
@@ -154,6 +162,7 @@ if ($_POST) {
 				$input_errors[] = gtext("Failed to save extension settings.");
 				exec("echo '{$date}: {$application}: Failed to save extension settings' >> {$logfile}");
 				}
+			endif;
 			}
 		else {
 			$input_errors[] = gtext("Failed to save extension settings.");
@@ -186,7 +195,9 @@ if ($_POST) {
 			endif;
 		else:
 			$zfs_status = get_state_zfs();
-			if($zfs_status == "Invalid ZFS configuration"):
+			if($zfs_status == "Available but not enabled"):
+				$input_errors[] = gtext("Cannot skip ZFS activation with current config, either disable ZFS option in the config or just Activate ZFS support.");
+			elseif($zfs_status == "Invalid ZFS configuration"):
 				$input_errors[] = gtext("Cannot skip ZFS activation with an invalid configuration.");
 			elseif($zfs_status == "Enabled"):
 				exec("/usr/sbin/sysrc -f {$configfile} ZFS_ACTIVATED=\"YES\"");
