@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.58......Add Spanish translation thanks to raul fernandez garcia.
 1.0.57......Display bastille bootstrap output after base release fetch.
 1.0.56......Add extra confirmation before extension removal.
 1.0.55......Add backup path config check.
