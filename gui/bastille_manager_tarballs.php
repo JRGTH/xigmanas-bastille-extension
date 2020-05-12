@@ -71,6 +71,7 @@ $sphere_array = $rel_list;
 
 if($_POST):
 	unset($input_errors);
+	unset($errormsg);
 	unset($savemsg);
 	$pconfig = $_POST;
 	if(isset($_POST['Cancel']) && $_POST['Cancel']):
@@ -81,7 +82,7 @@ if($_POST):
 	if (isset($_POST['Download']) && $_POST['Download']):
 		$get_release = $pconfig['release_item'];
 		$check_release = ("{$rootfolder}/releases/{$get_release}");
-		$cmd = ("/usr/local/bin/bastille bootstrap {$get_release}");
+		$cmd = sprintf('/usr/local/bin/bastille bootstrap %1$s > %2$s',$get_release,$logevent);
 		$base_mandatory = "base";
 
 		unset($lib32,$ports,$src);
@@ -96,29 +97,35 @@ if($_POST):
 		endif;
 		$opt_tarballs = "$lib32 $ports $src";
 
-		if(file_exists($check_release)):
-			// FreeBSD base release check.
-			$savemsg .= sprintf(gtext('%s base appears to be already extracted.'),$get_release);
-		else:
+		// FreeBSD base release check.
+		//if(file_exists($check_release)):
+		//	$savemsg .= sprintf(gtext('%s base appears to be already extracted.'),$get_release);
+		//else:
 			// Download a FreeBSD base release.
 			if ($_POST['Download']):
 				if ($opt_tarballs):
 					if ($config_path):
-						// Override default distfiles.
+						// Override default distfiles once.
 						exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$base_mandatory $opt_tarballs\"");
 					endif;
 				endif;
-				unset($output,$retval);mwexec2($cmd,$output,$retval);
-				if($retval == 0):
-					//$savemsg .= sprintf(gtext('%s base downloaded and extracted successfully.'),$get_release);
-					// Set back default distfiles.
-					exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$default_distfiles\"");
-					header('Location: bastille_manager_tarballs.php');
+				$return_val = 0;
+				$output = [];
+				exec($cmd,$output,$return_val);
+				if($return_val == 0):
+					ob_start();
+					include("{$logevent}");
+					$ausgabe = ob_get_contents();
+					$ausgabe = preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $ausgabe);
+					ob_end_clean();
+					$savemsg .= str_replace("\n", "<br />", $ausgabe)."<br />";
+					exec("/usr/sbin/sysrc -f {$configfile} ZFS_ACTIVATED=\"YES\"");
 				else:
+					//$input_errors[] = gtext('An error has occurred ??????.');
 					$errormsg .= sprintf(gtext('%s Failed to download and/or extract release base.'),$get_release);
 				endif;
 			endif;
-		endif;
+		//endif;
 	endif;
 
 	if (isset($_POST['Destroy']) && $_POST['Destroy']):
