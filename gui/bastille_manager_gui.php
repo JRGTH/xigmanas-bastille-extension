@@ -80,6 +80,10 @@ if(!initial_install_banner()):
 			. ' '
 			. '<a href="' . 'bastille_manager_config.php' . '">'
 			. gtext('Please check and configure ZFS support option first.')
+			. '</a>'
+			. '</br>'
+			. '<a href="' . 'bastille_manager_maintenance.php' . '">'
+			. gtext('To skip this step, click this link and then push Save.')
 			. '</a>';
 		$prerequisites_ok = false;
 endif;
