@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.60......Include missing bits, disable vnet on versions below 12.
 1.0.59......Add a skip link to the initial help banner.
 1.0.58......Add Spanish translation thanks to raul fernandez garcia.
 1.0.57......Display bastille bootstrap output after base release fetch.

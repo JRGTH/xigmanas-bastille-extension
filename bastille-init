@@ -67,7 +67,9 @@ BASTILLEPATH="${USRLOCAL}/bin"
 BASTILLECONF="${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf"
 BASTILLECONFLINK="/var/etc/bastille_conf"
 BASTILLECONF_EXT="${CWDIR}/conf/bastille.conf.ext"
-FREEBSD_UPDATE="${CWDIR}/conf/system/freebsd-update/${HOSTVERSION}"
+INCLUDE_PATH="${CWDIR}/conf/system"
+FREEBSD_UPDATE="${INCLUDE_PATH}/freebsd-update/${HOSTVERSION}"
+SYSTEM_INCLUDE="${INCLUDE_PATH}/include/${HOSTVERSION}"
 INSTALLPATH="${CWDIR}/${FULLAPPNAME}"
 BRANCH="master"
 #BATSILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" # Official Bastille Repository)
@@ -287,11 +289,13 @@ platform_check()
 		ext_initial_download
 		bastille_initial_download
 		sys_symlinkdir
+		include_files
 	elif [ "${PRDPLATFORM}" = "x64-full" ]; then
 		create_addon_env
 		ext_initial_download
 		bastille_initial_download
 		sys_symlinkdir
+		include_files
 	fi
 }
 
@@ -356,6 +360,31 @@ sys_symlinkdir()
 	# Copy bastille rc.
 	if [ -f "${INSTALLPATH}/${USRLOCAL}/etc/rc.d/${APPNAME}" ]; then
 		cp ${INSTALLPATH}/${USRLOCAL}/etc/rc.d/${APPNAME} ${USRLOCAL}/etc/rc.d/${APPNAME}
+	fi
+}
+
+include_files()
+{
+	if [ "$(freebsd-version | cut -d '.' -f1)" -ge 12 ]; then
+		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="YES" >/dev/null 2>&1
+		# Include missing files.
+		if [ ! -f "/usr/local/bin/jib" ]; then
+			if [ -f "${SYSTEM_INCLUDE}/jib" ]; then
+				install -m 0544 ${SYSTEM_INCLUDE}/jib /usr/local/bin/jib
+			fi
+		fi
+		if [ ! -f "/usr/sbin/setfib" ]; then
+			if [ -f "${SYSTEM_INCLUDE}/setfib" ]; then
+				install -m 0555 ${SYSTEM_INCLUDE}/setfib /usr/sbin/setfib
+			fi
+		fi
+		if [ ! -f "/usr/bin/sum" ]; then
+			if [ -f "${SYSTEM_INCLUDE}/sum" ]; then
+				install -m 0555 ${SYSTEM_INCLUDE}/sum /usr/bin/sum
+			fi
+		fi
+	else
+		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="NO" >/dev/null 2>&1
 	fi
 }
 
