@@ -205,6 +205,10 @@ function get_jail_infos() {
 		if (!$r['ip']):
 			$r['ip'] = exec("/usr/bin/grep -w 'ip6.addr' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
 		endif;
+		// Try to get ip from vnet config.
+		if(!$r['ip']):
+			$r['ip'] = exec("/usr/local/bin/bastille cmd {$item} cat /etc/rc.conf | /usr/bin/grep 'ifconfig_vnet0=' | cut -d'\"' -f2 | sed 's/inet //'");
+		endif;
 		if (!$r['ip']):
 			$r['ip'] = "-";
 		endif;
