@@ -44,6 +44,7 @@ CWDIR=$(dirname $(realpath $0))
 
 # Global variables.
 CWDIR_TRIM=""
+REQUIRED_UPDATE=""
 PLATFORM=$(uname -m)
 PRODUCT=$(uname -i)
 PRDVERSION=$(uname -r | cut -d '-' -f1 | tr -d '.')
@@ -106,7 +107,7 @@ runtime_config()
 	fi
 
 	# Check for directories.
-	if [ ! -d ${CWDIR}/backups ]; then
+	if [ ! -d "${CWDIR}/backups" ]; then
 		mkdir -p ${CWDIR}/backups
 	fi
 	if [ ! -d "${CWDIR}/conf" ]; then
@@ -134,7 +135,8 @@ runtime_config()
 bastille_initial_download()
 {
 	# Check if bastille already exist.
-	if [ ! -f ${CWDIR}/${FULLAPPNAME}/${BASTILLEPATH}/${APPNAME} ]; then
+	
+	if [ -n "${REQUIRED_UPDATE}" ] || [ ! -f "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}" ]; then
 		# Fetch latest bastille package.
 		echo "Fetching ${APPNAME} files..."
 		fetch -ao ${CWDIR}/${BRANCH}.zip --no-verify-peer --timeout=30 ${BATSILLE_URL} || \
@@ -146,8 +148,8 @@ bastille_initial_download()
 bastille_pkg_extract()
 {
 	# Extract bastille files from package.
-	if [ -f ${CWDIR}/${BRANCH}.zip ]; then
-		if [ ! -f ${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME} ]; then
+	if [ -n "${REQUIRED_UPDATE}" ] || [ -f "${CWDIR}/${BRANCH}.zip" ]; then
+		if [ -n "${REQUIRED_UPDATE}" ] || [ ! -f "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}" ]; then
 			echo "Extracting ${APPNAME}..."
 			tar -xf ${CWDIR}/${BRANCH}.zip --exclude='.git*' --exclude='docs' --exclude='bastille.conf' --strip-components 1 -C ${CWDIR}/${FULLAPPNAME} || \
 			error_notify "Error: A problem has occurred while extractig ${APPNAME} files."
@@ -169,7 +171,7 @@ bastille_upgrade()
 	error_notify "Error: A problem has occurred while fetching version file."
 
 	# Compare version files and fetch latest package if available.
-	if [ -f ${CWDIR}/update/${APPNAME} ]; then
+	if [ -f "${CWDIR}/update/${APPNAME}" ]; then
 		UPDATEVER=$(cat ${CWDIR}/update/${APPNAME} | grep BASTILLE_VERSION= | egrep -o "([0-9]{1,}\.)+[0-9]{1,}" | tr -d '.')
 		CURRENTVER=$(cat ${BASTILLEPATH}/${APPNAME} | grep BASTILLE_VERSION= | egrep -o "([0-9]{1,}\.)+[0-9]{1,}" | tr -d '.')
 		if [ "${UPDATEVER}" -gt "${CURRENTVER}" ]; then
@@ -204,7 +206,7 @@ bastille_upgrade()
 ext_initial_download()
 {
 	# Always ensure the version file is present, otherwise update the extension files on startup.
-	if [ ! -f ${CWDIR}/version ]; then
+	if [ ! -f "${CWDIR}/version" ]; then
 		echo "Fetching and extracting extension files..."
 		mkdir -p ${CWDIR}/update
 		fetch -ao ${CWDIR}/update --no-verify-peer --timeout=30 ${GITURL} || \
@@ -228,7 +230,7 @@ extension_upgrade()
 	error_notify "Error: A problem has occurred while fetching version file."
 
 	# Compare version files and fetch latest package if available.
-	if [ -f ${CWDIR}/update/version ]; then
+	if [ -f "${CWDIR}/update/version" ]; then
 		UPDATEVER=$(cat ${CWDIR}/update/version | tr -d .)
 		CURRENTVER=$(cat ${CWDIR}/version | tr -d .)
 		if [ "${UPDATEVER}" -gt "${CURRENTVER}" ]; then
@@ -268,8 +270,8 @@ create_addon_env()
 	if [ ! -d "${CWDIR}/${FULLAPPNAME}" ]; then
 		mkdir -p ${CWDIR}/${FULLAPPNAME}
 	fi
-	if [ ! -d "${CWDIR}/${FULLAPPNAME}/${BASTILLEPATH}" ]; then
-		mkdir -p ${CWDIR}/${FULLAPPNAME}/${BASTILLEPATH}
+	if [ ! -d "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}" ]; then
+		mkdir -p ${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}
 	fi
 	if [ ! -d "${CWDIR}/freebsd-update" ]; then
 		mkdir ${CWDIR}/freebsd-update
@@ -302,7 +304,7 @@ platform_check()
 bin_symlinks()
 {
 	# Main bastille symlinks.
-	if [ -d ${INSTALLPATH}/${BASTILLEPATH} ]; then
+	if [ -d "${INSTALLPATH}/${BASTILLEPATH}" ]; then
 		cd ${INSTALLPATH}/${BASTILLEPATH}
 		for file in *
 			do
@@ -325,41 +327,41 @@ sys_symlinkdir()
 	fi
 
 	# Required symlinks for bastille. 
-	if [ -d "${INSTALLPATH}/${USRLOCAL}/share/licenses" ]; then
-		cd ${INSTALLPATH}/${USRLOCAL}/share/licenses
+	if [ -d "${INSTALLPATH}${USRLOCAL}/share/licenses" ]; then
+		cd ${INSTALLPATH}${USRLOCAL}/share/licenses
 		for file in *
 			do
-				ln -fhs ${INSTALLPATH}/${USRLOCAL}/share/licenses/${file} ${USRLOCAL}/share/licenses/${file}
+				ln -fhs ${INSTALLPATH}${USRLOCAL}/share/licenses/${file} ${USRLOCAL}/share/licenses/${file}
 		done
 	fi
 
 	# Link bastile config file directory.
-	if [ -d "${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}" ]; then
-		ln -fhs ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME} ${USRLOCAL}/etc/${APPNAME}
+	if [ -d "${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}" ]; then
+		ln -fhs ${INSTALLPATH}${USRLOCAL}/etc/${APPNAME} ${USRLOCAL}/etc/${APPNAME}
 	fi
 
 	# Link bastile config file.
-	#if [ -f "${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf.sample" ]; then
-	#	cd ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}
+	#if [ -f "${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf.sample" ]; then
+	#	cd ${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}
 	#	if [ ! -f "${APPNAME}.conf" ]; then
 	#		cp ${APPNAME}.conf.sample ${APPNAME}.conf
 	#	fi
 	#else
 		if [ -f "${BASTILLECONF_EXT}" ]; then
-			if [ ! -f "${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf" ]; then
-				cp ${BASTILLECONF_EXT} ${INSTALLPATH}/${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf
+			if [ ! -f "${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf" ]; then
+				cp ${BASTILLECONF_EXT} ${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf
 			fi
 		fi
 	#fi
 
 	# Copy bastille shared.
-	if [ -d "${INSTALLPATH}/${USRLOCAL}/share/${APPNAME}" ]; then
-		ln -fhs ${INSTALLPATH}/${USRLOCAL}/share/${APPNAME} ${USRLOCAL}/share/${APPNAME}
+	if [ -d "${INSTALLPATH}${USRLOCAL}/share/${APPNAME}" ]; then
+		ln -fhs ${INSTALLPATH}${USRLOCAL}/share/${APPNAME} ${USRLOCAL}/share/${APPNAME}
 	fi
 
 	# Copy bastille rc.
-	if [ -f "${INSTALLPATH}/${USRLOCAL}/etc/rc.d/${APPNAME}" ]; then
-		cp ${INSTALLPATH}/${USRLOCAL}/etc/rc.d/${APPNAME} ${USRLOCAL}/etc/rc.d/${APPNAME}
+	if [ -f "${INSTALLPATH}${USRLOCAL}/etc/rc.d/${APPNAME}" ]; then
+		cp ${INSTALLPATH}${USRLOCAL}/etc/rc.d/${APPNAME} ${USRLOCAL}/etc/rc.d/${APPNAME}
 	fi
 }
 
@@ -385,6 +387,21 @@ include_files()
 		fi
 	else
 		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="NO" >/dev/null 2>&1
+	fi
+	# Check for required updates.
+	required_updates
+}
+
+required_updates()
+{
+	# Check for required updates and bug fixes.
+	if [ -f "${INSTALLPATH}${USRLOCAL}/share/${APPNAME}/rename.sh" ]; then
+		if ! grep -qwE '{ZFS_DATASET_ORIGIN}(.*){ZFS_DATASET_TARGET}' ${INSTALLPATH}${USRLOCAL}/share/${APPNAME}/rename.sh; then
+			echo "Required update found, performing update..."
+			echo "${DATE}: ${APPNAME} required update has been applied" >> ${EXTLOGFILE}
+			REQUIRED_UPDATE="1"
+			bastille_initial_download
+		fi
 	fi
 }
 
@@ -542,7 +559,7 @@ jail_update()
 	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
 		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -q ".bastille"; then
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
-				if [ $(jls name | grep -w "${TARGET}") ]; then
+				if [ "$(jls name | grep -w "${TARGET}")" ]; then
 					# Update a thick container.
 					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
 					if [ -z "${CURRENT_VERSION}" ]; then
@@ -590,7 +607,7 @@ thinjail_upgrade()
 		if [ -d "${bastille_releasesdir}/${RELEASE}" ]; then
 			if [ -f "${bastille_releasesdir}/${RELEASE}/COPYRIGHT" ]; then
 				# Check if the container is running.
-				if [ $(jls name | grep -w "${TARGET}") ]; then
+				if [ "$(jls name | grep -w "${TARGET}")" ]; then
 					echo "${TARGET} running."
 					echo "See 'bastille stop ${TARGET}'."
 					exit 1
@@ -809,7 +826,7 @@ zfs_activate()
 pkg_upgrade()
 {
 	# Re-fetch bastille package and extract.
-	if [ -f "${CWDIR}/${FULLAPPNAME}/${BASTILLEPATH}/${APPNAME}" ]; then
+	if [ -f "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}" ]; then
 		bastille_upgrade
 	else
 		bastille_initial_download
@@ -823,16 +840,16 @@ reset_install()
 {
 	# Reset the extension environment.
 	echo "Removing extension files..."
-	if [ -f ${CWDIR}/conf/bastille_config ]; then
+	if [ -f "${CWDIR}/conf/bastille_config" ]; then
 		rm -rf ${CWDIR}/conf/bastille_config
 	fi
-	if [ -d ${CWDIR}/${FULLAPPNAME} ]; then
+	if [ -d "${CWDIR}/${FULLAPPNAME}" ]; then
 		rm -rf ${CWDIR}/${FULLAPPNAME}
 	fi
-	if [ -d ${CWDIR}/download ]; then
+	if [ -d "${CWDIR}/download" ]; then
 		rm -rf ${CWDIR}/download
 	fi
-	if [ -f ${CWDIR}/version ]; then
+	if [ -f "${CWDIR}/version" ]; then
 		rm -f ${CWDIR}/version
 	fi
 }
