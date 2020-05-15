@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.63......Always apply required updates after platform check.
 1.0.62......Check/apply required updates to bastille while checking for upgrades.
 1.0.61......Display static inet ip from vnet jail config.
 1.0.60......Include missing bits, disable vnet on versions below 12.

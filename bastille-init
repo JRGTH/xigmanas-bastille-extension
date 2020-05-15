@@ -388,8 +388,6 @@ include_files()
 	else
 		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="NO" >/dev/null 2>&1
 	fi
-	# Check for required updates.
-	required_updates
 }
 
 required_updates()
@@ -1099,6 +1097,7 @@ bastille_init()
 
 	# Function calls.
 	platform_check
+	required_updates
 	postinit_cmd
 	gui_start
 	rc_params
