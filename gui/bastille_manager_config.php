@@ -54,12 +54,12 @@ if(!initial_install_banner()):
 	$errormsg = gtext('Bastille Initial Configuration.')
 			. ' '
 			. '</br>'
-			. gtext('Please check and configure the following ZFS options: BASTILLE_ZFS_ENABLE and BASTILLE_ZFS_ZPOOL.')
+			. gtext('Please check and configure the following entries: "BASTILLE_ZFS_ENABLE" and "BASTILLE_ZFS_ZPOOL".')
 			.'</br>'
-			. gtext('Where BASTILLE_ZFS_ENABLE can be set to "YES", and BASTILLE_ZFS_ZPOOL can be set to "tank" or even "tank/dataset1/dataset2" accordingly.')
-			.'</br>'
+			. gtext('After configuring or skip ZFS option:')
+			. ' '
 			. '<a href="' . 'bastille_manager_maintenance.php' . '">'
-			. gtext('After either configuring or skip this ZFS option, please visit this link to Enable/Disable ZFS Support on Bastille.')
+			. gtext('Please click here then push "Save" button.')
 			. '</a>';
 		$prerequisites_ok = false;
 endif;

@@ -50,7 +50,7 @@ if(!initial_install_banner()):
 			. gtext('Please check and configure ZFS support option first.')
 			. '</a>'
 			. '</br>'
-			. gtext('Or click Save to store current configuration regardless.');
+			. gtext('Or click the "Save" button to store the default configuration.');
 		$prerequisites_ok = false;
 endif;
 

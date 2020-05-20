@@ -76,14 +76,16 @@ $jls_list = get_jail_infos();
 $sphere_array = $jls_list;
 
 if(!initial_install_banner()):
-	$errormsg = gtext('Bastille Initial Configuration.')
+	$errormsg = gtext('Bastille Initial Configuration:')
 			. ' '
 			. '<a href="' . 'bastille_manager_config.php' . '">'
 			. gtext('Please check and configure ZFS support option first.')
 			. '</a>'
 			. '</br>'
+			. gtext('Alternatively to skip this step:')
+			. ' '
 			. '<a href="' . 'bastille_manager_maintenance.php' . '">'
-			. gtext('To skip this step, click this link and then push Save.')
+			. gtext('Please click here then push "Save" button.')
 			. '</a>';
 		$prerequisites_ok = false;
 endif;

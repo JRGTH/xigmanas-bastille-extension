@@ -66,6 +66,7 @@ EXTCONFLINK="/var/etc/${APPNAME}_conf"
 BASTILLERCD="/usr/local/etc/rc.d/${APPNAME}"
 BASTILLEPATH="${USRLOCAL}/bin"
 BASTILLECONF="${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf"
+BASTILLECONFFILE="/conf/bastille_conf"
 BASTILLECONFLINK="/var/etc/bastille_conf"
 BASTILLECONF_EXT="${CWDIR}/conf/bastille.conf.ext"
 INCLUDE_PATH="${CWDIR}/conf/system"
@@ -73,8 +74,8 @@ FREEBSD_UPDATE="${INCLUDE_PATH}/freebsd-update/${HOSTVERSION}"
 SYSTEM_INCLUDE="${INCLUDE_PATH}/include/${HOSTVERSION}"
 INSTALLPATH="${CWDIR}/${FULLAPPNAME}"
 BRANCH="master"
-#BATSILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" # Official Bastille Repository)
-BATSILLE_URL="https://github.com/JRGTH/${APPNAME}/archive/${BRANCH}.zip" # Alternate Bastille Repository, early updates)
+BATSILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" # Official Bastille Repository)
+BATSILLE_ALT="https://github.com/JRGTH/${APPNAME}/archive/${BRANCH}.zip" # Alternate Bastille Repository, early updates)
 BASTILE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRANCH}/usr/local/bin/${APPNAME}"
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
@@ -106,7 +107,7 @@ runtime_config()
 		fi
 	fi
 
-	# Check for directories.
+	# Check for required directories and files.
 	if [ ! -d "${CWDIR}/backups" ]; then
 		mkdir -p ${CWDIR}/backups
 	fi
@@ -121,6 +122,9 @@ runtime_config()
 	fi
 	if [ ! -d "${CWDIR}/freebsd-update" ]; then
 		mkdir ${CWDIR}/freebsd-update
+	fi
+	if [ ! -f "${CWDIR}${BASTILLECONFFILE}" ]; then
+		touch ${CWDIR}${BASTILLECONFFILE}
 	fi
 
 	# Check for permissions.
@@ -392,7 +396,8 @@ include_files()
 
 required_updates()
 {
-	# Check for required updates and bug fixes.
+	# Check for critical and/or required updates and bug fixes and apply them.
+	# This is because not always the bastille version is increased on updates and/or bug fixes.
 	if [ -f "${INSTALLPATH}${USRLOCAL}/share/${APPNAME}/rename.sh" ]; then
 		if ! grep -qwE '{ZFS_DATASET_ORIGIN}(.*){ZFS_DATASET_TARGET}' ${INSTALLPATH}${USRLOCAL}/share/${APPNAME}/rename.sh; then
 			echo "Required update found, performing update..."
