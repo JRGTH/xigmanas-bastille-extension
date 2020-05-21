@@ -69,28 +69,30 @@ if($_POST):
 		$jname = $pconfig['jailname'];
 		$ipaddr = $pconfig['ipaddress'];
 		$release = $pconfig['release'];
+		$options = "";
 		if ($_POST['interface'] == 'Config'):
 			$interface = "";
 		else:
 			$interface = $pconfig['interface'];
 		endif;
 
-		if($_POST['thickjail']):
-			$thick_jail = "-T";
-		else:
-			$thick_jail = "";
+		if($_POST['thickjail'] && $_POST['vnetjail']):
+			$options = "-T -V";
+		elseif($_POST['thickjail']):
+			$options = "-T";
+		elseif($_POST['vnetjail']):
+			$options = "-V";
 		endif;
 
-		if($_POST['vnetjail']):
-			$vnet_jail = "-V";
+		if($_POST['emptyjail']):
+			// Just create an empty container with minimal jail.conf.
+			$cmd = ("/usr/local/bin/bastille create -E {$jname}");
 		else:
-			$vnet_jail = "";
-		endif;
-
-		if ($_POST['nowstart']):
-			$cmd = ("/usr/local/bin/bastille create {$thick_jail} {$vnet_jail} {$jname} {$release} {$ipaddr} {$interface} && /usr/local/bin/bastille start {$jname}");
-		else:
-			$cmd = ("/usr/local/bin/bastille create {$thick_jail} {$vnet_jail} {$jname} {$release} {$ipaddr} {$interface}");
+			if ($_POST['nowstart']):
+				$cmd = ("/usr/local/bin/bastille create {$options} {$jname} {$release} {$ipaddr} {$interface} && /usr/local/bin/bastille start {$jname}");
+			else:
+				$cmd = ("/usr/local/bin/bastille create {$options} {$jname} {$release} {$ipaddr} {$interface}");
+			endif;
 		endif;
 
 		if ($_POST['Create']):
@@ -121,6 +123,28 @@ $(window).on("load",function() {
 	$("#iform").submit(function() { spinner(); });
 	$(".spin").click(function() { spinner(); });
 });
+function emptyjail_change() {
+	switch(document.iform.emptyjail.checked) {
+		case false:
+	showElementById('ipaddress_tr','show');
+	showElementById('interface_tr', 'show');
+	showElementById('release_tr', 'show');
+	showElementById('thickjail_tr', 'show');
+	showElementById('vnetjail_tr', 'show');
+	showElementById('nowstart_tr', 'show');
+	showElementById('autostart_tr', 'show');
+			break;
+		case true:
+				showElementById('ipaddress_tr','hide');
+				showElementById('interface_tr', 'hide');
+				showElementById('release_tr', 'hide');
+				showElementById('thickjail_tr', 'hide');
+				showElementById('vnetjail_tr', 'hide');
+				showElementById('nowstart_tr', 'hide');
+				showElementById('autostart_tr', 'hide');
+			break;
+	}
+}
 //]]>
 </script>
 <?php
@@ -165,11 +189,14 @@ $document->render();
 			html_inputbox2('ipaddress',gettext('IP Address'),$pconfig['ipaddress'],'',true,20);
 			$a_action = $l_interfaces;
 			$b_action = $l_release;
-			html_combobox2('interface',gettext('Network interface'),$pconfig['interface'],$a_action,'',true,false,'action_change()');
-			html_combobox2('release',gettext('Base release'),$pconfig['release'],$b_action,'',true,false,'action_change()');
+			html_combobox2('interface',gettext('Network interface'),$pconfig['interface'],$a_action,'',true,false);
+			html_combobox2('release',gettext('Base release'),$pconfig['release'],$b_action,'',true,false);
 			if($options_support):
 				html_checkbox2('thickjail',gettext('Create a thick container'),!empty($pconfig['thickjail']) ? true : false,gettext('These containers consume more space, but are self contained.'),'',false);
-				html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Advanced).'),'',false);			
+				html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Advanced).'),'',false);
+			
+				html_checkbox2('emptyjail',gettext('Create an empty container'),!empty($pconfig['emptyjail']) ? true : false,gettext('This are ideal for custom builds, experimenting with unsupported RELEASES or Linux jails.'),'',false,false,'emptyjail_change()');
+
 			endif;
 			html_checkbox2('nowstart',gettext('Start after creation'),!empty($pconfig['nowstart']) ? true : false,gettext('Start the container after creation.'),'',false);
 			html_checkbox2('autostart',gettext('Auto start on boot'),!empty($pconfig['autostart']) ? true : false,gettext('Automatically start the container at boot time.'),'',false);
@@ -185,6 +212,11 @@ $document->render();
 	include 'formend.inc';
 ?>
 </td></tr></tbody></table></form>
+<script type="text/javascript">
+<!--
+emptyjail_change();
+//-->
+</script>
 <?php
 include 'fend.inc';
 ?>

@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.65......Add ability to create empty containers, minor improvements.
 1.0.64......Switch back to official bastille repository, simplify initial help banner.
 1.0.63......Always apply required updates after platform check.
 1.0.62......Check/apply required updates to bastille while checking for upgrades.
