@@ -46,6 +46,7 @@ $confdir = "/var/etc/bastille_conf";
 $cwdir = exec("/usr/bin/grep 'INSTALL_DIR=' $confdir/conf/bastille_config | /usr/bin/cut -d'\"' -f2");
 $rootfolder = $cwdir;
 $configfile = "$rootfolder/conf/bastille_config";
+$configfile_bastille = "$rootfolder/bastille-dist/usr/local/etc/bastille/bastille.conf";
 $versionfile = "$rootfolder/version";
 $date = strftime('%c');
 $logfile = "$rootfolder/log/bastille_ext.log";

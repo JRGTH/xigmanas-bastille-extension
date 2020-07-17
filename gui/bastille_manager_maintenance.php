@@ -74,6 +74,7 @@ $tarballversion = "/usr/local/bin/bastille";
 if ($_POST) {
 	global $zfs_activated;
 	global $backup_path_bastille;
+	global $configfile_bastille;
 	if(isset($_POST['upgrade']) && $_POST['upgrade']):
 		$cmd = sprintf('%1$s/bastille-init -u > %2$s',$rootfolder,$logevent);
 		$return_val = 0;
@@ -150,12 +151,19 @@ if ($_POST) {
 			}
 		if (!is_file($backup_path)) {
 			if($backup_path_bastille !== $backup_path):
-				$errormsg = gtext('Selected backup path does not match with bastille_backupsdir in bastille.conf.')
-				. ' '
-				. '<a href="' . 'bastille_manager_config.php' . '">'
-				. gtext('Please set the bastille_backupsdir in bastille.conf first.')
-				. '</a>';
-			else:
+				// Update bastille config if required.
+				$cmd = "/usr/sbin/sysrc -f {$configfile_bastille} bastille_backupsdir={$backup_path}";
+				unset($retval);mwexec($cmd,$retval);
+				if ($retval == 0) {
+					$savemsg .= gtext("Bastille config updated successfully.");
+					exec("echo '{$date}: {$application}: Bastille config updated successfully' >> {$logfile}");
+					}
+				else {
+					$input_errors[] = gtext("Failed to update Bastille config.");
+					exec("echo '{$date}: {$application}: Failed to update Bastille config' >> {$logfile}");
+					}
+			endif;
+			// Update extension config.
 			$cmd = "/usr/sbin/sysrc -f {$configfile} BACKUP_DIR={$backup_path}";
 			unset($retval);mwexec($cmd,$retval);
 			if ($retval == 0) {
@@ -166,7 +174,6 @@ if ($_POST) {
 				$input_errors[] = gtext("Failed to save extension settings.");
 				exec("echo '{$date}: {$application}: Failed to save extension settings' >> {$logfile}");
 				}
-			endif;
 			}
 		else {
 			$input_errors[] = gtext("Failed to save extension settings.");
