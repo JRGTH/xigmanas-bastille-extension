@@ -560,7 +560,7 @@ jail_update()
 	fi
 
 	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
-		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -q ".bastille"; then
+		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -qw "/.*/.bastille"; then
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
 				if [ "$(jls name | grep -w "${TARGET}")" ]; then
 					# Update a thick container.
@@ -622,15 +622,15 @@ thinjail_upgrade()
 					if [ -f "${bastille_releasesdir}/${NEWRELEASE}/COPYRIGHT" ]; then
 						if [ -f "${bastille_jailsdir}/${TARGET}/fstab" ]; then
 							# Check if is a thin container.
-							if cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${RELEASE}" | grep -q ".bastille"; then
+							if cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${RELEASE}" | grep -qw "/.*/.bastille"; then
 								# If the previous conditions meets, proceed with the container base upgrade.
 								sed -i '' "s/${RELEASE}/${NEWRELEASE}/g" ${bastille_jailsdir}/${TARGET}/fstab
 								echo "${TARGET} release changed to ${NEWRELEASE}."
-							elif cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${NEWRELEASE}" | grep -q ".bastille"; then
+							elif cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${NEWRELEASE}" | grep -qw "/.*/.bastille"; then
 								echo "${TARGET} already using ${NEWRELEASE}."
 								exit 0
 							else
-								if cat "${bastille_jailsdir}/${TARGET}/fstab" | grep -q ".bastille"; then
+								if cat "${bastille_jailsdir}/${TARGET}/fstab" | grep -qw "/.*/.bastille"; then
 									echo "${TARGET} container does not use ${RELEASE}."; exit 1
 								else
 									echo "${TARGET} is not a thin container."; exit 1
@@ -681,7 +681,7 @@ thickjail_upgrade()
 
 	# Verify for user input and handle some errors.
 	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
-		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -q ".bastille"; then
+		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -qw "/.*/.bastille"; then
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
 				if [ "$(jls name | grep -w "${TARGET}")" ]; then
 					# Upgrade a thick container.
@@ -729,7 +729,7 @@ thickjail_install()
 	fi
 
 	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
-		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -q ".bastille"; then
+		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -qw "/.*/.bastille"; then
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
 				if [ "$(jls name | grep -w "${TARGET}")" ]; then
 					# Finish installing upgrade on a thick container.

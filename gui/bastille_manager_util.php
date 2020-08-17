@@ -436,7 +436,7 @@ $document->render();
 			#$current_release = exec("/usr/sbin/jexec {$pconfig['jailname']} freebsd-version 2>/dev/null");
 			unset($disable_base_change);
 			$current_release = exec("/usr/bin/grep '\-RELEASE' {$jail_dir}/{$pconfig['jailname']}/fstab | awk '{print $1}' | grep -o '[^/]*$'");
-			$is_thickjail = exec("/usr/bin/grep '.bastille' {$jail_dir}/{$pconfig['jailname']}/fstab");
+			$is_thickjail = exec("/usr/bin/grep -qw '/.*/.bastille' {$jail_dir}/{$pconfig['jailname']}/fstab");
 			if (!$current_release):
 				$current_release = exec("/usr/bin/grep 'releng' {$jail_dir}/{$pconfig['jailname']}/root/COPYRIGHT | cut -d '/' -f2");
 				$disable_base_change = "1";
