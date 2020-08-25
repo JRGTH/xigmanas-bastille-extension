@@ -65,7 +65,7 @@ $jail_config = "$jail_dir/$container/jail.conf";
 
 // Get some jail system settings.
 $is_vnet = exec("/usr/bin/grep '.*vnet;' $jail_config");
-$pconfig['autostart'] =  exec("/usr/bin/grep '{$container}_AUTO_START=\"YES\"' $bastille_config");
+$pconfig['autostart'] =  exec("/usr/bin/grep -w '{$container}_AUTO_START=\"YES\"' $bastille_config");
 
 // Get some jail config parameters.
 // This could be done with a nice php preg loop in the future.
@@ -304,7 +304,7 @@ if ($_POST):
 				if (isset($_POST['autostart']) && $_POST['autostart']):
 					if($jail_name_def !== $jail_name):
 						// Remove obsolete variable.
-						exec("/usr/sbin/sysrc -f $configfile -qx {$jail_name_def}_AUTO_START");
+						exec("/usr/bin/sed -i '' 's/{$jail_name_def}_AUTO_START.*//' $configfile");
 					endif;
 					$cmd = ("/usr/sbin/sysrc -f $configfile {$jail_name}_AUTO_START=\"YES\"");
 					unset($output,$retval);mwexec2($cmd,$output,$retval);
@@ -316,9 +316,9 @@ if ($_POST):
 				else:
 					if($jail_name_def !== $jail_name):
 						// Remove obsolete variable.
-						exec("/usr/sbin/sysrc -f $configfile -qx {$jail_name_def}_AUTO_START");
+						exec("/usr/bin/sed -i '' 's/{$jail_name_def}_AUTO_START.*//' $configfile");
 					endif;
-					$cmd = ("/usr/sbin/sysrc -f {$configfile} {$jail_name}_AUTO_START=\"NO\"");
+					$cmd = ("/usr/bin/sed -i '' 's/{$jail_name}_AUTO_START.*//' $configfile");
 					unset($output,$retval);mwexec2($cmd,$output,$retval);
 					if($retval == 0):
 						//$savemsg .= gtext("Autostart changed successfully.");

@@ -229,7 +229,7 @@ function get_jail_infos() {
 			$r['path'] = "-";
 		endif;
 		// Display auto-start settings.
-		$jail_autostart = exec("/usr/sbin/sysrc -qn -f {$configfile} {$item}_AUTO_START");
+		$jail_autostart = exec("/usr/bin/grep -w {$item}_AUTO_START $configfile | cut -d'=' -f2 | tr -d '\"'");
 		if ($jail_autostart == 'YES') {
 			$r['boot'] = $img_path['ena'];
 		} elseif ($jail_autostart == 'NO') {

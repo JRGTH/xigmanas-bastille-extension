@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.69......Fix for jail auto-start settings with names containing dashes.
 1.0.68......Remove the -q option in utilities page.
 1.0.67......Fix for properly identify the jail type, thanks to mvdhoeven.
 1.0.66......Update extension and bastille config files at once.
