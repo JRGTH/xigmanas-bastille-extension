@@ -953,7 +953,7 @@ ext_start()
 	if [ -d "${CWDIR}/jails" ]; then
 		JAIL_LIST=$(bastille list jail)
 		for jail in ${JAIL_LIST}; do
-			if sysrc -f ${CWDIR}${EXTCONF} -qn ${jail}_AUTO_START | grep -w "YES" >/dev/null; then
+			if grep -qw "${jail}_AUTO_START=\"YES\"" ${CWDIR}${EXTCONF}; then
 				if ! jls | sed "1 d" | awk '{print $3}' | grep -qw ${jail}; then
 					bastille start ${jail}
 				fi
