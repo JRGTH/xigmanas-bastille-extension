@@ -57,7 +57,7 @@ $config_path = exec("/usr/bin/grep 'BASTILLE_CONFIG=' $configfile | /usr/bin/cut
 $default_distfiles = exec("/usr/bin/grep 'bastille_bootstrap_archives=' $config_path | /usr/bin/cut -d'\"' -f2");
 $jail_dir = "{$rootfolder}/jails";
 $image_dir = "ext/bastille/images";
-$options_support = exec("/usr/local/bin/bastille create | grep -wo '\[option\]'");
+$options_support = "yes";
 $reldir = "{$rootfolder}/releases";
 $backup_path_bastille = exec("/usr/sbin/sysrc -f $rootfolder/bastille-dist/usr/local/etc/bastille/bastille.conf -qn bastille_backupsdir");
 $zfs_support = exec("/usr/bin/grep 'ZFS_SUPPORT=' $configfile | /usr/bin/cut -d'\"' -f2");

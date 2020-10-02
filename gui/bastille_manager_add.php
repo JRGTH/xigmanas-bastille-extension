@@ -194,7 +194,6 @@ $document->render();
 			if($options_support):
 				html_checkbox2('thickjail',gettext('Create a thick container'),!empty($pconfig['thickjail']) ? true : false,gettext('These containers consume more space, but are self contained.'),'',false);
 				html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Advanced).'),'',false);
-			
 				html_checkbox2('emptyjail',gettext('Create an empty container'),!empty($pconfig['emptyjail']) ? true : false,gettext('This are ideal for custom builds, experimenting with unsupported RELEASES or Linux jails.'),'',false,false,'emptyjail_change()');
 
 			endif;
