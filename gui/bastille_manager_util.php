@@ -126,6 +126,35 @@ if($_POST):
 				endif;
 				break;
 
+			case 'clone':
+				// Clone existing container
+				if(empty($input_errors)):
+					$container = [];
+					$container['uuid'] = $_POST['uuid'];
+					$container['jailname'] = $_POST['jailname'];
+					$confirm_name = $pconfig['confirmname'];
+					$confirm_newname = $pconfig['newname'];
+					$confirm_newipaddr = $pconfig['newipaddr'];
+					$item = $container['jailname'];
+
+					if ((!$confirm_newname) || (!$confirm_newipaddr)):
+						$input_errors[] = gtext("Name/IP fields can't be left blank.");
+					else:
+						if ($_POST['clonestop']):
+							$cmd = ("/usr/local/bin/bastille stop $item && /usr/local/bin/bastille clone $item $confirm_newname $confirm_newipaddr");
+						else:
+							$cmd = ("/usr/local/bin/bastille clone $item $confirm_newname $confirm_newipaddr");
+						endif;
+						unset($output,$retval);mwexec2($cmd,$output,$retval);
+						if($retval == 0):
+							header('Location: bastille_manager_gui.php');
+						else:
+							$input_errors[] = gtext("Failed to clone container, make sure this container is stopped.");
+						endif;
+					endif;
+				endif;
+				break;
+
 			case 'update':
 				// Input validation not required
 				if(empty($input_errors)):
@@ -185,43 +214,43 @@ if($_POST):
 				endif;
 				break;
 
-			//case 'autoboot':
-			//	// Input validation not required
-			//	if(empty($input_errors)):
-			//		$container = [];
-			//		$container['uuid'] = $_POST['uuid'];
-			//		$container['jailname'] = $_POST['jailname'];
-			//		$confirm_name = $pconfig['confirmname'];
-			//		$item = $container['jailname'];
-			//		$cmd = ("/usr/sbin/sysrc -f {$configfile} {$item}_AUTO_START=\"YES\"");
-			//		unset($output,$retval);mwexec2($cmd,$output,$retval);
-			//		if($retval == 0):
-			//			header('Location: bastille_manager_gui.php');
-			//			exit;
-			//		else:
-			//			$input_errors[] = gtext("Failed to set auto-boot.");
-			//		endif;
-			//	endif;
-			//	break;
+			case 'autoboot':
+				// Input validation not required
+				if(empty($input_errors)):
+					$container = [];
+					$container['uuid'] = $_POST['uuid'];
+					$container['jailname'] = $_POST['jailname'];
+					$confirm_name = $pconfig['confirmname'];
+					$item = $container['jailname'];
+					$cmd = ("/usr/sbin/sysrc -f {$configfile} {$item}_AUTO_START=\"YES\"");
+					unset($output,$retval);mwexec2($cmd,$output,$retval);
+					if($retval == 0):
+						header('Location: bastille_manager_gui.php');
+						exit;
+					else:
+						$input_errors[] = gtext("Failed to set auto-boot.");
+					endif;
+				endif;
+				break;
 
-			//case 'noauto':
-			//	// Input validation not required
-			//	if(empty($input_errors)):
-			//		$container = [];
-			//		$container['uuid'] = $_POST['uuid'];
-			//		$container['jailname'] = $_POST['jailname'];
-			//		$confirm_name = $pconfig['confirmname'];
-			//		$item = $container['jailname'];
-			//		$cmd = ("/usr/sbin/sysrc -f {$configfile} {$item}_AUTO_START=\"NO\"");
-			//		unset($output,$retval);mwexec2($cmd,$output,$retval);
-			//		if($retval == 0):
-			//			header('Location: bastille_manager_gui.php');
-			//			exit;
-			//		else:
-			//			$input_errors[] = gtext("Failed to set no-auto.");
-			//		endif;
-			//	endif;
-			//	break;
+			case 'noauto':
+				// Input validation not required
+				if(empty($input_errors)):
+					$container = [];
+					$container['uuid'] = $_POST['uuid'];
+					$container['jailname'] = $_POST['jailname'];
+					$confirm_name = $pconfig['confirmname'];
+					$item = $container['jailname'];
+					$cmd = ("/usr/sbin/sysrc -f {$configfile} {$item}_AUTO_START=\"NO\"");
+					unset($output,$retval);mwexec2($cmd,$output,$retval);
+					if($retval == 0):
+						header('Location: bastille_manager_gui.php');
+						exit;
+					else:
+						$input_errors[] = gtext("Failed to set no-auto.");
+					endif;
+				endif;
+				break;
 
 			case 'fstab':
 				// Input validation not required
@@ -343,12 +372,22 @@ function action_change() {
 	showElementById('jail_release_tr', 'hide');
 	showElementById('release_tr','hide');
 	showElementById('update_base_tr','hide');
+	showElementById('newname_tr', 'hide');
+	showElementById('newipaddr_tr', 'hide');
+	showElementById('clonestop_tr', 'hide');
+	showElementById('auto_boot_tr', 'hide');
+	showElementById('no_autoboot_tr', 'hide');
 	//showElementById('dateadd_tr','hide');
 	var action = document.iform.action.value;
 	switch (action) {
 		case "backup":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
+			break;
+		case "clone":
+			showElementById('newname_tr','show');
+			showElementById('newipaddr_tr','show');
+			showElementById('clonestop_tr','show');
 			break;
 		case "update":
 			showElementById('confirmname_tr','hide');
@@ -361,14 +400,16 @@ function action_change() {
 			showElementById('jail_release_tr', 'show');
 			showElementById('release_tr','show');
 			break;
-		//case "autoboot":
-		//	showElementById('confirmname_tr','hide');
-		//	showElementById('nowstop_tr','hide');
-		//	break;
-		//case "noauto":
-		//	showElementById('confirmname_tr','hide');
-		//	showElementById('nowstop_tr','hide');
-		//	break;
+		case "autoboot":
+			showElementById('confirmname_tr','hide');
+			showElementById('nowstop_tr','hide');
+			showElementById('auto_boot_tr', 'show');
+			break;
+		case "noauto":
+			showElementById('confirmname_tr','hide');
+			showElementById('nowstop_tr','hide');
+			showElementById('no_autoboot_tr', 'show');
+			break;
 		case "fstab":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
@@ -449,10 +490,11 @@ $document->render();
 			html_text2('jailname',gettext('Container name:'),htmlspecialchars($pconfig['jailname']));
 			$a_action = [
 				'backup' => gettext('Backup'),
+				'clone' => gettext('Clone'),
 				'update' => gettext('Update'),
 				'base' => gettext('Release'),
-				//'autoboot' => gettext('Autoboot'),
-				//'noauto' => gettext('Noauto'),
+				'autoboot' => gettext('Autoboot'),
+				'noauto' => gettext('Noauto'),
 				'fstab' => gettext('Fstab'),
 				'delete' => gettext('Destroy'),
 				'advanced' => gettext('Advanced'),
@@ -460,7 +502,10 @@ $document->render();
 
 			html_combobox2('action',gettext('Action'),$pconfig['action'],$a_action,'',true,false,'action_change()');
 			html_inputbox2('confirmname',gettext('Enter name for confirmation'),$pconfig['confirmname'],'',true,30);
-			html_checkbox2('nowstop',gettext('Stop container'),!empty($pconfig['nowstop']) ? true : false,gettext('Stop the container if running before deletetion.'),'',false);
+			html_checkbox2('nowstop',gettext('Stop container'),!empty($pconfig['nowstop']) ? true : false,gettext('Stop the container if running before deletion.'),'',false);
+			html_inputbox2('newname',gettext('Enter a name for the new container'),$pconfig['newname'],'',true,30);
+			html_inputbox2('newipaddr',gettext('Enter a IP address for the new container'),$pconfig['newipaddr'],'',true,30);
+			html_checkbox2('clonestop',gettext('Stop container'),!empty($pconfig['clonestop']) ? true : false,gettext('Stop the container if running before cloning, mandatory on UFS fylesystems.'),'',false);
 			html_filechooser("source_path", gtext("Source Data Directory"), $pconfig['source_path'], gtext("Source data directory to be shared, full path here."), $source_path, false, 60);
 			html_filechooser("target_path", gtext("Target Data Directory"), $pconfig['target_path'], gtext("Target data directory to be mapped, full path to jail here."), $target_path, false, 60);		
 			html_checkbox2("path_check", gettext("Source/Target path check"),!empty($pconfig['path_check']) ? true : false, gettext("If this option is selected no examination of the source/target directory paths will be performed."), "<b><font color='red'>".gettext("Please use this option only if you know what you are doing here!")."</font></b>", false);			
@@ -469,11 +514,13 @@ $document->render();
 			html_checkbox2('automount',gettext('Auto-mount Nullfs'),!empty($pconfig['automount']) ? true : false,gettext('Auto-mount the nullfs mountpoint if the container is already running.'),'',true);
 			html_checkbox2('createdir',gettext('Create Target Directory'),!empty($pconfig['createdir']) ? true : true,gettext('Create target directory if missing (recommended).'),'',true);
 			if ($is_thickjail):
-			html_checkbox2('update_base',gettext('Base update confirm'),!empty($pconfig['update_base']) ? true : false,gettext('This is a thin container, therefore the base release will be updated, this affects child containers.'),'',true);
+				html_checkbox2('update_base',gettext('Base update confirm'),!empty($pconfig['update_base']) ? true : false,gettext('This is a thin container, therefore the base release will be updated, this affects child containers.'),'',true);
 			else:
-			html_text2('update_base',gettext('Container update confirm:'),gettext('This is a thick container, therefore the update will be performed within its root, current containers are not affected.'));
+				html_text2('update_base',gettext('Container update confirm:'),gettext('This is a thick container, therefore the update will be performed within its root, current containers are not affected.'));
 			endif;
 			html_text2('jail_release',gettext('Current base release:'),htmlspecialchars($current_release));
+			html_text2('auto_boot',gettext('Enable container auto-startup'),htmlspecialchars("This will cause the container to automatically start each time the system restart."));
+			html_text2('no_autoboot',gettext('Disable container auto-startup'),htmlspecialchars("This will disable the container automatic startup."));
 			if (!$disable_base_change):
 				html_combobox2('release',gettext('New base release'),$pconfig['release'],$b_action,gettext("Warning: this will change current base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues."),true,false,);
 			endif;
