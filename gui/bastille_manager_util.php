@@ -505,7 +505,7 @@ $document->render();
 			html_checkbox2('nowstop',gettext('Stop container'),!empty($pconfig['nowstop']) ? true : false,gettext('Stop the container if running before deletion.'),'',false);
 			html_inputbox2('newname',gettext('Enter a name for the new container'),$pconfig['newname'],'',true,30);
 			html_inputbox2('newipaddr',gettext('Enter a IP address for the new container'),$pconfig['newipaddr'],'',true,30);
-			html_checkbox2('clonestop',gettext('Stop container'),!empty($pconfig['clonestop']) ? true : false,gettext('Stop the container if running before cloning, mandatory on UFS fylesystems.'),'',false);
+			html_checkbox2('clonestop',gettext('Stop container'),!empty($pconfig['clonestop']) ? true : false,gettext('Stop the container if running before cloning, mandatory on UFS filesystem.'),'',false);
 			html_filechooser("source_path", gtext("Source Data Directory"), $pconfig['source_path'], gtext("Source data directory to be shared, full path here."), $source_path, false, 60);
 			html_filechooser("target_path", gtext("Target Data Directory"), $pconfig['target_path'], gtext("Target data directory to be mapped, full path to jail here."), $target_path, false, 60);		
 			html_checkbox2("path_check", gettext("Source/Target path check"),!empty($pconfig['path_check']) ? true : false, gettext("If this option is selected no examination of the source/target directory paths will be performed."), "<b><font color='red'>".gettext("Please use this option only if you know what you are doing here!")."</font></b>", false);			

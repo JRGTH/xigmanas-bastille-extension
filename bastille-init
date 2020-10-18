@@ -37,7 +37,7 @@
 # SUCH DAMAGE.
 
 # Set environment.
-PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 
 # Determine full working directory.
 CWDIR=$(dirname $(realpath $0))
