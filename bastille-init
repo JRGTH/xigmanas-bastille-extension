@@ -1045,19 +1045,19 @@ update_config()
 	fi
 
 	# Template parameters.
-	if grep -qw 'bastille_template_base=' ${BASTILLECONF}; then
+	if ! grep -qw 'bastille_template_base=' ${BASTILLECONF}; then
 		sysrc -f ${BASTILLECONF} bastille_template_base="default/base"
 	fi
-	if grep -qw 'bastille_template_empty=' ${BASTILLECONF}; then
+	if ! grep -qw 'bastille_template_empty=' ${BASTILLECONF}; then
 		sysrc -f ${BASTILLECONF} bastille_template_empty="default/empty"
 	fi
-	if grep -qw 'bastille_template_thick=' ${BASTILLECONF}; then
+	if ! grep -qw 'bastille_template_thick=' ${BASTILLECONF}; then
 		sysrc -f ${BASTILLECONF} bastille_template_thick="default/thick"
 	fi
-	if grep -qw 'bastille_template_thin=' ${BASTILLECONF}; then
+	if ! grep -qw 'bastille_template_thin=' ${BASTILLECONF}; then
 		sysrc -f ${BASTILLECONF} bastille_template_thin="default/thin"
 	fi
-	if grep -qw 'bastille_template_vnet=' ${BASTILLECONF}; then
+	if ! grep -qw 'bastille_template_vnet=' ${BASTILLECONF}; then
 		sysrc -f ${BASTILLECONF} bastille_template_vnet="default/vnet"
 	fi
 
