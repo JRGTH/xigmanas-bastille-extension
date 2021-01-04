@@ -233,7 +233,7 @@ $document->render();
 		<tbody>
 <?php
 			$a_action = [
-				//'12.1-RELEASE' => gettext('12.1-RELEASE'),
+				'12.2-RELEASE' => gettext('12.2-RELEASE'),
 				'12.1-RELEASE' => gettext('12.1-RELEASE'),
 				'12.0-RELEASE' => gettext('12.0-RELEASE'),
 				'11.3-RELEASE' => gettext('11.3-RELEASE'),

@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.77......Enable 12.2 RELEASE downloads through the GUI.
 1.0.76......Minor code changes.
 1.0.75......Update bastille config and prepare for RELEASE 12.2.
 1.0.74......Use sysrc to manage jail startup variables.
