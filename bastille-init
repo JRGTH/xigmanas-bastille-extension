@@ -9,7 +9,7 @@
 # Debug script
 #set -x
 
-# Copyright (c) 2019-2020, José Rivera (joserprg@gmail.com).
+# Copyright (c) 2019-2021, José Rivera (joserprg@gmail.com).
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -200,7 +200,7 @@ bastille_upgrade()
 			rm -R ${CWDIR}/update
 		fi
 
-		# Temporal workaround to update legacy config.
+		# Workaround to update legacy config.
 		if [ "${UPDATEVER}" -gt "0620200202" ]; then
 			update_config
 		fi
@@ -1032,6 +1032,8 @@ rc_params()
 update_config()
 {
 	# Update config based on minimum version.
+
+	# Network parameters.
 	if grep -qw 'bastille_jail_loopback=' ${BASTILLECONF}; then
 		sed -i '' 's/bastille_jail_loopback=/bastille_network_loopback=/' ${BASTILLECONF}
 	fi
@@ -1040,6 +1042,23 @@ update_config()
 	fi
 	if grep -qw 'bastille_jail_gateway=' ${BASTILLECONF}; then
 		sed -i '' 's/bastille_jail_gateway=/bastille_network_gateway=/' ${BASTILLECONF}
+	fi
+
+	# Template parameters.
+	if grep -qw 'bastille_template_base=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_template_base="default/base"
+	fi
+	if grep -qw 'bastille_template_empty=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_template_empty="default/empty"
+	fi
+	if grep -qw 'bastille_template_thick=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_template_thick="default/thick"
+	fi
+	if grep -qw 'bastille_template_thin=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_template_thin="default/thin"
+	fi
+	if grep -qw 'bastille_template_vnet=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_template_vnet="default/vnet"
 	fi
 
 	# Remove deprecated parameters based on minimum version.
