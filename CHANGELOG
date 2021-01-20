@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.79......Don't set template for empty jails, include files for 12.2 release.
 1.0.78......Fix for proper bastille config update.
 1.0.77......Enable 12.2 RELEASE downloads through the GUI.
 1.0.76......Minor code changes.
