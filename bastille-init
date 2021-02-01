@@ -79,6 +79,8 @@ BATSILLE_ALT="https://github.com/JRGTH/${APPNAME}/archive/${BRANCH}.zip" # Alter
 BASTILE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRANCH}/usr/local/bin/${APPNAME}"
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
+URL_FREEBSD="http://ftp.freebsd.org/pub/FreeBSD/releases/"
+URL_HARDENEDBSD="http://installer.hardenedbsd.org/pub/hardenedbsd/"
 OPT="${1}"
 
 # Bastille required
@@ -1042,6 +1044,12 @@ update_config()
 	fi
 	if grep -qw 'bastille_jail_gateway=' ${BASTILLECONF}; then
 		sed -i '' 's/bastille_jail_gateway=/bastille_network_gateway=/' ${BASTILLECONF}
+	fi
+	if ! grep -q 'bastille_url_freebsd=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_url_freebsd="${URL_FREEBSD}"
+	fi
+	if ! grep -q 'bastille_url_hardenedbsd=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_url_hardenedbsd="${URL_HARDENEDBSD}"
 	fi
 
 	# Template parameters.
