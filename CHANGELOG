@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.81......Update GUI pages to work with later bastille releases.
 1.0.80......Add checking for FreeBSD and HardenedBSD on upgrades.
 1.0.79......Don't set template for empty jails, include files for 12.2 release.
 1.0.78......Fix for proper bastille config update.

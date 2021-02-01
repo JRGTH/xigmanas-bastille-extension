@@ -82,7 +82,7 @@ if($_POST):
 	if (isset($_POST['Download']) && $_POST['Download']):
 		$get_release = $pconfig['release_item'];
 		$check_release = ("{$rootfolder}/releases/{$get_release}");
-		$cmd = sprintf('/usr/local/bin/bastille bootstrap %1$s > %2$s',$get_release,$logevent);
+		$cmd = sprintf('/bin/echo "Y" | /usr/local/bin/bastille bootstrap %1$s > %2$s',$get_release,$logevent);
 		$base_mandatory = "base";
 
 		unset($lib32,$ports,$src);
