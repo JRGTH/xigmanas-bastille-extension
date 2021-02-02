@@ -375,7 +375,7 @@ include_files()
 {
 	if [ "$(freebsd-version | cut -d '.' -f1)" -ge 12 ]; then
 		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="YES" >/dev/null 2>&1
-		# Include missing files.
+		# Include missing system files.
 		if [ ! -f "/usr/local/bin/jib" ]; then
 			if [ -f "${SYSTEM_INCLUDE}/jib" ]; then
 				install -m 0544 ${SYSTEM_INCLUDE}/jib /usr/local/bin/jib
@@ -394,6 +394,11 @@ include_files()
 		if [ ! -f "/usr/bin/diff3" ]; then
 			if [ -f "${SYSTEM_INCLUDE}/diff3" ]; then
 				install -m 0555 ${SYSTEM_INCLUDE}/diff3 /usr/bin/diff3
+			fi
+		fi
+		if [ ! -f "/usr/bin/makewhatis" ]; then
+			if [ -f "${SYSTEM_INCLUDE}/makewhatis" ]; then
+				install -m 0555 ${SYSTEM_INCLUDE}/makewhatis /usr/bin/makewhatis
 			fi
 		fi
 	else
@@ -609,7 +614,49 @@ jail_update()
 	exit 0
 }
 
-thinjail_upgrade()
+release_upgrade()
+{
+	if [ -d "${bastille_releasesdir}/${TARGET}" ]; then
+		if [ -f "${bastille_releasesdir}/${TARGET}/COPYRIGHT" ]; then
+			if [ "${TARGET}" = "${RELEASE}" ]; then
+				echo "Specified releases name match."
+				exit 0
+			fi
+			# Upgrade a release base.
+			echo "=> Run the command below several times when asked to finish installing updates."
+			echo "bastille-init install ${TARGET}"
+			echo
+			env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+			-d ${CWDIR}/freebsd-update -b "${bastille_releasesdir}/${TARGET}" --currently-running "${TARGET}" -r ${RELEASE} upgrade
+			echo
+			echo "=> Please run: 'bastille-init install ${TARGET}' to finish installing updates."
+		else
+			echo "Unknown ${RELEASE}. See bootstrap."; exit 1
+		fi
+	else
+		echo "${TARGET} not found. See bootstrap."; exit 1
+	fi
+	exit 0
+}
+
+release_install()
+{
+	if [ -d "${bastille_releasesdir}/${TARGET}" ]; then 
+			if [ -f "${bastille_releasesdir}/${TARGET}/COPYRIGHT" ]; then
+					# Finish installing upgrade on a thick container.
+					env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+					-d ${CWDIR}/freebsd-update -b "${bastille_releasesdir}/${TARGET}" install
+			else
+				echo "${TARGET} state is unknown."
+				exit 1
+			fi
+	else
+		echo "${TARGET} not found. See bootstrap."; exit 1
+	fi
+	exit 0
+}
+
+release_change()
 {
 	if [ ! -z "$(freebsd-version | grep -i HBSD)" ]; then
 		echo "Not supported on HardenedBSD."
@@ -657,7 +704,7 @@ thinjail_upgrade()
 					echo "${NEWRELEASE} not found, bootstrap starting...."
 					bastille bootstrap ${NEWRELEASE}
 					if [ ! $? -ne 0 ]; then
-						thinjail_upgrade
+						release_change
 					fi
 				fi
 			else
@@ -717,6 +764,9 @@ thickjail_upgrade()
 			echo "${TARGET} is not a thick container."
 			exit 1
 		fi
+	elif [ -d "${bastille_releasesdir}/${RELEASE}" ]; then
+		# Try to upgrade a release instead.
+		release_upgrade
 	fi
 	exit 0
 }
@@ -759,6 +809,9 @@ thickjail_install()
 			echo "${TARGET} is not a thick container."
 			exit 1
 		fi
+	elif [ -d "${bastille_releasesdir}/${RELEASE}" ]; then
+		# Try to upgrade a release instead.
+		release_install
 	fi
 	exit 0
 }
@@ -937,7 +990,7 @@ remove_addon()
 		fi
 	done
 
-	BIN_FILES="/usr/local/bin/jib /usr/sbin/setfib /usr/bin/sum /usr/bin/diff3"
+	BIN_FILES="/usr/local/bin/jib /usr/sbin/setfib /usr/bin/sum /usr/bin/diff3 /usr/bin/makewhatis"
 	for FILE in ${BIN_FILES}; do
 		if [ -f "${FILE}" ]; then
 			rm -rf ${FILE}
@@ -1173,7 +1226,7 @@ upgrade|--upgrade)
 	# Check container type to upgrade
 	if [ -z "${NEWRELEASE}" ]; then
 		if [ $# -gt 3 ] || [ $# -lt 3 ]; then
-			echo "Usage: ${SCRIPTNAME} [upgrade|--upgrade] [container] [release]"
+			echo "Usage: ${SCRIPTNAME} [upgrade|--upgrade] [container|release] [release]"
 			exit 1
 		fi
 		thickjail_upgrade
@@ -1182,7 +1235,7 @@ upgrade|--upgrade)
 			echo "Usage: ${SCRIPTNAME} [upgrade|--upgrade] [container] [release] [newrelease]"
 			exit 1
 		fi
-		thinjail_upgrade
+		release_change
 	fi
 	;;
 update|--update)
@@ -1219,7 +1272,7 @@ while getopts ":ospruxUvgtZh" option; do
 		echo "Advanced Usage: ${SCRIPTNAME} [option] [container] [release] | [newrelease]"
 		echo "Options:"
 		echo "        update|--update    Update a container/release to base -pX release."
-		echo "        upgrade|--upgrade  Upgrade a container release to X.Y-RELEASE."
+		echo "        upgrade|--upgrade  Upgrade a container/release to X.Y-RELEASE."
 		echo "        install|--install  Finish installing pending updates on Thick containers."
 		echo "        clean|--clean      Cleanup the FreeBSD update/upgrade cached files/folders."
 		echo ""; exit 0;;

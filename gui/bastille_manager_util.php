@@ -200,7 +200,7 @@ if($_POST):
 					$new_release = $pconfig['release'];
 
 					if(!$current_release):
-						$savemsg .= gtext("Base release change disabled for thick containers.");
+						$savemsg .= gtext("This is a thick container and should be interactively upgraded through the command line.");
 					else:
 						$cmd = ("/usr/local/sbin/bastille-init --upgrade {$item} {$current_release} {$new_release}");
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
@@ -529,7 +529,7 @@ $document->render();
 			html_text2('auto_boot',gettext('Enable container auto-startup'),htmlspecialchars("This will cause the container to automatically start each time the system restart."));
 			html_text2('no_autoboot',gettext('Disable container auto-startup'),htmlspecialchars("This will disable the container automatic startup."));
 			if (!$disable_base_change):
-				html_combobox2('release',gettext('New base release'),$pconfig['release'],$b_action,gettext("Warning: this will change current base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues."),true,false,);
+				html_combobox2('release',gettext('New base release'),$pconfig['release'],$b_action,gettext("Warning: this will change current base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues, or use the command line for native upgrade."),true,false,);
 			endif;
 			//html_checkbox2('dateadd',gettext('Date'),!empty($pconfig['dateadd']) ? true : false,gettext('Append the date in the following format: ITEM-XXXX-XX-XX-XXXXXX.'),'',false);
 ?>
