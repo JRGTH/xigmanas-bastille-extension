@@ -391,6 +391,11 @@ include_files()
 				install -m 0555 ${SYSTEM_INCLUDE}/sum /usr/bin/sum
 			fi
 		fi
+		if [ ! -f "/usr/bin/diff3" ]; then
+			if [ -f "${SYSTEM_INCLUDE}/diff3" ]; then
+				install -m 0555 ${SYSTEM_INCLUDE}/diff3 /usr/bin/diff3
+			fi
+		fi
 	else
 		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="NO" >/dev/null 2>&1
 	fi
@@ -932,7 +937,7 @@ remove_addon()
 		fi
 	done
 
-	BIN_FILES="/usr/local/bin/jib /usr/sbin/setfib /usr/bin/sum /usr/bin/makewhatis"
+	BIN_FILES="/usr/local/bin/jib /usr/sbin/setfib /usr/bin/sum /usr/bin/diff3"
 	for FILE in ${BIN_FILES}; do
 		if [ -f "${FILE}" ]; then
 			rm -rf ${FILE}
