@@ -391,6 +391,11 @@ include_files()
 				install -m 0555 ${SYSTEM_INCLUDE}/sum /usr/bin/sum
 			fi
 		fi
+		if [ ! -f "/usr/bin/makewhatis" ]; then
+			if [ -f "${SYSTEM_INCLUDE}/makewhatis" ]; then
+				install -m 0555 ${SYSTEM_INCLUDE}/makewhatis /usr/bin/makewhatis
+			fi
+		fi
 	else
 		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="NO" >/dev/null 2>&1
 	fi
@@ -923,8 +928,15 @@ remove_addon()
 	# as well as for the containers dirs/files.
 	FILES="conf download freebsd-update gui locale-bastille log bastille-dist LICENSE README.md postinit CHANGELOG version bastille-init"
 	for FILE in ${FILES}; do
-		if [ -f "${CWDIR}/${file}" ] || [ -d "${CWDIR}/${file}" ]; then
+		if [ -f "${CWDIR}/${FILE}" ] || [ -d "${CWDIR}/${FILE}" ]; then
 			rm -rf ${CWDIR}/${FILE}
+		fi
+	done
+
+	BIN_FILES="/usr/local/bin/jib /usr/sbin/setfib /usr/bin/sum /usr/bin/makewhatis"
+	for FILE in ${BIN_FILES}; do
+		if [ -f "${FILE}" ]; then
+			rm -rf ${FILE}
 		fi
 	done
 

@@ -168,7 +168,7 @@ if($_POST):
 					if ($_POST['update_base']):
 						$cmd = ("/usr/local/sbin/bastille-init update '{$current_release}'");
 					else:
-						$cmd = ("/usr/local/sbin/bastille-init update '{$item}'");
+						$cmd = ("/usr/local/sbin/bastille-init update '{$item}' && /usr/local/sbin/bastille-init install '{$item}'");
 					endif;
 
 					unset($output,$retval);mwexec2($cmd,$output,$retval);
