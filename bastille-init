@@ -577,7 +577,9 @@ jail_update()
 						exit 1
 					else
 						env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
-						-d ${CWDIR}/freebsd-update -b "${bastille_jailsdir}/${TARGET}/root" fetch install --currently-running "${CURRENT_VERSION}"
+						-d ${CWDIR}/freebsd-update -b "${bastille_jailsdir}/${TARGET}/root" fetch --currently-running "${CURRENT_VERSION}"
+						${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+						-d ${CWDIR}/freebsd-update -b "${bastille_jailsdir}/${TARGET}/root" install --currently-running "${CURRENT_VERSION}"
 					fi
 				else
 					echo "Container not running."
@@ -596,7 +598,9 @@ jail_update()
 		if [ -d "${bastille_releasesdir}/${TARGET}" ]; then
 			# Update container base(affects base child containers).
 			env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
-			-d ${CWDIR}/freebsd-update -b "${bastille_releasesdir}/${TARGET}" fetch install --currently-running "${TARGET}"
+			-d ${CWDIR}/freebsd-update -b "${bastille_releasesdir}/${TARGET}" fetch --currently-running "${TARGET}"
+			${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+			-d ${CWDIR}/freebsd-update -b "${bastille_releasesdir}/${TARGET}" install --currently-running "${TARGET}"
 		else
 			echo "${TARGET} not found. See bootstrap."
 			exit 1

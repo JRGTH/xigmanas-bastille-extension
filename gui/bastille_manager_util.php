@@ -167,8 +167,11 @@ if($_POST):
 
 					if ($_POST['update_base']):
 						$cmd = ("/usr/local/sbin/bastille-init update '{$current_release}'");
+					elseif ($_POST['update_jail']):
+						$cmd = ("/usr/local/sbin/bastille-init update '{$item}'");
 					else:
-						$cmd = ("/usr/local/sbin/bastille-init update '{$item}' && /usr/local/sbin/bastille-init install '{$item}'");
+						$input_errors[] = sprintf(gtext("Failed to update container %s."),$item);
+						break;
 					endif;
 
 					unset($output,$retval);mwexec2($cmd,$output,$retval);
@@ -372,6 +375,7 @@ function action_change() {
 	showElementById('jail_release_tr', 'hide');
 	showElementById('release_tr','hide');
 	showElementById('update_base_tr','hide');
+	showElementById('update_jail_tr','hide');
 	showElementById('newname_tr', 'hide');
 	showElementById('newipaddr_tr', 'hide');
 	showElementById('clonestop_tr', 'hide');
@@ -393,6 +397,7 @@ function action_change() {
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
 			showElementById('update_base_tr','show');
+			showElementById('update_jail_tr','show');
 			break;
 		case "base":
 			showElementById('confirmname_tr','hide');
@@ -516,7 +521,7 @@ $document->render();
 			if ($is_thickjail):
 				html_checkbox2('update_base',gettext('Base update confirm'),!empty($pconfig['update_base']) ? true : false,gettext('This is a thin container, therefore the base release will be updated, this affects child containers.'),'',true);
 			else:
-				html_text2('update_base',gettext('Container update confirm:'),gettext('This is a thick container, therefore the update will be performed within its root, current containers are not affected.'));
+				html_checkbox2('update_jail',gettext('Container update confirm:'),!empty($pconfig['update_jail']) ? true : false,gettext('This is a thick container, therefore the update will be performed within its root, current containers are not affected.'),'',true);
 			endif;
 			html_text2('jail_release',gettext('Current base release:'),htmlspecialchars($current_release));
 			html_text2('auto_boot',gettext('Enable container auto-startup'),htmlspecialchars("This will cause the container to automatically start each time the system restart."));
