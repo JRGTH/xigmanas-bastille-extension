@@ -1273,7 +1273,7 @@ while getopts ":ospruxUvgtZh" option; do
 		echo "Options:"
 		echo "        update|--update    Update a container/release to base -pX release."
 		echo "        upgrade|--upgrade  Upgrade a container/release to X.Y-RELEASE."
-		echo "        install|--install  Finish installing pending updates on Thick containers."
+		echo "        install|--install  Finish installing pending updates on container/release."
 		echo "        clean|--clean      Cleanup the FreeBSD update/upgrade cached files/folders."
 		echo ""; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.
