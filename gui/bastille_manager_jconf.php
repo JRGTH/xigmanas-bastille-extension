@@ -318,12 +318,14 @@ if ($_POST):
 						// Remove obsolete variable.
 						exec("/usr/sbin/sysrc -f $configfile -x {$jail_name_def}_AUTO_START");
 					endif;
-					$cmd = ("/usr/sbin/sysrc -f $configfile -x {$jail_name}_AUTO_START");
-					unset($output,$retval);mwexec2($cmd,$output,$retval);
-					if($retval == 0):
-						//$savemsg .= gtext("Autostart changed successfully.");
-					else:
-						$input_errors[] = gtext("Failed to disable autostart.");
+					if(exec("/usr/sbin/sysrc -f $configfile -qn {$jail_name}_AUTO_START")):
+						$cmd = ("/usr/sbin/sysrc -f $configfile -x {$jail_name}_AUTO_START");
+						unset($output,$retval);mwexec2($cmd,$output,$retval);
+						if($retval == 0):
+							//$savemsg .= gtext("Autostart changed successfully.");
+						else:
+							$input_errors[] = gtext("Failed to disable autostart.");
+						endif;
 					endif;
 				endif;
 

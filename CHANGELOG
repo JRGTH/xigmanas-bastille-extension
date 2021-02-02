@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.84......Minor GUI fixes, revert makewhatis file addition.
 1.0.83......Improve jail/base update, execute fetch/install commands individually.
 1.0.82......Add missing system file to prevent makewhatis not found warning.
 1.0.81......Update GUI pages to work with later bastille releases.

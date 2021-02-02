@@ -244,13 +244,15 @@ if($_POST):
 					$container['jailname'] = $_POST['jailname'];
 					$confirm_name = $pconfig['confirmname'];
 					$item = $container['jailname'];
-					$cmd = ("/usr/sbin/sysrc -f {$configfile} -x {$item}_AUTO_START");
-					unset($output,$retval);mwexec2($cmd,$output,$retval);
-					if($retval == 0):
-						header('Location: bastille_manager_gui.php');
-						exit;
-					else:
-						$input_errors[] = gtext("Failed to set no-auto.");
+					if(exec("/usr/sbin/sysrc -f $configfile -qn {$item}_AUTO_START")):
+						$cmd = ("/usr/sbin/sysrc -f $configfile -x {$item}_AUTO_START");
+						unset($output,$retval);mwexec2($cmd,$output,$retval);
+						if($retval == 0):
+							header('Location: bastille_manager_gui.php');
+							exit;
+						else:
+							$input_errors[] = gtext("Failed to set no-auto.");
+						endif;
 					endif;
 				endif;
 				break;

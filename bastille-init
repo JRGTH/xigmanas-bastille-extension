@@ -391,11 +391,6 @@ include_files()
 				install -m 0555 ${SYSTEM_INCLUDE}/sum /usr/bin/sum
 			fi
 		fi
-		if [ ! -f "/usr/bin/makewhatis" ]; then
-			if [ -f "${SYSTEM_INCLUDE}/makewhatis" ]; then
-				install -m 0555 ${SYSTEM_INCLUDE}/makewhatis /usr/bin/makewhatis
-			fi
-		fi
 	else
 		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="NO" >/dev/null 2>&1
 	fi
