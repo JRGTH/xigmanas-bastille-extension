@@ -58,6 +58,7 @@ if(!get_all_release_list()):
 endif;
 
 if($_POST):
+	global $jail_dir;
 	global $configfile;
 	unset($input_errors);
 	$pconfig = $_POST;
@@ -69,6 +70,8 @@ if($_POST):
 		$jname = $pconfig['jailname'];
 		$ipaddr = $pconfig['ipaddress'];
 		$release = $pconfig['release'];
+		$resolv_conf = "{$jail_dir}/{$jname}/root/etc/resolv.conf";
+		$resolv_host = "/var/etc/resolv.conf";
 		$options = "";
 		if ($_POST['interface'] == 'Config'):
 			$interface = "";
@@ -101,6 +104,11 @@ if($_POST):
 				if($retval == 0):
 					if ($_POST['autostart']):
 						exec("/usr/sbin/sysrc -f {$configfile} {$jname}_AUTO_START=\"YES\"");
+					endif;
+					if(is_link($resolv_conf)):
+						if(unlink($resolv_conf)):
+							exec("/usr/local/bin/bastille cp $jname $resolv_host etc");
+						endif;
 					endif;
 					//$savemsg .= gtext("Boot Environment created and activated successfully.");
 					header('Location: bastille_manager_gui.php');

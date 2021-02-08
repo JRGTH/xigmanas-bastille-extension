@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.88......Fix for properly copy host resolv.conf to jails.
 1.0.87......Cosmetic changes, update help output.
 1.0.86......Implement release native upgrade, re-add makewhatis since is needed by freebsd-update.
 1.0.85......Add missing system file to properly compare and merge files upon upgrades.
