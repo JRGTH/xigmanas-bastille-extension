@@ -411,7 +411,7 @@ required_updates()
 	# Check for critical and/or required updates and bug fixes and apply them.
 	# This is because not always the bastille version is increased on updates and/or bug fixes.
 	if [ -f "${INSTALLPATH}${USRLOCAL}/share/${APPNAME}/rename.sh" ]; then
-		if ! grep -qwE '{ZFS_DATASET_ORIGIN}(.*){ZFS_DATASET_TARGET}' ${INSTALLPATH}${USRLOCAL}/share/${APPNAME}/rename.sh; then
+		if ! grep -qw '{ZFS_DATASET_ORIGIN}.*{ZFS_DATASET_TARGET}' ${INSTALLPATH}${USRLOCAL}/share/${APPNAME}/rename.sh; then
 			echo "Required update found, performing update..."
 			echo "${DATE}: ${APPNAME} required update has been applied" >> ${EXTLOGFILE}
 			REQUIRED_UPDATE="1"
