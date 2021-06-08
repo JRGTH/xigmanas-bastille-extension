@@ -119,9 +119,9 @@ if($_POST):
 					$ausgabe = preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $ausgabe);
 					ob_end_clean();
 					$savemsg .= str_replace("\n", "<br />", $ausgabe)."<br />";
-					exec("/usr/sbin/sysrc -f {$configfile} ZFS_ACTIVATED=\"YES\"");
+					// Set back default distfiles.
+					exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$default_distfiles\"");
 				else:
-					//$input_errors[] = gtext('An error has occurred ??????.');
 					$errormsg .= sprintf(gtext('%s Failed to download and/or extract release base.'),$get_release);
 				endif;
 			endif;
@@ -233,9 +233,11 @@ $document->render();
 		<tbody>
 <?php
 			$a_action = [
+				'13.0-RELEASE' => gettext('13.0-RELEASE'),
 				'12.2-RELEASE' => gettext('12.2-RELEASE'),
 				'12.1-RELEASE' => gettext('12.1-RELEASE'),
 				'12.0-RELEASE' => gettext('12.0-RELEASE'),
+				'11.4-RELEASE' => gettext('11.4-RELEASE'),
 				'11.3-RELEASE' => gettext('11.3-RELEASE'),
 				'11.2-RELEASE' => gettext('11.2-RELEASE'),
 			];
