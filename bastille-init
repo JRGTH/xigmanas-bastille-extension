@@ -919,6 +919,16 @@ reset_install()
 	if [ -f "${CWDIR}/version" ]; then
 		rm -f ${CWDIR}/version
 	fi
+
+	# Set default config.
+	sysrc -f ${CWDIR}${EXTCONF} GUI_ENABLE=YES INSTALL_DIR=${CWDIR} >/dev/null 2>&1
+
+	echo ""
+	echo "*************************************************************************************************************"
+	echo "* The configuration was reset, please go to [Extensions > Bastille > Configuration] to configure bastille.  *"
+	echo "* Alternatively you can edit the '/usr/local/etc/bastille/bastille.conf' file manually.                     *"
+	echo "*************************************************************************************************************"
+	echo ""
 }
 
 remove_addon()
