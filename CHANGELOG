@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.92......Set file permissions.
 1.0.91......Add required files from FreeBSD 13.0 base release, update config.
 1.0.90......Update release list, fix bug in tarballs page.
 1.0.89......Fix small grep/regex error.
