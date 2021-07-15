@@ -68,9 +68,6 @@ if (1 == mwexec("/bin/cat {$configfile} | /usr/bin/grep 'BACKUP_DIR='")) {
 }
 $backup_path = exec("/bin/cat {$configfile} | /usr/bin/grep 'BACKUP_DIR=' | cut -d'\"' -f2");
 
-$prdname = "bastille";
-$tarballversion = "/usr/local/bin/bastille";
-
 if ($_POST) {
 	global $zfs_activated;
 	global $backup_path_bastille;
@@ -189,6 +186,7 @@ if ($_POST) {
 					$output = [];
 					exec($cmd,$output,$return_val);
 					if($return_val == 0):
+						unset ($errormsg);
 						ob_start();
 						include("{$logevent}");
 						$ausgabe = ob_get_contents();
@@ -251,19 +249,6 @@ if ($_POST) {
 			exec("echo '{$date}: {$application}: Failed to restore container, file {$filename_trim} not found' >> {$logfile}");
 			}
 		endif;
-	}
-}
-
-function get_version_bastille() {
-	global $tarballversion, $prdname;
-	if (is_file("{$tarballversion}")) {
-		//exec("/bin/cat {$tarballversion}", $result);
-		exec("/usr/bin/grep 'BASTILLE_VERSION=' {$tarballversion} | cut -d'\"' -f2", $result);
-		return ($result[0]);
-	}
-	else {
-		exec("/usr/local/bin/{$prdname} version | awk 'NR==1'", $result);
-		return ($result[0]);
 	}
 }
 

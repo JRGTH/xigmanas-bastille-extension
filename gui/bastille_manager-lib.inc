@@ -40,6 +40,7 @@ require_once 'system.inc';
 // internal PHP functions rather than external shell commands.
 
 //$rootfolder = dirname($config['rc']['postinit']['cmd'][$i]);
+$prdname = "bastille";
 $application = "Bastille Manager";
 $restore_name = "restore";
 $confdir = "/var/etc/bastille_conf";
@@ -62,6 +63,7 @@ $reldir = "{$rootfolder}/releases";
 $backup_path_bastille = exec("/usr/sbin/sysrc -f $rootfolder/bastille-dist/usr/local/etc/bastille/bastille.conf -qn bastille_backupsdir");
 $zfs_support = exec("/usr/bin/grep 'ZFS_SUPPORT=' $configfile | /usr/bin/cut -d'\"' -f2");
 $zfs_activated = exec("/usr/bin/grep 'ZFS_ACTIVATED=' $configfile | /usr/bin/cut -d'\"' -f2");
+$tarballversion = "/usr/local/bin/bastille";
 
 // Ensure the root directory is configured.
 if ($rootfolder == "")
@@ -79,6 +81,20 @@ if (is_file("{$rootfolder}/postinit")) unlink("{$rootfolder}/postinit");
 function is_dir_empty($reldir) {
 	if (!is_readable($reldir)) return NULL; 
 	return (count(scandir($reldir)) == 2);
+}
+
+// Get bastille version
+function get_version_bastille() {
+	global $tarballversion, $prdname;
+	if (is_file("{$tarballversion}")) {
+		//exec("/bin/cat {$tarballversion}", $result);
+		exec("/usr/bin/grep 'BASTILLE_VERSION=' {$tarballversion} | cut -d'\"' -f2", $result);
+		return ($result[0]);
+	}
+	else {
+		exec("/usr/local/bin/{$prdname} version | awk 'NR==1'", $result);
+		return ($result[0]);
+	}
 }
 
 // Initial install banner

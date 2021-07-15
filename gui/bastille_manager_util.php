@@ -112,7 +112,23 @@ if($_POST):
 					$container['jailname'] = $_POST['jailname'];
 					$confirm_name = $pconfig['confirmname'];
 					$item = $container['jailname'];
-					$cmd = ("/usr/local/bin/bastille export '{$item}'");
+					$bastille_version = get_version_bastille();
+					$bastille_version_min = "0920210714";
+					$bastille_version_format = str_replace(".", "", $bastille_version);
+					$bastille_bin_path = "/usr/local/bin";
+
+					if($bastille_version_format >= $bastille_version_min):
+						if ($zfs_activated == "YES"):
+							$export_format = "--xz";
+							$cmd = ("$bastille_bin_path/bastille export $export_format '{$item}'");
+						else:
+							$export_format = "--txz";
+							$cmd = ("$bastille_bin_path/bastille export $export_format '{$item}'");
+						endif;
+					else:
+						$cmd = ("$bastille_bin_path/bastille export '{$item}'");
+					endif;
+
 					unset($output,$retval);mwexec2($cmd,$output,$retval);
 					if($retval == 0):
 						$savemsg .= gtext("Container backup process completed successfully.");
@@ -120,7 +136,7 @@ if($_POST):
 						//header('Location: bastille_manager_gui.php');
 						//exit;
 					else:
-						$input_errors[] = gtext("Failed to backup container.");
+						$input_errors[] = gtext("Failed to backup container, please stop [{$item}] before backup.");
 						exec("echo '{$date}: {$application}: Failed to backup container {$item}' >> {$logfile}");
 					endif;
 				endif;
