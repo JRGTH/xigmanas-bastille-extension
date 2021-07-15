@@ -1062,6 +1062,14 @@ rc_params()
 		sysrc -f ${BASTILLECONF} bastille_prefix="${CWDIR}" >/dev/null 2>&1
 	fi
 
+	# Set required variables.
+	if ! sysrc -f ${BASTILLECONF} -qc bastille_compress_gz_options; then
+		sysrc -f ${BASTILLECONF} bastille_compress_gz_options="-1 -v" >/dev/null 2>&1
+	fi
+	if ! sysrc -f ${BASTILLECONF} -qc bastille_decompress_gz_options; then
+		sysrc -f ${BASTILLECONF} bastille_decompress_gz_options="-k -d -c -v" >/dev/null 2>&1
+	fi
+
 	# Set bastille.conf location.
 	if ! sysrc -f ${CWDIR}${EXTCONF} -n BASTILLE_CONFIG 2>/dev/null | grep -q "${CWDIR}/${FULLAPPNAME}${BASTILLECONF}"; then
 		sysrc -f ${CWDIR}${EXTCONF} BASTILLE_CONFIG="${CWDIR}/${FULLAPPNAME}${BASTILLECONF}" >/dev/null 2>&1
