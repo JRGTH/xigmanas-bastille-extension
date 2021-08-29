@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.0.95......Add new export/import features.
 1.0.94......check for required variables for bastille 0.9.x.
 1.0.93......Quick update to support bastille 0.9.x.
 1.0.92......Set file permissions.

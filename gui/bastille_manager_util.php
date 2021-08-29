@@ -116,14 +116,57 @@ if($_POST):
 					$bastille_version_min = "0920210714";
 					$bastille_version_format = str_replace(".", "", $bastille_version);
 					$bastille_bin_path = "/usr/local/bin";
+					$export_option = "";
+					$skip_safemode = "";
+
+					if(isset($_POST['format'])):
+						$export_format = $_POST['format'];
+					endif;
+					switch($export_format):
+						case 'default':
+							break;
+						case 'gz':
+							$user_export_format = "--gz";
+							break;
+						case 'raw':
+							$user_export_format = "--raw";
+							break;
+						case 'tgz':
+							$user_export_format = "--tgz";
+							$skip_safemode = "yes";
+							break;
+						case 'txz':
+							$user_export_format = "--txz";
+							$skip_safemode = "yes";
+							break;
+						case 'xz':
+							$user_export_format = "--xz";
+							break;
+					endswitch;
+
+					if ($zfs_activated == "YES"):
+						if($pconfig['safemode']):
+							if(!$skip_safemode):
+								$export_option = "--safe";
+							endif;
+						endif;
+					endif;
 
 					if($bastille_version_format >= $bastille_version_min):
 						if ($zfs_activated == "YES"):
-							$export_format = "--xz";
-							$cmd = ("$bastille_bin_path/bastille export $export_format '{$item}'");
+							if ($pconfig['format'] == "default"):
+								$export_format = "--xz";
+								$cmd = ("$bastille_bin_path/bastille export $export_option $export_format '{$item}'");
+							else:
+								$cmd = ("$bastille_bin_path/bastille export $export_option $user_export_format '{$item}'");
+							endif;
 						else:
-							$export_format = "--txz";
-							$cmd = ("$bastille_bin_path/bastille export $export_format '{$item}'");
+							if ($pconfig['format'] == "default"):
+								$export_format = "--txz";
+								$cmd = ("$bastille_bin_path/bastille export $export_format '{$item}'");
+							else:
+								$cmd = ("$bastille_bin_path/bastille export $user_export_format '{$item}'");
+							endif;
 						endif;
 					else:
 						$cmd = ("$bastille_bin_path/bastille export '{$item}'");
@@ -399,12 +442,18 @@ function action_change() {
 	showElementById('clonestop_tr', 'hide');
 	showElementById('auto_boot_tr', 'hide');
 	showElementById('no_autoboot_tr', 'hide');
+	showElementById('backup_tr', 'hide');
+	showElementById('format_tr', 'hide');
+	showElementById('safemode_tr', 'hide');
 	//showElementById('dateadd_tr','hide');
 	var action = document.iform.action.value;
 	switch (action) {
 		case "backup":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
+			showElementById('backup_tr', 'show');
+			showElementById('format_tr', 'show');
+			showElementById('safemode_tr', 'show');
 			break;
 		case "clone":
 			showElementById('newname_tr','show');
@@ -523,7 +572,28 @@ $document->render();
 				'advanced' => gettext('Advanced'),
 			];
 
+			if ($zfs_activated == "YES"):
+				$c_action = [
+					'default' => gettext('Default'),
+					'gz' => gettext('GZ'),
+					'raw' => gettext('RAW'),
+					'tgz' => gettext('TGZ'),
+					'txz' => gettext('TXZ'),
+					'xz' => gettext('XZ'),
+				];
+			else:
+				$c_action = [
+					'default' => gettext('Default'),
+					'tgz' => gettext('TGZ'),
+					'txz' => gettext('TXZ'),
+				];
+			endif;
+
 			html_combobox2('action',gettext('Action'),$pconfig['action'],$a_action,'',true,false,'action_change()');
+			html_combobox2('format',gettext('Archive format'),$pconfig['format'],$c_action,'',true,false);
+			if ($zfs_activated == "YES"):
+				html_checkbox2('safemode',gettext('Safe ZFS export'),!empty($pconfig['safemode']) ? true : false,gettext('Safely stop and start a ZFS jail before the exporting process, this has no effect on .TGZ/TXZ since the jail should be stopped regardless.'),'',false);
+			endif;
 			html_inputbox2('confirmname',gettext('Enter name for confirmation'),$pconfig['confirmname'],'',true,30);
 			html_checkbox2('nowstop',gettext('Stop container'),!empty($pconfig['nowstop']) ? true : false,gettext('Stop the container if running before deletion.'),'',false);
 			html_inputbox2('newname',gettext('Enter a name for the new container'),$pconfig['newname'],'',true,30);
@@ -544,6 +614,8 @@ $document->render();
 			html_text2('jail_release',gettext('Current base release:'),htmlspecialchars($current_release));
 			html_text2('auto_boot',gettext('Enable container auto-startup'),htmlspecialchars("This will cause the container to automatically start each time the system restart."));
 			html_text2('no_autoboot',gettext('Disable container auto-startup'),htmlspecialchars("This will disable the container automatic startup."));
+			html_text2('backup',gettext('Export container'),htmlspecialchars("This will export a container to a compressed file/image, please execute `bastille export` for more info in regards exporting formats, Default = .XZ on ZFS setups or .TXZ otherwise."));
+
 			if (!$disable_base_change):
 				html_combobox2('release',gettext('New base release'),$pconfig['release'],$b_action,gettext("Warning: this will change current base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues, or use the command line for native upgrade."),true,false,);
 			endif;
