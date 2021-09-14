@@ -199,11 +199,12 @@ $document->render();
 			$b_action = $l_release;
 			html_combobox2('interface',gettext('Network interface'),$pconfig['interface'],$a_action,'',true,false);
 			html_combobox2('release',gettext('Base release'),$pconfig['release'],$b_action,'',true,false);
-			if($options_support):
+			if($bastille_version_min > "0700000000"):
 				html_checkbox2('thickjail',gettext('Create a thick container'),!empty($pconfig['thickjail']) ? true : false,gettext('These containers consume more space, but are self contained.'),'',false);
-				html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Advanced).'),'',false);
+				if($host_version > "12100"):
+					html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Advanced).'),'',false);
+				endif;
 				html_checkbox2('emptyjail',gettext('Create an empty container'),!empty($pconfig['emptyjail']) ? true : false,gettext('This are ideal for custom builds, experimenting with unsupported RELEASES or Linux jails.'),'',false,false,'emptyjail_change()');
-
 			endif;
 			html_checkbox2('nowstart',gettext('Start after creation'),!empty($pconfig['nowstart']) ? true : false,gettext('Start the container after creation(May be overridden by later bastille releases).'),'',false);
 			html_checkbox2('autostart',gettext('Auto start on boot'),!empty($pconfig['autostart']) ? true : false,gettext('Automatically start the container at boot time.'),'',false);
@@ -213,7 +214,6 @@ $document->render();
 	<div id="submit">
 		<input name="Create" type="submit" class="formbtn" value="<?=gtext('Create');?>"/>
 		<input name="Cancel" type="submit" class="formbtn" value="<?=gtext('Cancel');?>" />
-		
 	</div>
 <?php
 	include 'formend.inc';
