@@ -614,7 +614,7 @@ $document->render();
 			html_text2('jail_release',gettext('Current base release:'),htmlspecialchars($current_release));
 			html_text2('auto_boot',gettext('Enable container auto-startup'),htmlspecialchars("This will cause the container to automatically start each time the system restart."));
 			html_text2('no_autoboot',gettext('Disable container auto-startup'),htmlspecialchars("This will disable the container automatic startup."));
-			html_text2('backup',gettext('Export container'),htmlspecialchars("This will export a container to a compressed file/image, please execute `bastille export` for more info in regards exporting formats, Default = .XZ on ZFS setups or .TXZ otherwise."));
+			html_text2('backup',gettext('Export container'),htmlspecialchars("This will export a container to a compressed file/image, please execute `bastille export` for more info in regards exporting formats, Default is .XZ on ZFS setups or .TXZ otherwise, For faster compressed backups consider .GZ/.TGZ."));
 
 			if (!$disable_base_change):
 				html_combobox2('release',gettext('New base release'),$pconfig['release'],$b_action,gettext("Warning: this will change current base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues, or use the command line for native upgrade."),true,false,);
