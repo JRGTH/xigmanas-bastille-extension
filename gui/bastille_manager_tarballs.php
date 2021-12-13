@@ -234,6 +234,7 @@ $document->render();
 <?php
 			$a_action = [
 				'13.0-RELEASE' => gettext('13.0-RELEASE'),
+				'12.3-RELEASE' => gettext('12.3-RELEASE'),
 				'12.2-RELEASE' => gettext('12.2-RELEASE'),
 				'12.1-RELEASE' => gettext('12.1-RELEASE'),
 				'12.0-RELEASE' => gettext('12.0-RELEASE'),
