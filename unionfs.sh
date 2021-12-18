@@ -60,8 +60,10 @@ platform_check()
 	if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
 		pkg_symlink
 	else
-		echo "Cleaning the pkg cache."
-		pkg clean -y -a
+		if [ -d "/var/cache/pkg" ]; then
+			echo "Cleaning the pkg cache."
+			pkg clean -y -a
+		fi
 	fi
 }
 
@@ -171,6 +173,10 @@ extract_pkg() {
 	else
 		echo "Cleaning the pkg cache."
 		pkg clean -y -a
+	fi
+
+	if [ ! -d "${CWDIR}/templates" ]; then
+		mkdir -p ${CWDIR}/templates
 	fi
 }
 
