@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.01......Cosmetic changes, update maintenance page.
 1.1.00......Initial support for Linux jails(experimental).
 1.0.99......Include freebsd-update files for 12.3 release.
 1.0.98......Update release list, include files for 12.3 release.

@@ -211,6 +211,7 @@ if ($_POST) {
 			elseif($zfs_status == "Enabled"):
 				exec("/usr/sbin/sysrc -f {$configfile} ZFS_ACTIVATED=\"YES\"");
 			elseif(!$zfs_activated):
+				unset ($errormsg);
 				exec("/usr/sbin/sysrc -f {$configfile} ZFS_ACTIVATED=\"NO\"");
 				$savemsg .= gtext("ZFS activation option has been skipped.");
 			endif;
@@ -329,7 +330,7 @@ $(document).ready(function(){
 							html_checkbox2('zfs_activate',gtext('ZFS support activation'),'' ? true : false,gtext('Check this to activate ZFS support or leave unchecked to dismiss (requires ZFS support to be available), this is a one time option and this row will disappear after clicking Save button.'),'',false);
 						endif;
 					?>
-					<?php html_filechooser("backup_path", gtext("Backup directory"), $backup_path, gtext("Directory to store containers backup archives, use as file chooser for restoring from file, importable formats: .GZ/TGZ/TXZ/XZ or RAW(no extension on the jail name)."), $backup_path, true, 60);?>
+					<?php html_filechooser("backup_path", gtext("Backup directory"), $backup_path, gtext("Directory to store containers backup archives, use as file chooser for restoring from file, importable formats: .GZ/TGZ/TXZ/XZ or RAW(no extension on the file name)."), $backup_path, true, 60);?>
 			</table>
 			<div id="submit">
 				<input id="save" name="save" type="submit" class="formbtn" title="<?=gtext("Save settings");?>" value="<?=gtext("Save");?>"/>
