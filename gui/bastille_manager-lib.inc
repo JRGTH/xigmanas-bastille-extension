@@ -233,6 +233,8 @@ function get_jail_infos() {
 		// Display release.
 		$r['rel'] = exec("/usr/sbin/jexec {$item} freebsd-version 2>/dev/null");
 		if (!$r['rel']):
+			$r['rel'] = exec("/usr/sbin/jexec {$item} uname -o 2>/dev/null");
+		elseif (!$r['rel']):
 			$r['rel'] = "-";
 		endif;
 		// Display interfaces.
@@ -269,8 +271,14 @@ function get_jail_infos() {
 			endif;
 			$r['logo'] = "{$image_dir}/{$item}_icon.png";
 		else:
-			// Display standard FreeBSD icon.
-			$r['logo'] = "{$image_dir}/bsd_icon.png";
+			$template_icon = exec("/usr/bin/grep linsysfs {$jail_dir}/{$item}/fstab");
+			if($template_icon):
+				// Display standard Linux icon.
+				$r['logo'] = "{$image_dir}/linux_icon.png";
+			else:
+				// Display standard FreeBSD icon.
+				$r['logo'] = "{$image_dir}/bsd_icon.png";
+			endif;
 		endif;
 
 		$result[] = $r;

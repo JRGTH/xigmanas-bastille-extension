@@ -90,6 +90,9 @@ $jail_devfs_ruleset_def = $pconfig['devfs_ruleset'];
 $jail_enforce_statfs_def = $pconfig['enforce_statfs'];
 $jail_vnet_interface_def = $pconfig['vnet_interface'];
 
+// Check if is a Linux jail.
+$is_linux_jail = exec("/usr/bin/grep linsysfs {$jail_dir}/{$jail_name_def}/fstab");
+
 if ($_POST):
 	global $configfile;
 	unset($savemsg);
@@ -377,9 +380,14 @@ endif;
 					if (!$is_vnet):
 						html_combobox('interface', gtext('Interface'),$pconfig['interface'], $a_action, gtext("Set the network interface available from the dropdown menu, usually should not be changed unless replacing/renaming interface or moving jail from host."), true, false, 'action_change()');
 					endif;
-					html_inputbox("securelevel", gtext("securelevel"), $pconfig['securelevel'], gtext("The value of the jail's kern.securelevel. A jail never has a lower securelevel than its parent system, but by setting this parameter it may have a higher one, default is 2."), false, 20);
+
+					if(!$is_linux_jail):
+						html_inputbox("securelevel", gtext("securelevel"), $pconfig['securelevel'], gtext("The value of the jail's kern.securelevel. A jail never has a lower securelevel than its parent system, but by setting this parameter it may have a higher one, default is 2."), false, 20);
+					endif;
 					html_inputbox("devfs_ruleset", gtext("devfs_ruleset"), $pconfig['devfs_ruleset'], gtext("The number of the devfs ruleset that is enforced for mounting devfs in this jail. A value of zero means no ruleset is enforced. default is 4, on VNET jails default is 13."), false, 20);
-					html_inputbox("enforce_statfs", gtext("enforce_statfs"), $pconfig['enforce_statfs'], gtext("This determines what information processes in a jail are able to get about mount points. Affects the behaviour of the following syscalls: statfs, fstatfs, getfsstat and fhstatfs, default is 2."), false, 20);
+					if(!$is_linux_jail):
+						html_inputbox("enforce_statfs", gtext("enforce_statfs"), $pconfig['enforce_statfs'], gtext("This determines what information processes in a jail are able to get about mount points. Affects the behaviour of the following syscalls: statfs, fstatfs, getfsstat and fhstatfs, default is 2."), false, 20);
+					endif;
 					if ($is_vnet):
 						html_inputbox("vnet_interface", gtext("VNET Interface"), $pconfig['vnet_interface'], gtext("Set the VNET interface manually, usually should not be changed unless renaming the interface or moving jail from host."), false, 20);
 					endif;

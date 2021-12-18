@@ -1,6 +1,6 @@
 #!/bin/sh
 # bastille-init
-# Bastille Extension for XigmaNAS x64 11.x and later.
+# Bastille Extension for XigmaNAS x64 12.x and later.
 # Bastille Extension Forum:  https://www.xigmanas.com/forums/viewtopic.php?f=71&t=14848
 # Bastille Extension GitHub: https://github.com/JRGTH/xigmanas-bastille-extension
 # Bastille Homepage:         http://bastillebsd.org/
@@ -127,6 +127,9 @@ runtime_config()
 	fi
 	if [ ! -f "${CWDIR}${BASTILLECONFFILE}" ]; then
 		touch ${CWDIR}${BASTILLECONFFILE}
+	fi
+	if [ ! -d "${CWDIR}/system" ]; then
+		mkdir -p ${CWDIR}/system
 	fi
 
 	# Check for permissions.
@@ -376,6 +379,11 @@ include_files()
 	if [ "$(freebsd-version | cut -d '.' -f1)" -ge 12 ]; then
 		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="YES" >/dev/null 2>&1
 		# Include missing system files.
+		if [ ! -f "/usr/bin/ar" ]; then
+			if [ -f "${SYSTEM_INCLUDE}/ar" ]; then
+				install -m 0555 ${SYSTEM_INCLUDE}/ar /usr/bin/ar
+			fi
+		fi
 		if [ ! -f "/usr/local/bin/jib" ]; then
 			if [ -f "${SYSTEM_INCLUDE}/jib" ]; then
 				install -m 0544 ${SYSTEM_INCLUDE}/jib /usr/local/bin/jib
@@ -1000,7 +1008,7 @@ remove_addon()
 		fi
 	done
 
-	BIN_FILES="/usr/local/bin/jib /usr/sbin/setfib /usr/bin/sum /usr/bin/diff3 /usr/bin/makewhatis"
+	BIN_FILES="/usr/local/bin/ar /usr/local/bin/jib /usr/sbin/setfib /usr/bin/sum /usr/bin/diff3 /usr/bin/makewhatis"
 	for FILE in ${BIN_FILES}; do
 		if [ -f "${FILE}" ]; then
 			rm -rf ${FILE}
@@ -1030,6 +1038,11 @@ get_versions()
 
 ext_start()
 {
+	if sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
+		${CWDIR}/unionfs.sh load_kmods
+		${CWDIR}/unionfs.sh unionfs_on
+	fi
+
 	# Start bastille jails.
 	if [ -d "${CWDIR}/jails" ]; then
 		JAIL_LIST=$(bastille list jail)
@@ -1224,6 +1237,18 @@ bastille_init()
 
 }
 
+linux_compat()
+{
+	# Manually enable Linux compatibility(Experimental).
+	if ! sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
+		${CWDIR}/unionfs.sh fetch_pkg && ${CWDIR}/unionfs.sh load_kmods && ${CWDIR}/unionfs.sh unionfs_on && sysrc -f ${CWDIR}${EXTCONF} LINUX_COMPAT_SUPPORT="YES" >/dev/null 2>&1
+	else
+		echo "Already enabled."
+	fi
+
+	exit 0
+}
+
 # Run-time configuration.
 runtime_config
 
@@ -1269,6 +1294,9 @@ clean|--clean)
 	done
 	exit 0
 	;;
+linux_compat)
+	linux_compat
+	;;
 esac
 
 while getopts ":ospruxUvgtZh" option; do
@@ -1285,6 +1313,7 @@ while getopts ":ospruxUvgtZh" option; do
 		echo "        -Z  Activate ZFS for ${PRDNAME} Extension."
 		echo "        -x  Reset ${PRDNAME}/Extension config."
 		echo "        -U  Uninstall ${PRDNAME} (Extension files only)."
+		#echo "        -L  Enable Linux compatibility(Experimental)."
 		echo "        -h  Display this help message."
 		echo
 		echo "Advanced Usage: ${SCRIPTNAME} [option] [container] [release] | [newrelease]"
@@ -1305,6 +1334,7 @@ while getopts ":ospruxUvgtZh" option; do
 		[g]) gui_enable; exit 0 ;; # For enable the addon gui.
 		[t]) gui_disable; exit 0 ;; # For disable the addon gui.
 		[Z]) zfs_activate;;
+		#[L]) linux_compat;;
 		[?]) echo "Invalid option, -h for usage."; exit 1;;
 	esac
 done
