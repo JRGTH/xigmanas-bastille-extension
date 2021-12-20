@@ -44,6 +44,8 @@ CWDIR=$(dirname $(realpath $0))
 
 # Global variables.
 CWDIR_TRIM=""
+BASTILLE_ZFS_ZPOOL_MOUNTPOINT=""
+BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM=""
 REQUIRED_UPDATE=""
 PLATFORM=$(uname -m)
 PRODUCT=$(uname -i)
@@ -86,9 +88,19 @@ OPT="${1}"
 # Bastille required
 if [ -f "${BASTILLECONF}" ]; then
 	. /${BASTILLECONF}
-	# Always enforce ZFS activation below "/mnt/" from the extension.
-	if echo "${CWDIR}" | grep -q '/mnt/'; then
-		CWDIR_TRIM=$(echo "${CWDIR}" | sed "s|/mnt/||;s|/${bastille_zfs_prefix}||")
+	if [ "${bastille_zfs_enable}" = "YES" -o "${bastille_zfs_enable}" = "yes" ]; then
+		if [ -n "${bastille_zfs_prefix}" ] && [ -n "${bastille_zfs_zpool}" ]; then
+			# Always enforce ZFS activation below "/mnt/" from the extension.
+			if echo "${CWDIR}" | grep -q '/mnt/'; then
+				CWDIR_TRIM=$(echo "${CWDIR}" | sed "s|/mnt/||;s|/${bastille_zfs_prefix}||")
+			fi
+
+			BASTILLE_ZFS_ZPOOL_MOUNTPOINT=$(zfs get -H -o value mountpoint "${bastille_zfs_zpool}")
+			BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM=""
+			if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | grep -q '/mnt/'; then
+				BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM=$(echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | sed "s|/mnt/||;s|/${bastille_zfs_prefix}||")
+			fi
+		fi
 	fi
 fi
 
@@ -828,7 +840,7 @@ zfs_activate()
 {
 	# Check if ZFS is already configured.
 	# Always enforce ZFS activation below "/mnt/" from the extension.
-	if echo "${bastille_zfs_zpool}" | grep -qw "${CWDIR_TRIM}$"; then
+	if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM}" | grep -qw "${CWDIR_TRIM}$"; then
 
 		BASTILLE_DIR=$(echo "${CWDIR}" | grep -o '[^/]*$')
 		if [ "${bastille_zfs_prefix}" != "${BASTILLE_DIR}" ]; then
@@ -1114,7 +1126,7 @@ rc_params()
 				if zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
 					sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="YES" >/dev/null 2>&1
 				else
-					if echo "${bastille_zfs_zpool}" | grep -qw "${CWDIR_TRIM}$"; then
+					if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM}" | grep -qw "${CWDIR_TRIM}$"; then
 						sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="AVA" >/dev/null 2>&1
 					else
 						sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="ERR" >/dev/null 2>&1
