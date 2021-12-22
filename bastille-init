@@ -980,6 +980,9 @@ reset_install()
 	echo "* Alternatively you can edit the '/usr/local/etc/bastille/bastille.conf' file manually.                     *"
 	echo "*************************************************************************************************************"
 	echo ""
+	echo "Notice: If Linux Jail support was enabled, please execute the below command to re-enable it:"
+	echo "==> sysrc -f ${CWDIR}${EXTCONF} LINUX_COMPAT_SUPPORT=\"YES\""
+	echo ""
 }
 
 remove_addon()
@@ -1282,13 +1285,27 @@ bastille_init()
 
 linux_compat()
 {
-	# Manually enable Linux compatibility(Experimental).
-	if ! sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
-		${CWDIR}/unionfs.sh fetch_pkg && ${CWDIR}/unionfs.sh load_kmods && ${CWDIR}/unionfs.sh unionfs_on && sysrc -f ${CWDIR}${EXTCONF} LINUX_COMPAT_SUPPORT="YES" >/dev/null 2>&1
+	if ping -c1 -t5 freebsd.org > /dev/null; then
+		# Manually enable Linux compatibility(Experimental).
+		if ! sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
+			${CWDIR}/unionfs.sh fetch_pkg && ${CWDIR}/unionfs.sh load_kmods && ${CWDIR}/unionfs.sh unionfs_on && sysrc -f ${CWDIR}${EXTCONF} LINUX_COMPAT_SUPPORT="YES" >/dev/null 2>&1
+		else
+			echo "Already enabled."
+		fi
+		exit 0
 	else
-		echo "Already enabled."
+		echo "Internet connection required to enable this feature."
+		exit 1
 	fi
+}
 
+linux_compat_disable()
+{
+	if sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
+		echo "Disabling Linux jail compatibility support..."
+		sysrc -f ${CWDIR}${EXTCONF} -x LINUX_COMPAT_SUPPORT
+		echo "Done!, server reboot is recommended."
+	fi
 	exit 0
 }
 
@@ -1340,6 +1357,9 @@ clean|--clean)
 linux_compat)
 	linux_compat
 	;;
+linux_compat_disable)
+	linux_compat_disable
+	;;
 bastillebsd_update)
 	bastille_core_update
 	;;
@@ -1368,6 +1388,11 @@ while getopts ":ospruxUvgtZh" option; do
 		echo "        upgrade|--upgrade  Upgrade a container/release to X.Y-RELEASE."
 		echo "        install|--install  Finish installing pending updates on container/release."
 		echo "        clean|--clean      Cleanup the FreeBSD update/upgrade cached files/folders."
+		echo ""
+		echo""
+		echo "Experimental:"
+		echo "To enable experimental Linux jail support please execute: \"${SCRIPTNAME} linux_compat\""
+		echo "To disable experimental Linux jail support please execute: \"${SCRIPTNAME} linux_compat_disable\""
 		echo ""; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.
 		[s]) bastille_start;;

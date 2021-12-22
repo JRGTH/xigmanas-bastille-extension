@@ -50,12 +50,12 @@ function get_rel_list() {
 	global $jail_dir;
 	$result = [];
 	if (is_dir("{$rootfolder}/releases")):
-		$entries = preg_grep('/^[0-9]+\.[0-9]+\-RELEASE/', scandir("{$rootfolder}/releases"));
+		$entries = preg_grep('/^[0-9]+\.[0-9]+\-RELEASE|(Debian[0-9]{1,2}$)|(Ubuntu_[0-9]{4}$)/', scandir("{$rootfolder}/releases"));
 		foreach($entries as $entry):
    		$a = preg_split('/\t/',$entry);
 		$r = [];
 		$name = $a[0];
-		if(preg_match('/^[0-9]+\.[0-9]+\-RELEASE/', $name, $m)):
+		if(preg_match('/^[0-9]+\.[0-9]+\-RELEASE|(Debian[0-9]{1,2}$)|(Ubuntu_[0-9]{4}$)/', $name, $m)):
 			$r['name'] = $m[0];
 		else:
 			$r['name'] = 'unknown';
@@ -68,6 +68,34 @@ function get_rel_list() {
 }
 $rel_list = get_rel_list();
 $sphere_array = $rel_list;
+
+if ($linux_compat_support == "YES"):
+	$a_action = [
+		'13.0-RELEASE' => gettext('13.0-RELEASE'),
+		'12.3-RELEASE' => gettext('12.3-RELEASE'),
+		'12.2-RELEASE' => gettext('12.2-RELEASE'),
+		'12.1-RELEASE' => gettext('12.1-RELEASE'),
+		'12.0-RELEASE' => gettext('12.0-RELEASE'),
+		'11.4-RELEASE' => gettext('11.4-RELEASE'),
+		'11.3-RELEASE' => gettext('11.3-RELEASE'),
+		'11.2-RELEASE' => gettext('11.2-RELEASE'),
+		'ubuntu-bionic' => gettext('Ubuntu-Bionic'),
+		'ubuntu-focal' => gettext('Ubuntu-Focal'),
+		'debian-stretch' => gettext('Debian-Stretch'),
+		'debian-buster' => gettext('Debian-Buster'),
+	];
+else:
+	$a_action = [
+		'13.0-RELEASE' => gettext('13.0-RELEASE'),
+		'12.3-RELEASE' => gettext('12.3-RELEASE'),
+		'12.2-RELEASE' => gettext('12.2-RELEASE'),
+		'12.1-RELEASE' => gettext('12.1-RELEASE'),
+		'12.0-RELEASE' => gettext('12.0-RELEASE'),
+		'11.4-RELEASE' => gettext('11.4-RELEASE'),
+		'11.3-RELEASE' => gettext('11.3-RELEASE'),
+		'11.2-RELEASE' => gettext('11.2-RELEASE'),
+	];
+endif;
 
 if($_POST):
 	unset($input_errors);
@@ -130,9 +158,21 @@ if($_POST):
 
 	if (isset($_POST['Destroy']) && $_POST['Destroy']):
 		if ($_POST['Destroy']):
+
 			$get_release = $pconfig['release_item'];
+			if($get_release == 'ubuntu-bionic'):
+				$get_release = "Ubuntu_1804";
+			elseif($get_release == 'ubuntu-focal'):
+				$get_release = "Ubuntu_2004";
+			elseif($get_release == 'debian-stretch'):
+				$get_release = "Debian9";
+			elseif($get_release == 'debian-buster'):
+				$get_release = "Debian10";
+			endif;
+
 			$check_release = ("{$rootfolder}/releases/{$get_release}");
 			$check_used = exec("/usr/bin/grep -wo {$get_release} {$jail_dir}/*/fstab 2>/dev/null");
+
 			$cmd = ("/usr/local/bin/bastille destroy {$get_release}");
 
 			if (!file_exists($check_release)):
@@ -214,16 +254,18 @@ $document->render();
 <?php
 			if (is_dir($reldir)):
 				if (!is_dir_empty($reldir)):
-					html_titleline2(gettext('FreeBSD Base Release Installed'));
+						html_titleline2(gettext('FreeBSD/Linux Base Release Installed'));
 				endif;
+				foreach ($sphere_array as $sphere_record):
+					if (file_exists("{$reldir}/{$sphere_record['relname']}/root/.profile")):
+						html_text2('releases',gettext('Installed Base:'),htmlspecialchars($sphere_record['relname']));
+					elseif (file_exists("{$reldir}/{$sphere_record['relname']}/debootstrap/debootstrap")):
+						html_text2('releases',gettext('Installed Base:'),htmlspecialchars($sphere_record['relname']));
+					else:
+						html_text2('releases',gettext('Unknown Base:'),htmlspecialchars($sphere_record['relname']));
+					endif;
+				endforeach;
 			endif;
-			foreach ($sphere_array as $sphere_record):
-			if (file_exists("{$reldir}/{$sphere_record['relname']}/root/.profile")):
-				html_text2('releases',gettext('Installed Base:'),htmlspecialchars($sphere_record['relname']));
-			else:
-				html_text2('releases',gettext('Unknown Base:'),htmlspecialchars($sphere_record['relname']));
-			endif;
-			endforeach;
 ?>
 <?php
 			html_separator();
@@ -232,16 +274,7 @@ $document->render();
 		</thead>
 		<tbody>
 <?php
-			$a_action = [
-				'13.0-RELEASE' => gettext('13.0-RELEASE'),
-				'12.3-RELEASE' => gettext('12.3-RELEASE'),
-				'12.2-RELEASE' => gettext('12.2-RELEASE'),
-				'12.1-RELEASE' => gettext('12.1-RELEASE'),
-				'12.0-RELEASE' => gettext('12.0-RELEASE'),
-				'11.4-RELEASE' => gettext('11.4-RELEASE'),
-				'11.3-RELEASE' => gettext('11.3-RELEASE'),
-				'11.2-RELEASE' => gettext('11.2-RELEASE'),
-			];
+
 			html_combobox2('release_item',gettext('Select Base Release'),$pconfig['release_item'],$a_action,'',true,false);
 			html_titleline2(gettext('Optional Distfiles (Overrides config)'));
 			html_checkbox2('lib32',gettext('32-bit Compatibility'),!empty($pconfig['lib32']) ? true : false,gettext('lib32.txz'),'',false);

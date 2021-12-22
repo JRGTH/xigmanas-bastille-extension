@@ -79,12 +79,24 @@ if($_POST):
 			$interface = $pconfig['interface'];
 		endif;
 
+		if($release == 'Ubuntu_1804'):
+			$release = "ubuntu-bionic";
+		elseif($release == 'Ubuntu_2004'):
+			$release = "ubuntu-focal";
+		elseif($release == 'Debian9'):
+			$release = "debian-stretch";
+		elseif($release == 'Debian10'):
+			$release = "debian-buster";
+		endif;
+
 		if($_POST['thickjail'] && $_POST['vnetjail']):
 			$options = "-T -V";
 		elseif($_POST['thickjail']):
 			$options = "-T";
 		elseif($_POST['vnetjail']):
 			$options = "-V";
+		elseif($_POST['linuxjail']):
+			$options = "-L";
 		endif;
 
 		if($_POST['emptyjail']):
@@ -134,25 +146,54 @@ $(window).on("load",function() {
 function emptyjail_change() {
 	switch(document.iform.emptyjail.checked) {
 		case false:
-	showElementById('ipaddress_tr','show');
-	showElementById('interface_tr', 'show');
-	showElementById('release_tr', 'show');
-	showElementById('thickjail_tr', 'show');
-	showElementById('vnetjail_tr', 'show');
-	showElementById('nowstart_tr', 'show');
-	showElementById('autostart_tr', 'show');
-			break;
+			showElementById('ipaddress_tr','show');
+			showElementById('interface_tr', 'show');
+			showElementById('release_tr', 'show');
+			showElementById('thickjail_tr', 'show');
+			showElementById('vnetjail_tr', 'show');
+			showElementById('nowstart_tr', 'show');
+			showElementById('autostart_tr', 'show');
+			showElementById('linuxjail_tr', 'show');
+		break;
 		case true:
-				showElementById('ipaddress_tr','hide');
-				showElementById('interface_tr', 'hide');
-				showElementById('release_tr', 'hide');
-				showElementById('thickjail_tr', 'hide');
-				showElementById('vnetjail_tr', 'hide');
-				showElementById('nowstart_tr', 'hide');
-				showElementById('autostart_tr', 'hide');
-			break;
+			showElementById('ipaddress_tr','hide');
+			showElementById('interface_tr', 'hide');
+			showElementById('release_tr', 'hide');
+			showElementById('thickjail_tr', 'hide');
+			showElementById('vnetjail_tr', 'hide');
+			showElementById('nowstart_tr', 'hide');
+			showElementById('autostart_tr', 'hide');
+			showElementById('linuxjail_tr', 'hide');
+		break;
 	}
 }
+
+function linuxjail_change() {
+	switch(document.iform.linuxjail.checked) {
+		case false:
+			showElementById('ipaddress_tr','show');
+			showElementById('interface_tr', 'show');
+			showElementById('release_tr', 'show');
+			showElementById('thickjail_tr', 'show');
+			showElementById('vnetjail_tr', 'show');
+			showElementById('nowstart_tr', 'show');
+			showElementById('autostart_tr', 'show');
+			showElementById('linuxjail_tr', 'show');
+			showElementById('emptyjail_tr', 'show');
+		break;
+		case true:
+			showElementById('ipaddress_tr','show');
+			showElementById('interface_tr', 'show');
+			showElementById('release_tr', 'show');
+			showElementById('thickjail_tr', 'hide');
+			showElementById('vnetjail_tr', 'hide');
+			showElementById('nowstart_tr', 'show');
+			showElementById('autostart_tr', 'show');
+			showElementById('emptyjail_tr', 'hide');
+		break;
+	}
+}
+
 //]]>
 </script>
 <?php
@@ -205,6 +246,9 @@ $document->render();
 					html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Advanced).'),'',false);
 				endif;
 				html_checkbox2('emptyjail',gettext('Create an empty container'),!empty($pconfig['emptyjail']) ? true : false,gettext('This are ideal for custom builds, experimenting with unsupported RELEASES or Linux jails.'),'',false,false,'emptyjail_change()');
+				
+				html_checkbox2('linuxjail',gettext('Create a Linux container'),!empty($pconfig['linuxjail']) ? true : false,gettext('This will create a Linux container, this is highly experimental and for testing purposes.'),'',false,false,'linuxjail_change()');
+
 			endif;
 			html_checkbox2('nowstart',gettext('Start after creation'),!empty($pconfig['nowstart']) ? true : false,gettext('Start the container after creation(May be overridden by later bastille releases).'),'',false);
 			html_checkbox2('autostart',gettext('Auto start on boot'),!empty($pconfig['autostart']) ? true : false,gettext('Automatically start the container at boot time.'),'',false);
@@ -222,6 +266,7 @@ $document->render();
 <script type="text/javascript">
 <!--
 emptyjail_change();
+linuxjail_change();
 //-->
 </script>
 <?php

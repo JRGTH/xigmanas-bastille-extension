@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.07......Add Linux jails basic management to the WebGUI.
 1.1.06......Add ability to manually update bastille core files.
 1.1.05......Fix a bug to display correct VNET interface.
 1.1.04......Fix a bug that prevents VNET jail creation.

@@ -65,6 +65,7 @@ $zfs_activated = exec("/usr/bin/grep 'ZFS_ACTIVATED=' $configfile | /usr/bin/cut
 $tarballversion = "/usr/local/bin/bastille";
 $bastille_version_min = exec("grep 'BASTILLE_VERSION=' $tarballversion | cut -d '\"' -f2 | tr -d '.'");
 $host_version = exec("/bin/cat /etc/prd.version | tr -d '.'");
+$linux_compat_support = exec("/usr/bin/grep 'LINUX_COMPAT_SUPPORT=' $configfile | /usr/bin/cut -d'\"' -f2");
 
 // Ensure the root directory is configured.
 if ($rootfolder == "")
