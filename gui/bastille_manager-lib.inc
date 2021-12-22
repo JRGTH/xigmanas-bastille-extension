@@ -238,7 +238,7 @@ function get_jail_infos() {
 			$r['rel'] = "-";
 		endif;
 		// Display interfaces.
-		$r['nic'] = exec("/usr/bin/grep -w 'interface' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
+		$r['nic'] = exec("/usr/bin/grep -wE 'interface.*=.*;|vnet.interface.*=.*;' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
 		if (!$r['nic']):
 			$r['nic'] = "-";
 		endif;
