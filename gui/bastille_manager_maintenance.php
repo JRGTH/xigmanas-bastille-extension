@@ -90,6 +90,24 @@ if ($_POST) {
 		endif;
 	endif;
 
+	if(isset($_POST['update']) && $_POST['update']):
+		$cmd = sprintf('%1$s/bastille-init bastillebsd_update > %2$s',$rootfolder,$logevent);
+		$return_val = 0;
+		$output = [];
+		exec($cmd,$output,$return_val);
+		if($return_val == 0):
+			ob_start();
+			include("{$logevent}");
+			$ausgabe = ob_get_contents();
+			ob_end_clean(); 
+			$savemsg .= str_replace("\n", "<br />", $ausgabe)."<br />";
+		else:
+			$input_errors[] = gtext('An error has occurred during core update process.');
+			$cmd = sprintf('echo %s: %s An error has occurred during core update process. >> %s',$date,$application,$logfile);
+			exec($cmd);
+		endif;
+	endif;
+
 	// Remove only extension related files during cleanup.
 	if (isset($_POST['uninstall']) && $_POST['uninstall']) {
 		if(isset($_POST['delete_confirm']) && $_POST['delete_confirm']):
@@ -335,6 +353,7 @@ $(document).ready(function(){
 			<div id="submit">
 				<input id="save" name="save" type="submit" class="formbtn" title="<?=gtext("Save settings");?>" value="<?=gtext("Save");?>"/>
 				<input name="upgrade" type="submit" class="formbtn" title="<?=gtext("Upgrade Extension and Bastille Packages");?>" value="<?=gtext("Upgrade");?>" />
+				<input name="update" type="submit" class="formbtn" title="<?=gtext("Always Update Bastille Core Package Only");?>" value="<?=gtext("Update");?>" />
 				<input name="restore" type="submit" class="formbtn" title="<?=gtext("Restore a container");?>" value="<?=gtext("Restore");?>" />
 			</div>
 			<div id="remarks">

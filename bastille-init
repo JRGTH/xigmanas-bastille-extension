@@ -224,6 +224,32 @@ bastille_upgrade()
 	fi
 }
 
+bastille_core_update()
+{
+	# Check if bastille already exist.
+	
+	if [ -f "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}" ]; then
+		# Fetch latest bastille package.
+		echo "Fetching ${APPNAME} files..."
+		fetch -ao ${CWDIR}/${BRANCH}.zip --no-verify-peer --timeout=30 ${BATSILLE_URL} || \
+		error_notify "Error: A problem has occurred while fetching ${APPNAME}."
+		bastille_pkg_extract
+	fi
+
+	if [ -f "${CWDIR}/${BRANCH}.zip" ] && [ -f "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}" ]; then
+		echo "Extracting ${APPNAME}..."
+		tar -xf ${CWDIR}/${BRANCH}.zip --exclude='.git*' --exclude='docs' --exclude='bastille.conf' --strip-components 1 -C ${CWDIR}/${FULLAPPNAME} || \
+		error_notify "Error: A problem has occurred while extractig ${APPNAME} files."
+		chmod 555 ${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}
+		chmod 555 ${CWDIR}/${FULLAPPNAME}${BASTILLERCD}
+		rm -f ${CWDIR}/${BRANCH}.zip
+		echo "Done!"
+	fi
+
+	echo "${PRDNAME} core package update completed!"
+	exit 0
+}
+
 ext_initial_download()
 {
 	# Always ensure the version file is present, otherwise update the extension files on startup.
@@ -1313,6 +1339,9 @@ clean|--clean)
 	;;
 linux_compat)
 	linux_compat
+	;;
+bastillebsd_update)
+	bastille_core_update
 	;;
 esac
 
