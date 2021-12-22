@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.04......Fix a bug that prevents VNET jail creation.
 1.1.03......Add patch to improve ZFS activation, contributed by disaster.
 1.1.02......Create required dir for templates link creation.
 1.1.01......Cosmetic changes, update maintenance page.

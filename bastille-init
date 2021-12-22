@@ -438,6 +438,11 @@ required_updates()
 			bastille_initial_download
 		fi
 	fi
+
+	# Check for a critical bug that prevents VNET jail creation.
+	if grep -q '\\"vnet host interface for Bastille jail ${NAME}"' ${INSTALLPATH}${USRLOCAL}/share/${APPNAME}/create.sh; then
+		sed -i '' 's|\\"vnet host interface for Bastille jail ${NAME}"|\\"vnet host interface for Bastille jail ${NAME}\\"|g' ${INSTALLPATH}${USRLOCAL}/share/${APPNAME}/create.sh
+	fi
 }
 
 postinit_cmd()
