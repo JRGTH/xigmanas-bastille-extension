@@ -154,10 +154,14 @@ runtime_config()
 
 	# Workaround to check for host /tmp sane permissions.
 	# This is because after working with Linux jails, this may be changed to 0777 but XigmaNAS wants 1777.
-	if [ -d "/tmp" ]; then
-		TMP_PERMS=$(stat -f "%Op" "/tmp")
-		if [ "${TMP_PERMS}" != "41777" ]; then
-			chmod 1777 /tmp
+	if grep -qw '\"chmod\ 777\ /tmp\"' ${INSTALLPATH}/usr/local/share/bastille/create.sh; then
+		sed -i '' 's|\"chmod\ 777\ /tmp\"|\"chmod\ 1777\ /tmp\"|g' ${INSTALLPATH}/usr/local/share/bastille/create.sh
+	else
+		if [ -d "/tmp" ]; then
+			TMP_PERMS=$(stat -f "%Op" "/tmp")
+			if [ "${TMP_PERMS}" != "41777" ]; then
+				chmod 1777 /tmp
+			fi
 		fi
 	fi
 }
