@@ -83,6 +83,7 @@ if ($linux_compat_support == "YES"):
 		'ubuntu-focal' => gettext('Ubuntu-Focal'),
 		'debian-stretch' => gettext('Debian-Stretch'),
 		'debian-buster' => gettext('Debian-Buster'),
+		'debian-bullseye' => gettext('Debian-Bullseye'),
 	];
 else:
 	$a_action = [
@@ -168,6 +169,8 @@ if($_POST):
 				$get_release = "Debian9";
 			elseif($get_release == 'debian-buster'):
 				$get_release = "Debian10";
+			elseif($get_release == 'debian-bullseye'):
+				$get_release = "Debian11";
 			endif;
 
 			$check_release = ("{$rootfolder}/releases/{$get_release}");
@@ -276,7 +279,7 @@ $document->render();
 <?php
 
 			html_combobox2('release_item',gettext('Select Base Release'),$pconfig['release_item'],$a_action,'',true,false);
-			html_titleline2(gettext('Optional Distfiles (Overrides config)'));
+			html_titleline2(gettext('Optional Distfiles (Overrides config, has no effect on Linux Releases)'));
 			html_checkbox2('lib32',gettext('32-bit Compatibility'),!empty($pconfig['lib32']) ? true : false,gettext('lib32.txz'),'',false);
 			html_checkbox2('ports',gettext('Ports tree'),!empty($pconfig['ports']) ? true : false,gettext('ports.txz'),'',false);
 			html_checkbox2('src',gettext('System source tree'),!empty($pconfig['src']) ? true : false,gettext('src.txz'),'',false);
