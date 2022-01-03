@@ -151,6 +151,15 @@ runtime_config()
 			chmod 0555 ${FREEBSD_UPDATE}/freebsd-update
 		fi
 	fi
+
+	# Workaround to check for host /tmp sane permissions.
+	# This is because after working with Linux jails, this may be changed to 0777 but XigmaNAS wants 1777.
+	if [ -d "/tmp" ]; then
+		TMP_PERMS=$(stat -f "%Op" "/tmp")
+		if [ "${TMP_PERMS}" != "41777" ]; then
+			chmod 1777 /tmp
+		fi
+	fi
 }
 
 bastille_initial_download()
