@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.11......Fix to replace deprecated PHP date function.
 1.1.10......Add Debian 11(Bullseye) to the WebGUI.
 1.1.09......Always check/update create.sh for /tmp sane permissions.
 1.1.08......Always check for host /tmp sane permissions.

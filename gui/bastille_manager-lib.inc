@@ -49,7 +49,8 @@ $rootfolder = $cwdir;
 $configfile = "$rootfolder/conf/bastille_config";
 $configfile_bastille = "$rootfolder/bastille-dist/usr/local/etc/bastille/bastille.conf";
 $versionfile = "$rootfolder/version";
-$date = strftime('%c');
+//$date = strftime('%c');                // Previous PHP versions, deprecated as of PHP 8.1.
+$date = date('D M d h:i:s Y', time());   // Equivalent date replacement for the previous strftime function.
 $logfile = "$rootfolder/log/bastille_ext.log";
 $logevent = "$rootfolder/log/bastille_last_event.log";
 $backup_path = exec("/usr/bin/grep 'BACKUP_DIR=' $configfile | /usr/bin/cut -d'\"' -f2");
