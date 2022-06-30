@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.12......Fix for PHP 8.1 compatibility.
 1.1.11......Fix to replace deprecated PHP date function.
 1.1.10......Add Debian 11(Bullseye) to the WebGUI.
 1.1.09......Always check/update create.sh for /tmp sane permissions.

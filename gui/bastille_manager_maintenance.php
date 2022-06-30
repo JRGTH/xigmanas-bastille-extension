@@ -274,7 +274,7 @@ if ($_POST) {
 function get_version_ext() {
 	global $versionfile;
 	exec("/bin/cat {$versionfile}", $result);
-	return ($result[0]);
+	return ($result[0] ?? '');
 }
 
 if (is_ajax()) {

@@ -92,11 +92,11 @@ function get_version_bastille() {
 	if (is_file("{$tarballversion}")) {
 		//exec("/bin/cat {$tarballversion}", $result);
 		exec("/usr/bin/grep 'BASTILLE_VERSION=' {$tarballversion} | cut -d'\"' -f2", $result);
-		return ($result[0]);
+		return ($result[0] ?? '');
 	}
 	else {
 		exec("/usr/local/bin/{$prdname} version | awk 'NR==1'", $result);
-		return ($result[0]);
+		return ($result[0] ?? '');
 	}
 }
 
