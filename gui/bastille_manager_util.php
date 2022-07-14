@@ -347,7 +347,9 @@ if($_POST):
 								$input_errors[] = sprintf(gtext("Soure directory: %s does not exist."),$sourcedir);
 							else:
 								if (!$paths_exist):
-									$cmd = ("/bin/echo	\"{$sourcedir}    {$targetdir}    nullfs    {$dir_mode}    0    0\" >> {$rootfolder}/jails/{$item}/fstab");
+									$sourcedirx = exec("/bin/echo \"{$sourcedir}\" | sed 's| |\\\\040|'");
+									$targetdirx = exec("/bin/echo \"{$targetdir}\" | sed 's| |\\\\040|'");
+									$cmd = ("/bin/echo	\"{$sourcedirx}    {$targetdirx}    nullfs    {$dir_mode}    0    0\" >> {$rootfolder}/jails/{$item}/fstab");
 									unset($output,$retval);mwexec2($cmd,$output,$retval);
 									if($retval == 0):
 										if ($_POST['createdir']):
@@ -356,7 +358,7 @@ if($_POST):
 											endif;
 											if ($_POST['automount']):
 												if ($is_running):
-													exec("/sbin/mount_nullfs -o {$dir_mode} {$sourcedir} {$targetdir}");
+													exec("/sbin/mount_nullfs -o {$dir_mode} \"{$sourcedir}\" \"{$targetdir}\"");
 												endif;
 											endif;
 										endif;
@@ -599,8 +601,8 @@ $document->render();
 			html_inputbox2('newname',gettext('Enter a name for the new container'),$pconfig['newname'],'',true,30);
 			html_inputbox2('newipaddr',gettext('Enter a IP address for the new container'),$pconfig['newipaddr'],'',true,30);
 			html_checkbox2('clonestop',gettext('Stop container'),!empty($pconfig['clonestop']) ? true : false,gettext('Stop the container if running before cloning, mandatory on UFS filesystem.'),'',false);
-			html_filechooser("source_path", gtext("Source Data Directory"), $pconfig['source_path'], gtext("Source data directory to be shared, full path here, if the path contain spaces just escape them with \"\\040\", e.g: \"/mnt/my\\040data/music\""), $source_path, false, 60);
-			html_filechooser("target_path", gtext("Target Data Directory"), $pconfig['target_path'], gtext("Target data directory to be mapped, full path to jail here, if the path contain spaces just escape them with \"\\040\", e.g: \"/mnt/extensions/bastille/jails/jail1/root/mnt/my\\040data/music\""), $target_path, false, 60);		
+			html_filechooser("source_path", gtext("Source Data Directory"), $pconfig['source_path'], gtext("Source data directory to be shared, full path here, if the path contain spaces they will be automatically escaped with the ASCII \"\\040\" octal code."), $source_path, false, 60);
+			html_filechooser("target_path", gtext("Target Data Directory"), $pconfig['target_path'], gtext("Target data directory to be mapped, full path to jail here, if the path contain spaces they will be automatically escaped with the ASCII \"\\040\" octal code."), $target_path, false, 60);		
 			html_checkbox2("path_check", gettext("Source/Target path check"),!empty($pconfig['path_check']) ? true : false, gettext("If this option is selected no examination of the source/target directory paths will be performed."), "<b><font color='red'>".gettext("Please use this option only if you know what you are doing here!")."</font></b>", false);			
 			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I want to edit the jail files manually, Warning: It is recommended to stop the jail before config edit to prevent issues.'),'',true);
 			html_checkbox2('readonly',gettext('Read-Only Mode'),!empty($pconfig['readonly']) ? true : false,gettext('Set target directory in Read-Only mode.'),'',true);
