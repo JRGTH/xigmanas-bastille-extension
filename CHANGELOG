@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.13......Cosmetic changes, add note about space escaping in fstab.
 1.1.12......Fix for PHP 8.1 compatibility.
 1.1.11......Fix to replace deprecated PHP date function.
 1.1.10......Add Debian 11(Bullseye) to the WebGUI.
