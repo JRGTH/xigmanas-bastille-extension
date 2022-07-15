@@ -1402,10 +1402,14 @@ while getopts ":ospruxUvgtZh" option; do
 		echo "        install|--install  Finish installing pending updates on container/release."
 		echo "        clean|--clean      Cleanup the FreeBSD update/upgrade cached files/folders."
 		echo ""
-		echo""
+		echo ""
 		echo "Experimental:"
 		echo "To enable experimental Linux jail support please execute: \"${SCRIPTNAME} linux_compat\""
 		echo "To disable experimental Linux jail support please execute: \"${SCRIPTNAME} linux_compat_disable\""
+		echo ""
+		echo ""
+		echo "Support:"
+		echo "To update BastilleBSD core files only to the latest patches and fixes, please execute: \"${SCRIPTNAME} bastillebsd_update\""
 		echo ""; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.
 		[s]) bastille_start;;

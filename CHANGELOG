@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.16......Add help support section for useful commands.
 1.1.15......Add required files from FreeBSD 13.1 base release, update config.
 1.1.14......Automatically deal with spaces on the fstab utility.
 1.1.13......Cosmetic changes, add note about space escaping in fstab.
