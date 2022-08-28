@@ -345,7 +345,7 @@ $(document).ready(function(){
 				</tr>
 					<?php
 						if(!initial_install_banner()):
-							html_checkbox2('zfs_activate',gtext('ZFS support activation'),'' ? true : false,gtext('Check this to activate ZFS support or leave unchecked to dismiss (requires ZFS support to be available), this is a one time option and this row will disappear after clicking Save button.'),'',false);
+							html_checkbox2('zfs_activate',gtext('ZFS support activation'),'' ? true : false,gtext('Check this to activate ZFS support or leave unchecked to dismiss (requires ZFS support to be available/enabled), this is a one time option and this row will disappear after clicking Save button or page refresh.'),'',false);
 						endif;
 					?>
 					<?php html_filechooser("backup_path", gtext("Backup directory"), $backup_path, gtext("Directory to store containers backup archives, use as file chooser for restoring from file, importable formats: .GZ/TGZ/TXZ/XZ or RAW(no extension on the file name)."), $backup_path, true, 60);?>

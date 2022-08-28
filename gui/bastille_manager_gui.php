@@ -224,6 +224,7 @@ $document->render();
 ?>
 <form action="bastille_manager_gui.php" method="post" name="iform" id="iform"><table id="area_data"><tbody><tr><td id="area_data_frame">
 <?php
+	global $sphere_notifier;
 	if(!empty($errormsg)):
 		print_error_box($errormsg);
 	endif;

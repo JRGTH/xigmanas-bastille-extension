@@ -80,6 +80,7 @@ function htmlButton($name, $text, $value="", $title="", $confirm="", $buttonImag
 }
 
 function parseConfigFile($configFile) {
+	global $section;
 	$fileArray = file($configFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);	// load config file content to array
 	$configArray = array();
 	foreach($fileArray as $line) {							// create array from config
