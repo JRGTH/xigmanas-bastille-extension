@@ -41,10 +41,12 @@ require_once("bastille_manager-lib.inc");
 
 $pgtitle = array(gtext("Extensions"), "Bastille", "Create");
 
-if(!$pconfig['jailname']):
+$pconfig = [];
+
+if(!(isset($pconfig['jailname']))):
 	$pconfig['jailname'] = 'jail1';
 endif;
-if(!$pconfig['ipaddress']):
+if(!(isset($pconfig['ipaddress']))):
 	$pconfig['ipaddress'] = '';
 endif;
 
@@ -89,21 +91,21 @@ if($_POST):
 			$release = "debian-buster";
 		endif;
 
-		if($_POST['thickjail'] && $_POST['vnetjail']):
+		if(isset($_POST['thickjail']) && isset($_POST['vnetjail'])):
 			$options = "-T -V";
-		elseif($_POST['thickjail']):
+		elseif(isset($_POST['thickjail'])):
 			$options = "-T";
-		elseif($_POST['vnetjail']):
+		elseif(isset($_POST['vnetjail'])):
 			$options = "-V";
-		elseif($_POST['linuxjail']):
+		elseif(isset($_POST['linuxjail'])):
 			$options = "-L";
 		endif;
 
-		if($_POST['emptyjail']):
+		if(isset($_POST['emptyjail'])):
 			// Just create an empty container with minimal jail.conf.
 			$cmd = ("/usr/local/bin/bastille create -E {$jname}");
 		else:
-			if ($_POST['nowstart']):
+			if (isset($_POST['nowstart'])):
 				$cmd = ("/usr/local/bin/bastille create {$options} {$jname} {$release} {$ipaddr} {$interface} && /usr/local/bin/bastille start {$jname}");
 			else:
 				$cmd = ("/usr/local/bin/bastille create {$options} {$jname} {$release} {$ipaddr} {$interface}");
@@ -114,7 +116,7 @@ if($_POST):
 			if(get_all_release_list()):
 				unset($output,$retval);mwexec2($cmd,$output,$retval);
 				if($retval == 0):
-					if ($_POST['autostart']):
+					if (isset($_POST['autostart'])):
 						exec("/usr/sbin/sysrc -f {$configfile} {$jname}_AUTO_START=\"YES\"");
 					endif;
 					if(is_link($resolv_conf)):
@@ -238,17 +240,17 @@ $document->render();
 			html_inputbox2('ipaddress',gettext('IP Address'),$pconfig['ipaddress'],'',true,20);
 			$a_action = $l_interfaces;
 			$b_action = $l_release;
-			html_combobox2('interface',gettext('Network interface'),$pconfig['interface'],$a_action,'',true,false);
-			html_combobox2('release',gettext('Base release'),$pconfig['release'],$b_action,'',true,false);
+			html_combobox2('interface',gettext('Network interface'),!empty($pconfig['interface']),$a_action,'',true,false);
+			html_combobox2('release',gettext('Base release'),!empty($pconfig['release']),$b_action,'',true,false);
 			if($bastille_version_min > "0700000000"):
 				html_checkbox2('thickjail',gettext('Create a thick container'),!empty($pconfig['thickjail']) ? true : false,gettext('These containers consume more space, but are self contained.'),'',false);
 				if($host_version > "12100"):
-					html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Advanced).'),'',false);
+					html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Only supported on 13.x and above).'),'',false);
 				endif;
 				html_checkbox2('emptyjail',gettext('Create an empty container'),!empty($pconfig['emptyjail']) ? true : false,gettext('This are ideal for custom builds, experimenting with unsupported RELEASES or Linux jails.'),'',false,false,'emptyjail_change()');
-				
-				html_checkbox2('linuxjail',gettext('Create a Linux container'),!empty($pconfig['linuxjail']) ? true : false,gettext('This will create a Linux container, this is highly experimental and for testing purposes.'),'',false,false,'linuxjail_change()');
-
+				if($linux_compat_support == "YES"):
+					html_checkbox2('linuxjail',gettext('Create a Linux container'),!empty($pconfig['linuxjail']) ? true : false,gettext('This will create a Linux container, this is highly experimental and for testing purposes.'),'',false,false,'linuxjail_change()');
+				endif;
 			endif;
 			html_checkbox2('nowstart',gettext('Start after creation'),!empty($pconfig['nowstart']) ? true : false,gettext('Start the container after creation(May be overridden by later bastille releases).'),'',false);
 			html_checkbox2('autostart',gettext('Auto start on boot'),!empty($pconfig['autostart']) ? true : false,gettext('Automatically start the container at boot time.'),'',false);

@@ -55,8 +55,8 @@ if(!initial_install_banner()):
 endif;
 
 // For legacy product versions.
-$return_val = mwexec("/bin/cat /etc/prd.version | cut -d'.' -f1 | /usr/bin/grep '10'", true);
-if ($return_val == 0) {
+$legacy_check = mwexec("/bin/cat /etc/prd.version | cut -d'.' -f1 | /usr/bin/grep '10'", true);
+if ($legacy_check == 0) {
 	if (is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
 		for ($i = 0; $i < count($config['rc']['postinit']['cmd']);) { if (preg_match('/bastille-init/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
 	}
@@ -69,6 +69,7 @@ if (1 == mwexec("/bin/cat {$configfile} | /usr/bin/grep 'BACKUP_DIR='")) {
 $backup_path = exec("/bin/cat {$configfile} | /usr/bin/grep 'BACKUP_DIR=' | cut -d'\"' -f2");
 
 if ($_POST) {
+	global $retval;
 	global $zfs_activated;
 	global $backup_path_bastille;
 	global $configfile_bastille;
@@ -168,7 +169,8 @@ if ($_POST) {
 			if($backup_path_bastille !== $backup_path):
 				// Update bastille config if required.
 				$cmd = "/usr/sbin/sysrc -f {$configfile_bastille} bastille_backupsdir={$backup_path}";
-				unset($retval);mwexec($cmd,$retval);
+				//unset($retval);
+				mwexec($cmd,$retval);
 				if ($retval == 0) {
 					$savemsg .= gtext("Bastille config updated successfully.");
 					exec("echo '{$date}: {$application}: Bastille config updated successfully' >> {$logfile}");
@@ -180,7 +182,8 @@ if ($_POST) {
 			endif;
 			// Update extension config.
 			$cmd = "/usr/sbin/sysrc -f {$configfile} BACKUP_DIR={$backup_path}";
-			unset($retval);mwexec($cmd,$retval);
+			//unset($retval);
+			mwexec($cmd,$retval);
 			if ($retval == 0) {
 				$savemsg .= gtext("Extension settings saved successfully.");
 				exec("echo '{$date}: {$application}: Extension settings saved successfully' >> {$logfile}");
@@ -253,7 +256,8 @@ if ($_POST) {
 		else:
 		if (is_file($backup_file)) {
 			$cmd = ("/usr/local/bin/bastille import '{$filename_trim}'");
-			unset($output,$retval);mwexec2($cmd,$output,$retval);
+			//unset($output,$retval);
+			mwexec2($cmd,$output,$retval);
 			if ($retval == 0) {
 				$savemsg .= gtext("Container restored successfully.");
 				exec("echo '{$date}: {$application}: Container restored successfully from {$filename_trim}' >> {$logfile}");

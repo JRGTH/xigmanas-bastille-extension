@@ -95,8 +95,9 @@ $is_linux_jail = exec("/usr/bin/grep linsysfs {$jail_dir}/{$jail_name_def}/fstab
 
 if ($_POST):
 	global $configfile;
-	unset($savemsg);
-	unset($input_errors);
+	global $is_changed;
+	//unset($savemsg);
+	//unset($input_errors);
 	$pconfig = $_POST;
 
 	// Return to index.
@@ -161,15 +162,33 @@ if ($_POST):
 		if(isset($_POST['Submit']) && $_POST['Submit']):
 
 			// Set current config values.
-			$jail_name = $pconfig['jname'];
-			$jail_hostname = $pconfig['hostname'];
-			$jail_ipv4 = $pconfig['ipv4'];
-			$jail_ipv6 = $pconfig['ipv6'];
-			$jail_interface = $pconfig['interface'];
-			$jail_securelevel = $pconfig['securelevel'];
-			$jail_devfs_ruleset = $pconfig['devfs_ruleset'];
-			$jail_enforce_statfs = $pconfig['enforce_statfs'];
-			$jail_vnet_interface = $pconfig['vnet_interface'];
+			if(isset($pconfig['jname'])):
+				$jail_name = $pconfig['jname'];
+			endif;
+			if(isset($pconfig['hostname'])):
+				$jail_hostname = $pconfig['hostname'];
+			endif;
+			if(isset($pconfig['ipv4'])):
+				$jail_ipv4 = $pconfig['ipv4'];
+			endif;
+			if(isset($pconfig['ipv6'])):
+				$jail_ipv6 = $pconfig['ipv6'];
+			endif;
+			if(isset($pconfig['interface'])):
+				$jail_interface = $pconfig['interface'];
+			endif;
+			if(isset($pconfig['securelevel'])):
+				$jail_securelevel = $pconfig['securelevel'];
+			endif;
+			if(isset($pconfig['devfs_ruleset'])):
+				$jail_devfs_ruleset = $pconfig['devfs_ruleset'];
+			endif;
+			if(isset($pconfig['enforce_statfs'])):
+				$jail_enforce_statfs = $pconfig['enforce_statfs'];
+			endif;
+			if(isset($pconfig['vnet_interface'])):
+				$jail_vnet_interface = $pconfig['vnet_interface'];
+			endif;
 
 			// Check if the config has changed.
 			// This could be done with a nice foreach loop in the future.

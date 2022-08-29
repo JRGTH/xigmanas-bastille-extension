@@ -44,6 +44,7 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'),gtext('Releases')];
 
 $sphere_array = [];
 $sphere_record = [];
+$pconfig = [];
 
 function get_rel_list() {
 	global $rootfolder;
@@ -74,6 +75,7 @@ if ($linux_compat_support == "YES"):
 		'13.1-RELEASE' => gettext('13.1-RELEASE'),
 		'13.0-RELEASE' => gettext('13.0-RELEASE'),
 		'12.3-RELEASE' => gettext('12.3-RELEASE'),
+		//'12.4-RELEASE' => gettext('12.4-RELEASE'), -> To be uncommented when avail
 		'12.2-RELEASE' => gettext('12.2-RELEASE'),
 		'12.1-RELEASE' => gettext('12.1-RELEASE'),
 		'12.0-RELEASE' => gettext('12.0-RELEASE'),
@@ -91,6 +93,7 @@ else:
 		'13.1-RELEASE' => gettext('13.1-RELEASE'),
 		'13.0-RELEASE' => gettext('13.0-RELEASE'),
 		'12.3-RELEASE' => gettext('12.3-RELEASE'),
+		//'12.4-RELEASE' => gettext('12.4-RELEASE'), -> To be uncommented when avail
 		'12.2-RELEASE' => gettext('12.2-RELEASE'),
 		'12.1-RELEASE' => gettext('12.1-RELEASE'),
 		'12.0-RELEASE' => gettext('12.0-RELEASE'),
@@ -111,19 +114,22 @@ if($_POST):
 	endif;
 
 	if (isset($_POST['Download']) && $_POST['Download']):
+		$lib32 = "";
+		$ports = "";
+		$src = "";
 		$get_release = $pconfig['release_item'];
 		$check_release = ("{$rootfolder}/releases/{$get_release}");
 		$cmd = sprintf('/bin/echo "Y" | /usr/local/bin/bastille bootstrap %1$s > %2$s',$get_release,$logevent);
 		$base_mandatory = "base";
 
-		unset($lib32,$ports,$src);
-		if ($_POST['lib32']):
+		//unset($lib32,$ports,$src);
+		if (isset($_POST['lib32'])):
 			$lib32 = "lib32";
 		endif;
-		if ($_POST['ports']):
+		if (isset($_POST['ports'])):
 			$ports = "ports";
 		endif;
-		if ($_POST['src']):
+		if (isset($_POST['src'])):
 			$src = "src";
 		endif;
 		$opt_tarballs = "$lib32 $ports $src";
@@ -134,6 +140,8 @@ if($_POST):
 		//else:
 			// Download a FreeBSD base release.
 			if ($_POST['Download']):
+				$savemsg = "";
+				$errormsg = "";
 				if ($opt_tarballs):
 					if ($config_path):
 						// Override default distfiles once.
@@ -161,7 +169,6 @@ if($_POST):
 
 	if (isset($_POST['Destroy']) && $_POST['Destroy']):
 		if ($_POST['Destroy']):
-
 			$get_release = $pconfig['release_item'];
 			if($get_release == 'ubuntu-bionic'):
 				$get_release = "Ubuntu_1804";
@@ -279,8 +286,7 @@ $document->render();
 		</thead>
 		<tbody>
 <?php
-
-			html_combobox2('release_item',gettext('Select Base Release'),$pconfig['release_item'],$a_action,'',true,false);
+			html_combobox2('release_item',gettext('Select Base Release'),!empty($pconfig['release_item']),$a_action,'',true,false);
 			html_titleline2(gettext('Optional Distfiles (Overrides config, has no effect on Linux Releases)'));
 			html_checkbox2('lib32',gettext('32-bit Compatibility'),!empty($pconfig['lib32']) ? true : false,gettext('lib32.txz'),'',false);
 			html_checkbox2('ports',gettext('Ports tree'),!empty($pconfig['ports']) ? true : false,gettext('ports.txz'),'',false);

@@ -522,6 +522,7 @@ $document->render();
 ?>
 <form action="bastille_manager_util.php" method="post" name="iform" id="iform"><table id="area_data"><tbody><tr><td id="area_data_frame">
 <?php
+	global $sphere_notifier;
 	if(!empty($errormsg)):
 		print_error_box($errormsg);
 	endif;
@@ -551,9 +552,13 @@ $document->render();
 			#$current_release = exec("/usr/sbin/jexec {$pconfig['jailname']} freebsd-version 2>/dev/null");
 			unset($disable_base_change);
 			$current_release = exec("/usr/bin/grep '\-RELEASE' {$jail_dir}/{$pconfig['jailname']}/fstab | awk '{print $1}' | grep -o '[^/]*$'");
-			$is_thickjail = exec("/usr/bin/grep -w '/.*/.bastille' {$jail_dir}/{$pconfig['jailname']}/fstab");
+			$is_thinjail = exec("/usr/bin/grep -w '/.*/.bastille' {$jail_dir}/{$pconfig['jailname']}/fstab");
 			if (!$current_release):
 				$current_release = exec("/usr/bin/grep 'releng' {$jail_dir}/{$pconfig['jailname']}/root/COPYRIGHT | cut -d '/' -f2");
+				if(!$current_release):
+					//Assume is a running thickjail.
+					$current_release = exec("/usr/sbin/jexec {$pconfig['jailname']} freebsd-version 2>/dev/null");
+				endif;
 				$disable_base_change = "1";
 				if (!$current_release):
 					$current_release = "-";
@@ -591,24 +596,24 @@ $document->render();
 				];
 			endif;
 
-			html_combobox2('action',gettext('Action'),$pconfig['action'],$a_action,'',true,false,'action_change()');
-			html_combobox2('format',gettext('Archive format'),$pconfig['format'],$c_action,'',true,false);
+			html_combobox2('action',gettext('Action'),!empty($pconfig['action']),$a_action,'',true,false,'action_change()');
+			html_combobox2('format',gettext('Archive format'),!empty($pconfig['format']),$c_action,'',true,false);
 			if ($zfs_activated == "YES"):
 				html_checkbox2('safemode',gettext('Safe ZFS export'),!empty($pconfig['safemode']) ? true : false,gettext('Safely stop and start a ZFS jail before the exporting process, this has no effect on .TGZ/TXZ since the jail should be stopped regardless.'),'',false);
 			endif;
-			html_inputbox2('confirmname',gettext('Enter name for confirmation'),$pconfig['confirmname'],'',true,30);
+			html_inputbox2('confirmname',gettext('Enter name for confirmation'),!empty($pconfig['confirmname']),'',true,30);
 			html_checkbox2('nowstop',gettext('Stop container'),!empty($pconfig['nowstop']) ? true : false,gettext('Stop the container if running before deletion.'),'',false);
-			html_inputbox2('newname',gettext('Enter a name for the new container'),$pconfig['newname'],'',true,30);
-			html_inputbox2('newipaddr',gettext('Enter a IP address for the new container'),$pconfig['newipaddr'],'',true,30);
+			html_inputbox2('newname',gettext('Enter a name for the new container'),!empty($pconfig['newname']),'',true,30);
+			html_inputbox2('newipaddr',gettext('Enter a IP address for the new container'),!empty($pconfig['newipaddr']),'',true,30);
 			html_checkbox2('clonestop',gettext('Stop container'),!empty($pconfig['clonestop']) ? true : false,gettext('Stop the container if running before cloning, mandatory on UFS filesystem.'),'',false);
-			html_filechooser("source_path", gtext("Source Data Directory"), $pconfig['source_path'], gtext("Source data directory to be shared, full path here, if the path contain spaces they will be automatically escaped with the ASCII \"\\040\" octal code."), $source_path, false, 60);
-			html_filechooser("target_path", gtext("Target Data Directory"), $pconfig['target_path'], gtext("Target data directory to be mapped, full path to jail here, if the path contain spaces they will be automatically escaped with the ASCII \"\\040\" octal code."), $target_path, false, 60);		
+			html_filechooser("source_path",gtext("Source Data Directory"),!empty($pconfig['source_path']), gtext("Source data directory to be shared, full path here, if the path contain spaces they will be automatically escaped with the ASCII \"\\040\" octal code."), !empty($source_path), false, 60);
+			html_filechooser("target_path",gtext("Target Data Directory"),!empty($pconfig['target_path']), gtext("Target data directory to be mapped, full path to jail here, if the path contain spaces they will be automatically escaped with the ASCII \"\\040\" octal code."), !empty($target_path), false, 60);		
 			html_checkbox2("path_check", gettext("Source/Target path check"),!empty($pconfig['path_check']) ? true : false, gettext("If this option is selected no examination of the source/target directory paths will be performed."), "<b><font color='red'>".gettext("Please use this option only if you know what you are doing here!")."</font></b>", false);			
 			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I want to edit the jail files manually, Warning: It is recommended to stop the jail before config edit to prevent issues.'),'',true);
 			html_checkbox2('readonly',gettext('Read-Only Mode'),!empty($pconfig['readonly']) ? true : false,gettext('Set target directory in Read-Only mode.'),'',true);
 			html_checkbox2('automount',gettext('Auto-mount Nullfs'),!empty($pconfig['automount']) ? true : false,gettext('Auto-mount the nullfs mountpoint if the container is already running.'),'',true);
 			html_checkbox2('createdir',gettext('Create Target Directory'),!empty($pconfig['createdir']) ? true : true,gettext('Create target directory if missing (recommended).'),'',true);
-			if ($is_thickjail):
+			if ($is_thinjail):
 				html_checkbox2('update_base',gettext('Base update confirm'),!empty($pconfig['update_base']) ? true : false,gettext('This is a thin container, therefore the base release will be updated, this affects child containers.'),'',true);
 			else:
 				html_checkbox2('update_jail',gettext('Container update confirm:'),!empty($pconfig['update_jail']) ? true : false,gettext('This is a thick container, therefore the update will be performed within its root, current containers are not affected.'),'',true);
@@ -619,7 +624,7 @@ $document->render();
 			html_text2('backup',gettext('Export container'),htmlspecialchars("This will export a container to a compressed file/image, please execute `bastille export` for more info in regards exporting formats, Default is .XZ on ZFS setups or .TXZ otherwise, For faster compressed backups consider .GZ/.TGZ."));
 
 			if (!$disable_base_change):
-				html_combobox2('release',gettext('New base release'),$pconfig['release'],$b_action,gettext("Warning: this will change current base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues, or use the command line for native upgrade."),true,false,);
+				html_combobox2('release',gettext('New base release'),!empty($pconfig['release']),$b_action,gettext("Warning: This will change current shared base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues, or use the command line for native upgrade."),true,false,);
 			endif;
 			//html_checkbox2('dateadd',gettext('Date'),!empty($pconfig['dateadd']) ? true : false,gettext('Append the date in the following format: ITEM-XXXX-XX-XX-XXXXXX.'),'',false);
 ?>

@@ -287,6 +287,7 @@ $document->render();
 		</thead>
 		<tbody>
 <?php
+			global $identifier;
 			foreach ($sphere_array as $sphere_record):
 				$notificationmode = updatenotify_get_mode($sphere_notifier, $identifier);
 				$notdirty = (UPDATENOTIFY_MODE_DIRTY != $notificationmode) && (UPDATENOTIFY_MODE_DIRTY_CONFIG != $notificationmode);
