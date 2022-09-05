@@ -389,7 +389,7 @@ if($_POST):
 						$input_errors[] = gtext("Failed to destroy container, name confirmation is required.");
 						break;
 					else:
-						if ($_POST['nowstop']):
+						if (isset($_POST['nowstop'])):
 							$cmd = ("/usr/local/bin/bastille destroy -f {$item}");
 						else:
 							$cmd = ("/usr/local/bin/bastille destroy {$item}");
@@ -550,7 +550,8 @@ $document->render();
 <?php
 			$b_action = $l_release;
 			#$current_release = exec("/usr/sbin/jexec {$pconfig['jailname']} freebsd-version 2>/dev/null");
-			unset($disable_base_change);
+			$current_release = "";
+			$disable_base_change = "no";
 			$current_release = exec("/usr/bin/grep '\-RELEASE' {$jail_dir}/{$pconfig['jailname']}/fstab | awk '{print $1}' | grep -o '[^/]*$'");
 			$is_thinjail = exec("/usr/bin/grep -w '/.*/.bastille' {$jail_dir}/{$pconfig['jailname']}/fstab");
 			if (!$current_release):
@@ -559,7 +560,7 @@ $document->render();
 					//Assume is a running thickjail.
 					$current_release = exec("/usr/sbin/jexec {$pconfig['jailname']} freebsd-version 2>/dev/null");
 				endif;
-				$disable_base_change = "1";
+				$disable_base_change = "yes";
 				if (!$current_release):
 					$current_release = "-";
 				endif;
@@ -623,7 +624,7 @@ $document->render();
 			html_text2('no_autoboot',gettext('Disable container auto-startup'),htmlspecialchars("This will disable the container automatic startup."));
 			html_text2('backup',gettext('Export container'),htmlspecialchars("This will export a container to a compressed file/image, please execute `bastille export` for more info in regards exporting formats, Default is .XZ on ZFS setups or .TXZ otherwise, For faster compressed backups consider .GZ/.TGZ."));
 
-			if (!$disable_base_change):
+			if ($disable_base_change == "no"):
 				html_combobox2('release',gettext('New base release'),!empty($pconfig['release']),$b_action,gettext("Warning: This will change current shared base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues, or use the command line for native upgrade."),true,false,);
 			endif;
 			//html_checkbox2('dateadd',gettext('Date'),!empty($pconfig['dateadd']) ? true : false,gettext('Append the date in the following format: ITEM-XXXX-XX-XX-XXXXXX.'),'',false);

@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.19......Code changes, some PHP8.x warning fixes.
 1.1.18......Code and Cosmetic changes, some PHP8.x warning fixes.
 1.1.17......Cosmetic changes, some PHP8.x warning fixes.
 1.1.16......Add help support section for useful commands.
