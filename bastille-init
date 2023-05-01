@@ -9,7 +9,7 @@
 # Debug script
 #set -x
 
-# Copyright (c) 2019-2021, José Rivera (joserprg@gmail.com).
+# Copyright (c) 2019-2023, José Rivera (joserprg@gmail.com).
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -82,7 +82,8 @@ BASTILE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRAN
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
 URL_FREEBSD="http://ftp.freebsd.org/pub/FreeBSD/releases/"
-URL_HARDENEDBSD="http://installer.hardenedbsd.org/pub/hardenedbsd/"
+URL_HARDENEDBSD="https://www.midnightbsd.org/ftp/MidnightBSD/releases/"
+URL_MIDNIGHTBSD="https://www.midnightbsd.org/ftp/MidnightBSD/releases/"
 OPT="${1}"
 
 # Bastille required
@@ -164,6 +165,9 @@ runtime_config()
 			fi
 		fi
 	fi
+
+	# Check and append new config parameters.
+	update_config
 }
 
 bastille_initial_download()
@@ -221,7 +225,7 @@ bastille_upgrade()
 			rm -R ${CWDIR}/update
 
 			# Logging the update event.
-			UPDATEVERSION=$(cat ${BASTILLEPATH}/${APPNAME} | grep BASTILLE_VERSION= | cut -d"=" -f2)
+			UPDATEVERSION=$(cat ${BASTILLEPATH}/${APPNAME} | grep BASTILLE_VERSION= | cut -d"=" -f2 | tr -d '."')
 			echo "${DATE}: ${APPNAME} upgraded to ${UPDATEVERSION}" >> ${EXTLOGFILE}
 			echo "${APPNAME} upgraded to version ${UPDATEVERSION}"
 			echo "${APPNAME} package upgrade completed!"
@@ -1210,6 +1214,19 @@ update_config()
 	if ! grep -q 'bastille_url_hardenedbsd=' ${BASTILLECONF}; then
 		sysrc -f ${BASTILLECONF} bastille_url_hardenedbsd="${URL_HARDENEDBSD}"
 	fi
+	if ! grep -q 'bastille_url_midnightbsd=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_url_midnightbsd="${URL_MIDNIGHTBSD}"
+	fi
+	
+	if ! grep -qw 'bastille_network_pf_ext_if=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_network_pf_ext_if="ext_if"
+	fi
+	if ! grep -qw 'bastille_network_pf_table=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_network_pf_table="jails"
+	fi
+	if ! grep -qw 'bastille_network_gateway6=' ${BASTILLECONF}; then
+		sysrc -f ${BASTILLECONF} bastille_network_gateway6=""
+	fi
 
 	# Template parameters.
 	if ! grep -qw 'bastille_template_base=' ${BASTILLECONF}; then
@@ -1234,6 +1251,11 @@ update_config()
 	fi
 	if grep -qw 'bastille_jail_addr' ${BASTILLECONF}; then
 		sysrc -f ${BASTILLECONF} -x bastille_jail_addr
+	fi
+
+	# Update the bootstrap urls accordingly.
+	if ! sysrc -n bastille_url_hardenedbsd | grep -q "${URL_HARDENEDBSD}"; then
+		sysrc -f ${BASTILLECONF} bastille_url_hardenedbsd="${URL_HARDENEDBSD}"
 	fi
 }
 
