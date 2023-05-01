@@ -82,7 +82,7 @@ BASTILE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRAN
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
 URL_FREEBSD="http://ftp.freebsd.org/pub/FreeBSD/releases/"
-URL_HARDENEDBSD="https://www.midnightbsd.org/ftp/MidnightBSD/releases/"
+URL_HARDENEDBSD="https://installers.hardenedbsd.org/pub/"
 URL_MIDNIGHTBSD="https://www.midnightbsd.org/ftp/MidnightBSD/releases/"
 OPT="${1}"
 
@@ -1217,7 +1217,7 @@ update_config()
 	if ! grep -q 'bastille_url_midnightbsd=' ${BASTILLECONF}; then
 		sysrc -f ${BASTILLECONF} bastille_url_midnightbsd="${URL_MIDNIGHTBSD}"
 	fi
-	
+
 	if ! grep -qw 'bastille_network_pf_ext_if=' ${BASTILLECONF}; then
 		sysrc -f ${BASTILLECONF} bastille_network_pf_ext_if="ext_if"
 	fi

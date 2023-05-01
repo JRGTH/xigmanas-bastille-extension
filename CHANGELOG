@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.21......Fix HARDENEDBSD url.
 1.1.20......Update: Add support for 13.2, update config file.
 1.1.19......Code changes, some PHP8.x warning fixes.
 1.1.18......Code and Cosmetic changes, some PHP8.x warning fixes.
