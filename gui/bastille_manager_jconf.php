@@ -70,14 +70,14 @@ $pconfig['autostart'] =  exec("/usr/bin/grep -w '{$container}_AUTO_START=\"YES\"
 // Get some jail config parameters.
 // This could be done with a nice php preg loop in the future.
 $pconfig['jname'] = "$container";
-$pconfig['hostname'] = exec("/usr/bin/grep '.*host.hostname.*=' $jail_config | /usr/bin/sed 's/.*host.hostname.*= //;s/;//'");
-$pconfig['ipv4'] = exec("/usr/bin/grep '.*ip4.addr.*=' $jail_config | /usr/bin/sed 's/.*ip4.addr.*= //;s/;//'");
-$pconfig['ipv6'] = exec("/usr/bin/grep '.*ip6.addr.*=' $jail_config | /usr/bin/sed 's/.*ip6.addr.*= //;s/;//'");
-$pconfig['interface'] = exec("/usr/bin/grep '.*interface.*=' $jail_config | /usr/bin/sed 's/.*interface.*= //;s/;//'");
-$pconfig['securelevel'] = exec("/usr/bin/grep '.*securelevel.*=' $jail_config | /usr/bin/sed 's/.*securelevel.*= //;s/;//'");
-$pconfig['devfs_ruleset'] = exec("/usr/bin/grep '.*devfs_ruleset.*=' $jail_config | /usr/bin/sed 's/.*devfs_ruleset.*= //;s/;//'");
-$pconfig['enforce_statfs'] = exec("/usr/bin/grep '.*enforce_statfs.*=' $jail_config | /usr/bin/sed 's/.*enforce_statfs.*= //;s/;//'");
-$pconfig['vnet_interface'] = exec("/usr/bin/grep '.*vnet.interface.*=' $jail_config | /usr/bin/sed 's/.*vnet.interface.*= //;s/;//'");
+$pconfig['hostname'] = exec("/usr/bin/grep '.*host.hostname.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
+$pconfig['ipv4'] = exec("/usr/bin/grep '.*ip4.addr.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
+$pconfig['ipv6'] = exec("/usr/bin/grep '.*ip6.addr.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
+$pconfig['interface'] = exec("/usr/bin/grep '.*interface.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
+$pconfig['securelevel'] = exec("/usr/bin/grep '.*securelevel.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
+$pconfig['devfs_ruleset'] = exec("/usr/bin/grep '.*devfs_ruleset.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
+$pconfig['enforce_statfs'] = exec("/usr/bin/grep '.*enforce_statfs.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
+$pconfig['vnet_interface'] = exec("/usr/bin/grep '.*vnet.interface.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 
 // Set the jail config default parameters.
 $jail_name_def = $pconfig['jname'];
