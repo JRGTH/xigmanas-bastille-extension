@@ -1254,7 +1254,7 @@ update_config()
 	fi
 
 	# Update the bootstrap urls accordingly.
-	if ! sysrc -n bastille_url_hardenedbsd | grep -q "${URL_HARDENEDBSD}"; then
+	if ! sysrc -f ${BASTILLECONF} -n bastille_url_hardenedbsd | grep -q "${URL_HARDENEDBSD}"; then
 		sysrc -f ${BASTILLECONF} bastille_url_hardenedbsd="${URL_HARDENEDBSD}"
 	fi
 }
