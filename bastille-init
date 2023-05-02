@@ -1199,63 +1199,63 @@ update_config()
 	# Update config based on minimum version.
 
 	# Network parameters.
-	if grep -qw 'bastille_jail_loopback=' ${BASTILLECONF}; then
-		sed -i '' 's/bastille_jail_loopback=/bastille_network_loopback=/' ${BASTILLECONF}
+	if grep -qw 'bastille_jail_loopback=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sed -i '' 's/bastille_jail_loopback=/bastille_network_loopback=/' ${INSTALLPATH}/${BASTILLECONF}
 	fi
-	if grep -qw 'bastille_jail_external=' ${BASTILLECONF}; then
-		sed -i '' 's/bastille_jail_external=/bastille_network_shared=/' ${BASTILLECONF}
+	if grep -qw 'bastille_jail_external=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sed -i '' 's/bastille_jail_external=/bastille_network_shared=/' ${INSTALLPATH}/${BASTILLECONF}
 	fi
-	if grep -qw 'bastille_jail_gateway=' ${BASTILLECONF}; then
-		sed -i '' 's/bastille_jail_gateway=/bastille_network_gateway=/' ${BASTILLECONF}
+	if grep -qw 'bastille_jail_gateway=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sed -i '' 's/bastille_jail_gateway=/bastille_network_gateway=/' ${INSTALLPATH}/${BASTILLECONF}
 	fi
-	if ! grep -q 'bastille_url_freebsd=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_url_freebsd="${URL_FREEBSD}"
+	if ! grep -qw 'bastille_url_freebsd=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_url_freebsd="${URL_FREEBSD}"
 	fi
-	if ! grep -q 'bastille_url_hardenedbsd=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_url_hardenedbsd="${URL_HARDENEDBSD}"
+	if ! grep -qw 'bastille_url_hardenedbsd=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_url_hardenedbsd="${URL_HARDENEDBSD}"
 	fi
-	if ! grep -q 'bastille_url_midnightbsd=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_url_midnightbsd="${URL_MIDNIGHTBSD}"
+	if ! grep -qw 'bastille_url_midnightbsd=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_url_midnightbsd="${URL_MIDNIGHTBSD}"
 	fi
 
-	if ! grep -qw 'bastille_network_pf_ext_if=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_network_pf_ext_if="ext_if"
+	if ! grep -qw 'bastille_network_pf_ext_if=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_pf_ext_if="ext_if"
 	fi
-	if ! grep -qw 'bastille_network_pf_table=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_network_pf_table="jails"
+	if ! grep -qw 'bastille_network_pf_table=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_pf_table="jails"
 	fi
-	if ! grep -qw 'bastille_network_gateway6=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_network_gateway6=""
+	if ! grep -qw 'bastille_network_gateway6=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_gateway6=""
 	fi
 
 	# Template parameters.
-	if ! grep -qw 'bastille_template_base=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_template_base="default/base"
+	if ! grep -qw 'bastille_template_base=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_base="default/base"
 	fi
-	if ! grep -qw 'bastille_template_empty=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_template_empty=""
+	if ! grep -qw 'bastille_template_empty=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_empty=""
 	fi
-	if ! grep -qw 'bastille_template_thick=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_template_thick="default/thick"
+	if ! grep -qw 'bastille_template_thick=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_thick="default/thick"
 	fi
-	if ! grep -qw 'bastille_template_thin=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_template_thin="default/thin"
+	if ! grep -qw 'bastille_template_thin=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_thin="default/thin"
 	fi
-	if ! grep -qw 'bastille_template_vnet=' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} bastille_template_vnet="default/vnet"
+	if ! grep -qw 'bastille_template_vnet=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_vnet="default/vnet"
 	fi
 
 	# Remove deprecated parameters based on minimum version.
-	if grep -qw 'bastille_jail_interface' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} -x bastille_jail_interface
+	if grep -qw 'bastille_jail_interface' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} -x bastille_jail_interface
 	fi
-	if grep -qw 'bastille_jail_addr' ${BASTILLECONF}; then
-		sysrc -f ${BASTILLECONF} -x bastille_jail_addr
+	if grep -qw 'bastille_jail_addr' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} -x bastille_jail_addr
 	fi
 
 	# Update the bootstrap urls accordingly.
-	if ! sysrc -f ${BASTILLECONF} -n bastille_url_hardenedbsd | grep -q "${URL_HARDENEDBSD}"; then
-		sysrc -f ${BASTILLECONF} bastille_url_hardenedbsd="${URL_HARDENEDBSD}"
+	if ! sysrc -f ${INSTALLPATH}/${BASTILLECONF} -n bastille_url_hardenedbsd | grep -qw "${URL_HARDENEDBSD}"; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_url_hardenedbsd="${URL_HARDENEDBSD}"
 	fi
 }
 
