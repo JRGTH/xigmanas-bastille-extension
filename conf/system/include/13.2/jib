@@ -24,7 +24,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: releng/12.1/share/examples/jails/jib 339977 2018-10-31 23:07:47Z dteske $
+# $FreeBSD$
 #
 ############################################################ IDENT(1)
 #
@@ -67,7 +67,7 @@
 # 
 # 	# Standard recipe
 # 	exec.start += "/bin/sh /etc/rc";
-# 	exec.stop = "/bin/sh /etc/rc.shutdown";
+# 	exec.stop = "/bin/sh /etc/rc.shutdown jail";
 # 	exec.consolelog = "/var/log/jail_xxx_console.log";
 # 	mount.devfs;
 #
