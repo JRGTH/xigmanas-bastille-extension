@@ -467,6 +467,26 @@ include_files()
 	else
 		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="NO" >/dev/null 2>&1
 	fi
+
+	if [ "$(freebsd-version | cut -d '.' -f1)" -ge 12 ]; then
+		# Include missing pf(packet filter) files.
+		PF_FILES="/pfctl /pfilctl /pflogd /pf.os"
+		for _file in ${PF_FILES}; do
+			if [ ! -f "/sbin/${_file}" ]; then
+				if [ "${_file}" = "/pf.os" ]; then
+					if [ ! -f "/etc/${_file}" ]; then
+						if [ -f "${SYSTEM_INCLUDE}/${_file}" ]; then
+							install -m 0644 ${SYSTEM_INCLUDE}/${_file} /etc/${_file}
+						fi
+					fi
+				else
+					if [ -f "${SYSTEM_INCLUDE}/${_file}" ]; then
+						install -m 0555 ${SYSTEM_INCLUDE}/${_file} /sbin/${_file}
+					fi
+				fi
+			fi
+		done
+	fi
 }
 
 required_updates()
@@ -1077,6 +1097,16 @@ remove_addon()
 			rm -rf ${FILE}
 		fi
 	done
+
+	# Don't remove this files on 13.x versions since they are part of the base.
+	if [ "$(freebsd-version | cut -d '.' -f1)" -le 12 ]; then
+		PF_FILES="/sbin/pfctl /sbin/pfilctl /sbin/pflogd /etc/pf.os"
+		for FILE in ${PF_FILES}; do
+			if [ -f "${FILE}" ]; then
+				rm -rf ${FILE}
+			fi
+		done
+	fi
 
 	echo "Done!"
 	echo "Please manually remove the Bastile Extension Command Script from the WebGUI."
