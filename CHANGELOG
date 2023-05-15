@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.29......Ad note on how to fetch EOL/Unsupported releases.
 1.1.28......Include pf(packet filter) missing files.
 1.1.27......Code consistency updates.
 1.1.26......Re-add latest required system files.

@@ -303,6 +303,7 @@ $document->render();
 	</div>
 	<div id="remarks">
 		<?php html_remark("note", gtext("Note"), sprintf(gtext("Slow Internet connections may render the Web GUI unresponsive until download completes.")));?>
+		<div> <?=gtext("To fetch EOL/Unsupported releases, edit [bastille_url_freebsd] variable under [Bastille > Configuration] with: [http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/].")?></div>
 	</div>
 <?php
 	include 'formend.inc';
