@@ -156,6 +156,7 @@ if ($_POST):
 
 	// Try to edit the jail config.
 	// This could be done with preg in the future.
+	$is_changed = "0";
 	if($input_errors):
 		$input_errors[] = gtext("Aborting config changes.");
 	else:
@@ -190,25 +191,36 @@ if ($_POST):
 				$jail_vnet_interface = $pconfig['vnet_interface'];
 			endif;
 
-			// Check if the config has changed.
+			// Check if the config has changed for each parameter.
 			// This could be done with a nice foreach loop in the future.
 			if($jail_name_def !== $jail_name):
 				$is_changed = "1";
-			elseif($jail_hostname_def !== $jail_hostname):
+			endif;
+			if($jail_hostname_def !== $jail_hostname):
 				$is_changed = "1";
-			elseif(isset($_POST['ipv4']) && ($jail_ipv4_def !== $jail_ipv4)):
+			endif;
+			if(isset($_POST['ipv4']) && ($jail_ipv4_def !== $jail_ipv4)):
 				$is_changed = "1";
-			elseif(isset($_POST['ipv6']) && ($jail_ipv6_def !== $jail_ipv6)):
+			endif;
+			if(isset($_POST['ipv6']) && ($jail_ipv6_def !== $jail_ipv6)):
 				$is_changed = "1";
-			elseif(isset($_POST['interface']) && ($jail_interface_def !== $jail_interface)):
+			endif;
+			if(isset($_POST['interface']) && ($jail_interface_def !== $jail_interface)):
 				$is_changed = "1";
-			elseif($jail_securelevel_def !== $jail_securelevel):
+			endif;
+			// Don't check "securelevel" if Linux jail.
+			if(!$is_linux_jail):
+				if($jail_securelevel_def !== $jail_securelevel):
+					$is_changed = "1";
+				endif;
+			endif;
+			if($jail_devfs_ruleset_def !== $jail_devfs_ruleset):
 				$is_changed = "1";
-			elseif($jail_devfs_ruleset_def !== $jail_devfs_ruleset):
+			endif;
+			if($jail_enforce_statfs_def !== $jail_enforce_statfs):
 				$is_changed = "1";
-			elseif($jail_enforce_statfs_def !== $jail_enforce_statfs):
-				$is_changed = "1";
-			elseif(isset($_POST['vnet_interface']) && ($jail_vnet_interface_def !== $jail_vnet_interface)):
+			endif;
+			if(isset($_POST['vnet_interface']) && ($jail_vnet_interface_def !== $jail_vnet_interface)):
 				$is_changed = "1";
 			endif;
 
@@ -399,14 +411,13 @@ endif;
 					if (!$is_vnet):
 						html_combobox('interface', gtext('Interface'),$pconfig['interface'], $a_action, gtext("Set the network interface available from the dropdown menu, usually should not be changed unless replacing/renaming interface or moving jail from host."), true, false, 'action_change()');
 					endif;
-
 					if(!$is_linux_jail):
 						html_inputbox("securelevel", gtext("securelevel"), $pconfig['securelevel'], gtext("The value of the jail's kern.securelevel. A jail never has a lower securelevel than its parent system, but by setting this parameter it may have a higher one, default is 2."), false, 20);
 					endif;
 					html_inputbox("devfs_ruleset", gtext("devfs_ruleset"), $pconfig['devfs_ruleset'], gtext("The number of the devfs ruleset that is enforced for mounting devfs in this jail. A value of zero means no ruleset is enforced. default is 4, on VNET jails default is 13."), false, 20);
-					if(!$is_linux_jail):
+					//if(!$is_linux_jail):
 						html_inputbox("enforce_statfs", gtext("enforce_statfs"), $pconfig['enforce_statfs'], gtext("This determines what information processes in a jail are able to get about mount points. Affects the behaviour of the following syscalls: statfs, fstatfs, getfsstat and fhstatfs, default is 2."), false, 20);
-					endif;
+					//endif;
 					if ($is_vnet):
 						html_inputbox("vnet_interface", gtext("VNET Interface"), $pconfig['vnet_interface'], gtext("Set the VNET interface manually, usually should not be changed unless renaming the interface or moving jail from host."), false, 20);
 					endif;
