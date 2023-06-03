@@ -221,7 +221,7 @@ bastille_upgrade()
 			rm -f ${CWDIR}/update/${APPNAME}
 			chmod 555 ${CWDIR}/update/${BASTILLEPATH}/${APPNAME}
 			chmod 555 ${CWDIR}/${FULLAPPNAME}${BASTILLERCD}
-			cp -Rf ${CWDIR}/update/* ${CWDIR}/${FULLAPPNAME}/
+			cp -Rf ${CWDIR}/update/* ${CWDIR}/${FULLAPPNAME}
 			rm -R ${CWDIR}/update
 
 			# Logging the update event.
