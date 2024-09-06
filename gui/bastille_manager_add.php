@@ -93,10 +93,14 @@ if($_POST):
 
 		if(isset($_POST['thickjail']) && isset($_POST['vnetjail'])):
 			$options = "-T -V";
+		elseif(isset($_POST['thickjail']) && isset($_POST['bridgejail'])):
+			$options = "-T -B";
 		elseif(isset($_POST['thickjail'])):
 			$options = "-T";
 		elseif(isset($_POST['vnetjail'])):
 			$options = "-V";
+		elseif(isset($_POST['bridgejail'])):
+			$options = "-B";
 		elseif(isset($_POST['linuxjail'])):
 			$options = "-L";
 		endif;
@@ -153,6 +157,7 @@ function emptyjail_change() {
 			showElementById('release_tr', 'show');
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
+			showElementById('bridgejail_tr', 'show');
 			showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -163,6 +168,7 @@ function emptyjail_change() {
 			showElementById('release_tr', 'hide');
 			showElementById('thickjail_tr', 'hide');
 			showElementById('vnetjail_tr', 'hide');
+			showElementById('bridgejail_tr', 'hide');
 			showElementById('nowstart_tr', 'hide');
 			showElementById('autostart_tr', 'hide');
 			showElementById('linuxjail_tr', 'hide');
@@ -178,6 +184,7 @@ function linuxjail_change() {
 			showElementById('release_tr', 'show');
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
+			showElementById('bridgejail_tr', 'show');
 			showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -189,9 +196,64 @@ function linuxjail_change() {
 			showElementById('release_tr', 'show');
 			showElementById('thickjail_tr', 'hide');
 			showElementById('vnetjail_tr', 'hide');
+			showElementById('bridgejail_tr', 'hide');
 			showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('emptyjail_tr', 'hide');
+		break;
+	}
+}
+
+function vnetjail_change() {
+	switch(document.iform.vnetjail.checked) {
+		case false:
+			showElementById('ipaddress_tr','show');
+			showElementById('interface_tr', 'show');
+			showElementById('release_tr', 'show');
+			showElementById('thickjail_tr', 'show');
+			showElementById('vnetjail_tr', 'show');
+			showElementById('bridgejail_tr', 'show');
+			showElementById('nowstart_tr', 'show');
+			showElementById('autostart_tr', 'show');
+			showElementById('linuxjail_tr', 'show');
+		break;
+		case true:
+			showElementById('ipaddress_tr','show');
+			showElementById('interface_tr', 'show');
+			showElementById('release_tr', 'show');
+			showElementById('thickjail_tr', 'show');
+			showElementById('vnetjail_tr', 'show');
+			showElementById('bridgejail_tr', 'hide');
+			showElementById('nowstart_tr', 'show');
+			showElementById('autostart_tr', 'show');
+			showElementById('linuxjail_tr', 'show');
+		break;
+	}
+}
+
+function bridgejail_change() {
+	switch(document.iform.bridgejail.checked) {
+		case false:
+			showElementById('ipaddress_tr','show');
+			showElementById('interface_tr', 'show');
+			showElementById('release_tr', 'show');
+			showElementById('thickjail_tr', 'show');
+			showElementById('vnetjail_tr', 'show');
+			showElementById('bridgejail_tr', 'show');
+			showElementById('nowstart_tr', 'show');
+			showElementById('autostart_tr', 'show');
+			showElementById('linuxjail_tr', 'show');
+		break;
+		case true:
+			showElementById('ipaddress_tr','show');
+			showElementById('interface_tr', 'show');
+			showElementById('release_tr', 'show');
+			showElementById('thickjail_tr', 'show');
+			showElementById('vnetjail_tr', 'hide');
+			showElementById('bridgejail_tr', 'show');
+			showElementById('nowstart_tr', 'show');
+			showElementById('autostart_tr', 'show');
+			showElementById('linuxjail_tr', 'show');
 		break;
 	}
 }
@@ -245,7 +307,8 @@ $document->render();
 			if($bastille_version_min > "0700000000"):
 				html_checkbox2('thickjail',gettext('Create a thick container'),!empty($pconfig['thickjail']) ? true : false,gettext('These containers consume more space, but are self contained.'),'',false);
 				if($host_version > "12100"):
-					html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Only supported on 13.x and above).'),'',false);
+					html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Only supported on 13.x and above).'),'',false,false,'vnetjail_change()');
+					html_checkbox2('bridgejail',gettext('Enable Bridge VNET(VIMAGE)'),!empty($pconfig['bridgejail']) ? true : false,gettext('Bridge VNET-enabled containers are attached to a specified, already existing external bridge(Only supported on 13.x and above).'),'',false,false,'bridgejail_change()');
 				endif;
 				html_checkbox2('emptyjail',gettext('Create an empty container'),!empty($pconfig['emptyjail']) ? true : false,gettext('This are ideal for custom builds, experimenting with unsupported RELEASES or Linux jails.'),'',false,false,'emptyjail_change()');
 				if($linux_compat_support == "YES"):
