@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.37......Workaround to copy host resolv.conf to jail path.
 1.1.36......Update bastille config, use current extension path.
 1.1.35......Update bastille config.
 1.1.34......Add option to create externally bridged vnet jails thought the webgui.

@@ -125,7 +125,8 @@ if($_POST):
 					endif;
 					if(is_link($resolv_conf)):
 						if(unlink($resolv_conf)):
-							exec("/usr/local/bin/bastille cp $jname $resolv_host etc");
+							//exec("/usr/local/bin/bastille cp $jname $resolv_host etc");
+							copy($resolv_host, $resolv_conf);
 						endif;
 					endif;
 					//$savemsg .= gtext("Boot Environment created and activated successfully.");
