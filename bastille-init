@@ -1176,7 +1176,7 @@ rc_params()
 		sysrc -f ${BASTILLECONF} bastille_decompress_gz_options="-k -d -c -v" >/dev/null 2>&1
 	fi
 	if ! sysrc -f ${BASTILLECONF} -qc bastille_pf_conf; then
-		sysrc -f ${BASTILLECONF} bastille_pf_conf="/etc/pf.conf" >/dev/null 2>&1
+		sysrc -f ${BASTILLECONF} bastille_pf_conf="${CWDIR}/pf.conf" >/dev/null 2>&1
 	fi
 
 	# Set bastille.conf location.
