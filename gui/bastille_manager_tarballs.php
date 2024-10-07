@@ -72,36 +72,42 @@ $sphere_array = $rel_list;
 
 if ($linux_compat_support == "YES"):
 	$a_action = [
-		'14.0-RELEASE' => gettext('14.0-RELEASE'),
+		//'14.2-RELEASE' => gettext('14.2-RELEASE'),
 		'14.1-RELEASE' => gettext('14.1-RELEASE'),
+		'14.0-RELEASE' => gettext('14.0-RELEASE'),
+		'13.4-RELEASE' => gettext('13.4-RELEASE'),
 		'13.3-RELEASE' => gettext('13.3-RELEASE'),
 		'13.2-RELEASE' => gettext('13.2-RELEASE'),
 		'13.1-RELEASE' => gettext('13.1-RELEASE'),
 		'13.0-RELEASE' => gettext('13.0-RELEASE'),
+		'12.4-RELEASE' => gettext('12.4-RELEASE'),
 		'12.3-RELEASE' => gettext('12.3-RELEASE'),
-		//'12.4-RELEASE' => gettext('12.4-RELEASE'), -> To be uncommented when avail
 		'12.2-RELEASE' => gettext('12.2-RELEASE'),
 		'12.1-RELEASE' => gettext('12.1-RELEASE'),
 		'12.0-RELEASE' => gettext('12.0-RELEASE'),
 		'11.4-RELEASE' => gettext('11.4-RELEASE'),
 		'11.3-RELEASE' => gettext('11.3-RELEASE'),
 		'11.2-RELEASE' => gettext('11.2-RELEASE'),
-		'ubuntu-bionic' => gettext('Ubuntu-Bionic'),
+		'ubuntu-jammy' => gettext('Ubuntu-Jammy'),
 		'ubuntu-focal' => gettext('Ubuntu-Focal'),
-		'debian-stretch' => gettext('Debian-Stretch'),
-		'debian-buster' => gettext('Debian-Buster'),
+		'ubuntu-bionic' => gettext('Ubuntu-Bionic'),
+		'debian-bookworm' => gettext('Debian-Bookworm'),
 		'debian-bullseye' => gettext('Debian-Bullseye'),
+		'debian-buster' => gettext('Debian-Buster'),
+		//'debian-stretch' => gettext('Debian-Stretch'), -> Obsolete, removed from bastille boostrap.
 	];
 else:
 	$a_action = [
-		'14.0-RELEASE' => gettext('14.0-RELEASE'),
+		//'14.2-RELEASE' => gettext('14.2-RELEASE'),
 		'14.1-RELEASE' => gettext('14.1-RELEASE'),
+		'14.0-RELEASE' => gettext('14.0-RELEASE'),
+		'13.4-RELEASE' => gettext('13.4-RELEASE'),
 		'13.3-RELEASE' => gettext('13.3-RELEASE'),
 		'13.2-RELEASE' => gettext('13.2-RELEASE'),
 		'13.1-RELEASE' => gettext('13.1-RELEASE'),
 		'13.0-RELEASE' => gettext('13.0-RELEASE'),
+		'12.4-RELEASE' => gettext('12.4-RELEASE'),
 		'12.3-RELEASE' => gettext('12.3-RELEASE'),
-		//'12.4-RELEASE' => gettext('12.4-RELEASE'), -> To be uncommented when avail
 		'12.2-RELEASE' => gettext('12.2-RELEASE'),
 		'12.1-RELEASE' => gettext('12.1-RELEASE'),
 		'12.0-RELEASE' => gettext('12.0-RELEASE'),
@@ -182,12 +188,16 @@ if($_POST):
 				$get_release = "Ubuntu_1804";
 			elseif($get_release == 'ubuntu-focal'):
 				$get_release = "Ubuntu_2004";
+			elseif($get_release == 'ubuntu-jammy'):
+				$get_release = "Ubuntu_2204";
 			elseif($get_release == 'debian-stretch'):
 				$get_release = "Debian9";
 			elseif($get_release == 'debian-buster'):
 				$get_release = "Debian10";
 			elseif($get_release == 'debian-bullseye'):
 				$get_release = "Debian11";
+			elseif($get_release == 'debian-bookworm'):
+				$get_release = "Debian12";
 			endif;
 
 			$check_release = ("{$rootfolder}/releases/{$get_release}");

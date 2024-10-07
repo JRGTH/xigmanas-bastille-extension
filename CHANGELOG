@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.38......Update release list, added new Debian/Ubuntu distros.
 1.1.37......Workaround to copy host resolv.conf to jail path.
 1.1.36......Update bastille config, use current extension path.
 1.1.35......Update bastille config.
