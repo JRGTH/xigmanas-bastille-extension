@@ -85,10 +85,14 @@ if($_POST):
 			$release = "ubuntu-bionic";
 		elseif($release == 'Ubuntu_2004'):
 			$release = "ubuntu-focal";
+		elseif($release == 'Ubuntu_2204'):
+			$release = "ubuntu-jammy";
 		elseif($release == 'Debian9'):
 			$release = "debian-stretch";
 		elseif($release == 'Debian10'):
 			$release = "debian-buster";
+		elseif($release == 'Debian12'):
+			$release = "debian-bookworm";
 		endif;
 
 		if(isset($_POST['thickjail']) && isset($_POST['vnetjail'])):
