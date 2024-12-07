@@ -78,7 +78,7 @@ INSTALLPATH="${CWDIR}/${FULLAPPNAME}"
 BRANCH="master"
 BATSILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" # Official Bastille Repository)
 BATSILLE_ALT="https://github.com/JRGTH/${APPNAME}/archive/${BRANCH}.zip" # Alternate Bastille Repository, early updates)
-BASTILE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRANCH}/usr/local/bin/${APPNAME}"
+BASTILLE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRANCH}/usr/local/bin/${APPNAME}"
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
 URL_FREEBSD="http://ftp.freebsd.org/pub/FreeBSD/releases/"
@@ -205,7 +205,7 @@ bastille_upgrade()
 	DATE=$(date +"%a %b %d %T %Y")
 	echo "Looking for new ${APPNAME} package!"
 	mkdir -p ${CWDIR}/update
-	fetch -ao ${CWDIR}/update --no-verify-peer --timeout=30 ${BASTILE_VERSION} || \
+	fetch -ao ${CWDIR}/update --no-verify-peer --timeout=30 ${BASTILLE_VERSION} || \
 	error_notify "Error: A problem has occurred while fetching version file."
 
 	# Compare version files and fetch latest package if available.
@@ -399,12 +399,12 @@ sys_symlinkdir()
 		done
 	fi
 
-	# Link bastile config file directory.
+	# Link bastille config file directory.
 	if [ -d "${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}" ]; then
 		ln -fhs ${INSTALLPATH}${USRLOCAL}/etc/${APPNAME} ${USRLOCAL}/etc/${APPNAME}
 	fi
 
-	# Link bastile config file.
+	# Link bastille config file.
 	#if [ -f "${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf.sample" ]; then
 	#	cd ${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}
 	#	if [ ! -f "${APPNAME}.conf" ]; then
@@ -1109,7 +1109,7 @@ remove_addon()
 	fi
 
 	echo "Done!"
-	echo "Please manually remove the Bastile Extension Command Script from the WebGUI."
+	echo "Please manually remove the Bastille Extension Command Script from the WebGUI."
 	exit 0
 }
 
