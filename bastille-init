@@ -76,8 +76,8 @@ FREEBSD_UPDATE="${INCLUDE_PATH}/freebsd-update/${HOSTVERSION}"
 SYSTEM_INCLUDE="${INCLUDE_PATH}/include/${HOSTVERSION}"
 INSTALLPATH="${CWDIR}/${FULLAPPNAME}"
 BRANCH="master"
-BATSILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" # Official Bastille Repository)
-BATSILLE_ALT="https://github.com/JRGTH/${APPNAME}/archive/${BRANCH}.zip" # Alternate Bastille Repository, early updates)
+BASTILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" # Official Bastille Repository)
+BASTILLE_ALT="https://github.com/JRGTH/${APPNAME}/archive/${BRANCH}.zip" # Alternate Bastille Repository, early updates)
 BASTILLE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRANCH}/usr/local/bin/${APPNAME}"
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
@@ -177,7 +177,7 @@ bastille_initial_download()
 	if [ -n "${REQUIRED_UPDATE}" ] || [ ! -f "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}" ]; then
 		# Fetch latest bastille package.
 		echo "Fetching ${APPNAME} files..."
-		fetch -ao ${CWDIR}/${BRANCH}.zip --no-verify-peer --timeout=30 ${BATSILLE_URL} || \
+		fetch -ao ${CWDIR}/${BRANCH}.zip --no-verify-peer --timeout=30 ${BASTILLE_URL} || \
 		error_notify "Error: A problem has occurred while fetching ${APPNAME}."
 		bastille_pkg_extract
 	fi
@@ -214,7 +214,7 @@ bastille_upgrade()
 		CURRENTVER=$(cat ${BASTILLEPATH}/${APPNAME} | grep BASTILLE_VERSION= | egrep -o "([0-9]{1,}\.)+[0-9]{1,}" | tr -d '.')
 		if [ "${UPDATEVER}" -gt "${CURRENTVER}" ]; then
 			echo "New ${APPNAME} package found, performing upgrade..."
-			fetch -ao ${CWDIR}/update --no-verify-peer --timeout=30 ${BATSILLE_URL} || \
+			fetch -ao ${CWDIR}/update --no-verify-peer --timeout=30 ${BASTILLE_URL} || \
 			error_notify "Error: A problem has occurred while fetching ${APPNAME} package."
 			tar -xf ${CWDIR}/update/${BRANCH}.zip --exclude='.git*' --exclude='docs' --exclude='bastille.conf' --strip-components 1 -C ${CWDIR}/update
 			rm -f ${CWDIR}/update/${BRANCH}.zip
@@ -248,7 +248,7 @@ bastille_core_update()
 	if [ -f "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}" ]; then
 		# Fetch latest bastille package.
 		echo "Fetching ${APPNAME} files..."
-		fetch -ao ${CWDIR}/${BRANCH}.zip --no-verify-peer --timeout=30 ${BATSILLE_URL} || \
+		fetch -ao ${CWDIR}/${BRANCH}.zip --no-verify-peer --timeout=30 ${BASTILLE_URL} || \
 		error_notify "Error: A problem has occurred while fetching ${APPNAME}."
 		bastille_pkg_extract
 	fi
