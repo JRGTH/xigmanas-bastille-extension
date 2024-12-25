@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.40......Code fixes/improvements thanks to tschettervictor.
 1.1.39......Update release list on bastille_manager_add.php.
 1.1.38......Update release list, added new Debian/Ubuntu distros.
 1.1.37......Workaround to copy host resolv.conf to jail path.
