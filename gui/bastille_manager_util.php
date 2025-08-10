@@ -390,9 +390,9 @@ if($_POST):
 						break;
 					else:
 						if (isset($_POST['nowstop'])):
-							$cmd = ("/usr/local/bin/bastille destroy -f {$item}");
+							$cmd = ("/usr/local/bin/bastille destroy -afy {$item}");
 						else:
-							$cmd = ("/usr/local/bin/bastille destroy {$item}");
+							$cmd = ("/usr/local/bin/bastille destroy -fy {$item}");
 						endif;
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
