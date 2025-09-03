@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.42......Update: Add support for 14.3 release + add -a option for destroy.
 1.1.41......Update: Add support for 14.2 release.
 1.1.40......Code fixes/improvements thanks to tschettervictor.
 1.1.39......Update release list on bastille_manager_add.php.
