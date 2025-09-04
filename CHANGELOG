@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.44......Fix bastille version display under maintenance tab.
 1.1.43......Update: Finish adding support for 14.3 release.
 1.1.42......Update: Add support for 14.3 release + add -a option for destroy.
 1.1.41......Update: Add support for 14.2 release.

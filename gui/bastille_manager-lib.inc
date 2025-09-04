@@ -90,8 +90,11 @@ function is_dir_empty($reldir) {
 function get_version_bastille() {
 	global $tarballversion, $prdname;
 	if (is_file("{$tarballversion}")) {
-		//exec("/bin/cat {$tarballversion}", $result);
-		exec("/usr/bin/grep 'BASTILLE_VERSION=' {$tarballversion} | cut -d'\"' -f2", $result);
+		// For some reason bastille bin version value isn't double quoted anymore so we can't use the old delimiter.
+		// we will keep the old line for reference.
+
+		//exec("/usr/bin/grep 'BASTILLE_VERSION=' {$tarballversion} | cut -d'\"' -f2", $result);
+		exec("/usr/bin/grep 'BASTILLE_VERSION=' {$tarballversion} | cut -d'=' -f2", $result);
 		return ($result[0] ?? '');
 	}
 	else {
