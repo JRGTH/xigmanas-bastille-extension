@@ -62,10 +62,11 @@ endif;
 
 $pgtitle = [gtext('Extensions'),gtext('Bastille'),gtext('Configuration'), $container];
 $jail_config = "$jail_dir/$container/jail.conf";
+$item = $pconfig['jailname'];
 
 // Get some jail system settings.
 $is_vnet = exec("/usr/bin/grep '.*vnet;' $jail_config");
-$pconfig['autostart'] =  exec("/usr/bin/grep -w '{$container}_AUTO_START=\"YES\"' $bastille_config");
+$pconfig['autostart'] =  exec("/usr/bin/grep -w 'boot=\"on\"' {$jail_dir}/{$item}/{$jail_settings}");
 
 // Get some jail config parameters.
 // This could be done with a nice php preg loop in the future.
@@ -124,17 +125,19 @@ if ($_POST):
 		$input_errors[] = gtext("A valid hostname must be specified, it can't be left blank.");
 	endif;
 
-	if(isset($_POST['ipv4'])):
-		if(!preg_match('/^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))?$/', $pconfig['ipv4'])):
-			$input_errors[] = gtext("A valid IPv4 address must be specified.");
-		endif;
-	endif;
+	// Disable this IP validation check since bastille jail.conf syntax has changed recently.
+	//if(isset($_POST['ipv4'])):
+	//	if(!preg_match('/^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))?$/', $pconfig['ipv4'])):
+	//		$input_errors[] = gtext("A valid IPv4 address must be specified.");
+	//	endif;
+	//endif;
 
-	if(isset($_POST['ipv6'])):
-		if(!preg_match('/^(([a-fA-F0-9:]+$)|([a-fA-F0-9:]+\/[0-9]{1,3}$))/', $pconfig['ipv6'])):
-			$input_errors[] = gtext("A valid IPv6 address must be specified.");
-		endif;
-	endif;
+	// Disable this IP validation check since bastille jail.conf syntax has changed recently.
+	//if(isset($_POST['ipv6'])):
+	//	if(!preg_match('/^(([a-fA-F0-9:]+$)|([a-fA-F0-9:]+\/[0-9]{1,3}$))/', $pconfig['ipv6'])):
+	//		$input_errors[] = gtext("A valid IPv6 address must be specified.");
+	//	endif;
+	//endif;
 
 	if(isset($_POST['securelevel'])):
 		if(!preg_match('/^[0-3]$/', $pconfig['securelevel'])):
@@ -249,7 +252,7 @@ if ($_POST):
 
 				if (isset($_POST['ipv4']) && $_POST['ipv4']):
 					if($jail_ipv4_def !== $jail_ipv4):
-						$cmd = "/usr/bin/sed -i '' 's|.*ip4.addr.*=.*;|  ip4.addr = $jail_ipv4;|' $jail_config";
+						$cmd = "/usr/bin/sed -i '' 's/.*ip4.addr.*=.*;/  ip4.addr = $jail_ipv4;/' $jail_config";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
 							//$savemsg .= gtext("IPv4 changed successfully.");
@@ -261,7 +264,7 @@ if ($_POST):
 
 				if (isset($_POST['ipv6']) && $_POST['ipv6']):
 					if($jail_ipv6_def !== $jail_ipv6):
-						$cmd = "/usr/bin/sed -i '' 's|.*ip6.addr.*=.*;|  ip6.addr = $jail_ipv6;|' $jail_config";
+						$cmd = "/usr/bin/sed -i '' 's/.*ip6.addr.*=.*;/  ip6.addr = $jail_ipv6;/' $jail_config";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
 							//$savemsg .= gtext("IPv6 changed successfully.");
@@ -336,11 +339,12 @@ if ($_POST):
 				endif;
 
 				if (isset($_POST['autostart']) && $_POST['autostart']):
-					if($jail_name_def !== $jail_name):
-						// Remove obsolete variable.
-						exec("/usr/sbin/sysrc -f $configfile -x {$jail_name_def}_AUTO_START");
-					endif;
-					$cmd = ("/usr/sbin/sysrc -f $configfile {$jail_name}_AUTO_START=\"YES\"");
+					//if($jail_name_def !== $jail_name):
+					//	// Remove obsolete variable.
+					//	exec("/usr/sbin/sysrc -f $configfile -x {$jail_name_def}_AUTO_START");
+					//endif;
+					//$cmd = ("/usr/sbin/sysrc -f $configfile {$jail_name}_AUTO_START=\"YES\"");
+					$cmd = ("/usr/sbin/sysrc -f {$jail_dir}/{$item}/{$jail_settings} boot=\"on\"");
 					unset($output,$retval);mwexec2($cmd,$output,$retval);
 					if($retval == 0):
 						//$savemsg .= gtext("Autostart changed successfully.");
@@ -348,12 +352,13 @@ if ($_POST):
 						$input_errors[] = gtext("Failed to enable autostart.");
 					endif;
 				else:
-					if($jail_name_def !== $jail_name):
-						// Remove obsolete variable.
-						exec("/usr/sbin/sysrc -f $configfile -x {$jail_name_def}_AUTO_START");
-					endif;
-					if(exec("/usr/sbin/sysrc -f $configfile -qn {$jail_name}_AUTO_START")):
-						$cmd = ("/usr/sbin/sysrc -f $configfile -x {$jail_name}_AUTO_START");
+					//if($jail_name_def !== $jail_name):
+					//	// Remove obsolete variable.
+					//	exec("/usr/sbin/sysrc -f $configfile -x {$jail_name_def}_AUTO_START");
+					//endif;
+					if(exec("/usr/sbin/sysrc -f {$jail_dir}/{$item}/{$jail_settings} -qn boot")):
+						//$cmd = ("/usr/sbin/sysrc -f $configfile -x {$jail_name}_AUTO_START");
+						$cmd = ("/usr/sbin/sysrc -f {$jail_dir}/{$item}/{$jail_settings} boot=\"off\"");
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
 							//$savemsg .= gtext("Autostart changed successfully.");
@@ -442,6 +447,7 @@ endif;
 						. gtext('For additional information about the jail configuration file, check the FreeBSD documentation')
 						. '</a>.';
 					html_remark("note", gtext('Note'), $helpinghand);
+					html_remark("note", gtext("Warning"), sprintf(gtext("Please be careful here as no input validation will be performed.")));
 					?>
 				</div>
 				<?php include 'formend.inc';?>

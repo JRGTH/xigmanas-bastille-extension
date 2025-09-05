@@ -1139,6 +1139,7 @@ ext_start()
 	# Start bastille jails.
 	if [ -d "${CWDIR}/jails" ]; then
 		JAIL_LIST=$(bastille list jail)
+		# This loop is for backward compatibility only.
 		for jail in ${JAIL_LIST}; do
 			if grep -qw "${jail}_AUTO_START=\"YES\"" ${CWDIR}${EXTCONF}; then
 				if ! jls | sed "1 d" | awk '{print $3}' | grep -qw ${jail}; then
@@ -1146,6 +1147,13 @@ ext_start()
 				fi
 			fi
 		done
+
+		# Required for embedded platforms.
+		if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
+			if sysrc -qc bastille_enable=YES; then
+				service bastille start
+			fi
+		fi
 	fi
 
 	if [ $? -eq 0 ]; then
@@ -1198,9 +1206,9 @@ rc_params()
 	fi
 
 	# Do't start containers by default.
-	if ! sysrc -qn bastille_enable >/dev/null 2>&1; then
-		sysrc bastille_enable="NO" >/dev/null 2>&1
-	fi
+	#if ! sysrc -qn bastille_enable >/dev/null 2>&1; then
+	#	sysrc bastille_enable="NO" >/dev/null 2>&1
+	#fi
 
 	# Check if sane ZFS is enabled in this setup.
 	if [ "${bastille_zfs_enable}" = "YES" ]; then
@@ -1225,6 +1233,9 @@ rc_params()
 	else
 		sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="NO" >/dev/null 2>&1
 	fi
+
+	# Enable bastille in /etc/rc.conf
+	sysrc bastille_enable="YES" >/dev/null 2>&1
 }
 
 update_config()
@@ -1308,7 +1319,9 @@ bastille_stop()
 {
 	# Stop all bastille containers.
 	echo "${PRDNAME} Extension: Stopping all containers..."
-	bastille stop ALL
+	if ! sysrc -qc bastille_enable=YES; then
+		bastille stop ALL
+	fi
 	if [ $? -eq 0 ]; then
 		exit 0
 	else

@@ -67,6 +67,7 @@ $tarballversion = "/usr/local/bin/bastille";
 $bastille_version_min = exec("grep 'BASTILLE_VERSION=' $tarballversion | cut -d '\"' -f2 | tr -d '.'");
 $host_version = exec("/bin/cat /etc/prd.version | tr -d '.'");
 $linux_compat_support = exec("/usr/bin/grep 'LINUX_COMPAT_SUPPORT=' $configfile | /usr/bin/cut -d'\"' -f2");
+$jail_settings = "settings.conf";
 
 // Ensure the root directory is configured.
 if ($rootfolder == "")
@@ -253,10 +254,11 @@ function get_jail_infos() {
 			$r['path'] = "-";
 		endif;
 		// Display auto-start settings.
-		$jail_autostart = exec("/usr/bin/grep -w {$item}_AUTO_START $configfile | cut -d'=' -f2 | tr -d '\"'");
-		if ($jail_autostart == 'YES') {
+		//$jail_autostart = exec("/usr/bin/grep -w {$item}_AUTO_START $configfile | cut -d'=' -f2 | tr -d '\"'");
+		$jail_autostart = exec("/usr/bin/grep -w boot {$jail_dir}/{$item}/settings.conf | cut -d'=' -f2 | tr -d '\"'");
+		if ($jail_autostart == 'on') {
 			$r['boot'] = $img_path['ena'];
-		} elseif ($jail_autostart == 'NO') {
+		} elseif ($jail_autostart == 'off') {
 			$r['boot'] = $img_path['dis'];
 		} else {
 			$r['boot'] = $img_path['dis'];

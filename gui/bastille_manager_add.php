@@ -113,10 +113,10 @@ if($_POST):
 			// Just create an empty container with minimal jail.conf.
 			$cmd = ("/usr/local/bin/bastille create -E {$jname}");
 		else:
-			if (isset($_POST['nowstart'])):
-				$cmd = ("/usr/local/bin/bastille create {$options} {$jname} {$release} {$ipaddr} {$interface} && /usr/local/bin/bastille start {$jname}");
-			else:
+			if (isset($_POST['autostart'])):
 				$cmd = ("/usr/local/bin/bastille create {$options} {$jname} {$release} {$ipaddr} {$interface}");
+			else:
+				$cmd = ("/usr/local/bin/bastille create --no-boot {$options} {$jname} {$release} {$ipaddr} {$interface}");
 			endif;
 		endif;
 
@@ -124,16 +124,15 @@ if($_POST):
 			if(get_all_release_list()):
 				unset($output,$retval);mwexec2($cmd,$output,$retval);
 				if($retval == 0):
-					if (isset($_POST['autostart'])):
-						exec("/usr/sbin/sysrc -f {$configfile} {$jname}_AUTO_START=\"YES\"");
-					endif;
+					//if (isset($_POST['autostart'])):
+					//	exec("/usr/sbin/sysrc -f {$configfile} {$jname}_AUTO_START=\"YES\"");
+					//endif;
 					if(is_link($resolv_conf)):
 						if(unlink($resolv_conf)):
 							//exec("/usr/local/bin/bastille cp $jname $resolv_host etc");
 							copy($resolv_host, $resolv_conf);
 						endif;
 					endif;
-					//$savemsg .= gtext("Boot Environment created and activated successfully.");
 					header('Location: bastille_manager_gui.php');
 					exit;
 				else:
@@ -163,7 +162,7 @@ function emptyjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
-			showElementById('nowstart_tr', 'show');
+			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
 		break;
@@ -174,7 +173,7 @@ function emptyjail_change() {
 			showElementById('thickjail_tr', 'hide');
 			showElementById('vnetjail_tr', 'hide');
 			showElementById('bridgejail_tr', 'hide');
-			showElementById('nowstart_tr', 'hide');
+			//showElementById('nowstart_tr', 'hide');
 			showElementById('autostart_tr', 'hide');
 			showElementById('linuxjail_tr', 'hide');
 		break;
@@ -190,7 +189,7 @@ function linuxjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
-			showElementById('nowstart_tr', 'show');
+			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
 			showElementById('emptyjail_tr', 'show');
@@ -202,7 +201,7 @@ function linuxjail_change() {
 			showElementById('thickjail_tr', 'hide');
 			showElementById('vnetjail_tr', 'hide');
 			showElementById('bridgejail_tr', 'hide');
-			showElementById('nowstart_tr', 'show');
+			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('emptyjail_tr', 'hide');
 		break;
@@ -218,7 +217,7 @@ function vnetjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
-			showElementById('nowstart_tr', 'show');
+			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
 		break;
@@ -229,7 +228,7 @@ function vnetjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'hide');
-			showElementById('nowstart_tr', 'show');
+			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
 		break;
@@ -245,7 +244,7 @@ function bridgejail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
-			showElementById('nowstart_tr', 'show');
+			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
 		break;
@@ -256,7 +255,7 @@ function bridgejail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'hide');
 			showElementById('bridgejail_tr', 'show');
-			showElementById('nowstart_tr', 'show');
+			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
 		break;
@@ -320,7 +319,7 @@ $document->render();
 					html_checkbox2('linuxjail',gettext('Create a Linux container'),!empty($pconfig['linuxjail']) ? true : false,gettext('This will create a Linux container, this is highly experimental and for testing purposes.'),'',false,false,'linuxjail_change()');
 				endif;
 			endif;
-			html_checkbox2('nowstart',gettext('Start after creation'),!empty($pconfig['nowstart']) ? true : false,gettext('Start the container after creation(May be overridden by later bastille releases).'),'',false);
+			//html_checkbox2('nowstart',gettext('Start after creation'),!empty($pconfig['nowstart']) ? true : false,gettext('Start the container after creation(May be overridden by later bastille releases).'),'',false);
 			html_checkbox2('autostart',gettext('Auto start on boot'),!empty($pconfig['autostart']) ? true : false,gettext('Automatically start the container at boot time.'),'',false);
 ?>
 		</tbody>
