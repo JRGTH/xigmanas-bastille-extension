@@ -223,9 +223,9 @@ function get_jail_infos() {
 		if (!$r['id']):
 			$r['id'] = "-";
 		endif;
-		// Set the IPv4 on the running jails.
-		//$r['ip'] = exec("/usr/sbin/jls | /usr/bin/grep {$item} | /usr/bin/awk '{print $2}'");
-		$r['ip'] = exec("/usr/bin/grep -w 'ip4.addr' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
+		// Set the IP address on the running jails using bastille list command instead.
+		//$r['ip'] = exec("/usr/bin/grep -w 'ip4.addr' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
+		$r['ip'] = exec("/usr/local/bin/bastille list {$item} | awk '{print $7}' | sed 1d");
 		if (!$r['ip']):
 			$r['ip'] = exec("/usr/bin/grep -w 'ip6.addr' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
 		endif;
