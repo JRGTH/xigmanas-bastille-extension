@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.49......Disable basic interface to comply with bastille new syntax.
 1.1.48......Add action to set priority value from utilities.
 1.1.47......Cosmetic changes and improvements.
 1.1.46......Display jail IP using bastille list buil-in command.

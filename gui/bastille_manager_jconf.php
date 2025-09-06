@@ -74,7 +74,7 @@ $pconfig['jname'] = "$container";
 $pconfig['hostname'] = exec("/usr/bin/grep '.*host.hostname.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['ipv4'] = exec("/usr/bin/grep '.*ip4.addr.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['ipv6'] = exec("/usr/bin/grep '.*ip6.addr.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
-$pconfig['interface'] = exec("/usr/bin/grep '.*interface.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
+//$pconfig['interface'] = exec("/usr/bin/grep '.*interface.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['securelevel'] = exec("/usr/bin/grep '.*securelevel.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['devfs_ruleset'] = exec("/usr/bin/grep '.*devfs_ruleset.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['enforce_statfs'] = exec("/usr/bin/grep '.*enforce_statfs.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
@@ -86,11 +86,12 @@ $jail_name_def = $pconfig['jname'];
 $jail_hostname_def = $pconfig['hostname'];
 $jail_ipv4_def = $pconfig['ipv4'];
 $jail_ipv6_def = $pconfig['ipv6'];
-$jail_interface_def = $pconfig['interface'];
+//$jail_interface_def = $pconfig['interface'];
 $jail_securelevel_def = $pconfig['securelevel'];
 $jail_devfs_ruleset_def = $pconfig['devfs_ruleset'];
 $jail_enforce_statfs_def = $pconfig['enforce_statfs'];
 $jail_vnet_interface_def = $pconfig['vnet_interface'];
+$jail_boot_prio_def = $pconfig['boot_prio'];
 
 // Check if is a Linux jail.
 $is_linux_jail = exec("/usr/bin/grep linsysfs {$jail_dir}/{$jail_name_def}/fstab");
@@ -179,9 +180,9 @@ if ($_POST):
 			if(isset($pconfig['ipv6'])):
 				$jail_ipv6 = $pconfig['ipv6'];
 			endif;
-			if(isset($pconfig['interface'])):
-				$jail_interface = $pconfig['interface'];
-			endif;
+			//if(isset($pconfig['interface'])):
+			//	$jail_interface = $pconfig['interface'];
+			//endif;
 			if(isset($pconfig['securelevel'])):
 				$jail_securelevel = $pconfig['securelevel'];
 			endif;
@@ -212,9 +213,9 @@ if ($_POST):
 			if(isset($_POST['ipv6']) && ($jail_ipv6_def !== $jail_ipv6)):
 				$is_changed = "1";
 			endif;
-			if(isset($_POST['interface']) && ($jail_interface_def !== $jail_interface)):
-				$is_changed = "1";
-			endif;
+			//if(isset($_POST['interface']) && ($jail_interface_def !== $jail_interface)):
+			//	$is_changed = "1";
+			//endif;
 			// Don't check "securelevel" if Linux jail.
 			if(!$is_linux_jail):
 				if($jail_securelevel_def !== $jail_securelevel):
@@ -279,19 +280,19 @@ if ($_POST):
 					endif;
 				endif;
 
-				if (isset($_POST['interface']) && $_POST['interface']):
-					if($jail_interface_def !==  $jail_interface):
-						if ($_POST['interface'] !== 'Config'):
-							$cmd = "/usr/bin/sed -i '' 's|.*interface.*=.*;|  interface = $jail_interface;|' $jail_config";
-							unset($output,$retval);mwexec2($cmd,$output,$retval);
-							if($retval == 0):
-								//$savemsg .= gtext("Interface changed successfully.");
-							else:
-								$input_errors[] = gtext("Failed to save interface.");
-							endif;
-						endif;
-					endif;
-				endif;
+				//if (isset($_POST['interface']) && $_POST['interface']):
+				//	if($jail_interface_def !==  $jail_interface):
+				//		if ($_POST['interface'] !== 'Config'):
+				//			$cmd = "/usr/bin/sed -i '' 's|.*interface.*=.*;|  interface = $jail_interface;|' $jail_config";
+				//			unset($output,$retval);mwexec2($cmd,$output,$retval);
+				//			if($retval == 0):
+				//				//$savemsg .= gtext("Interface changed successfully.");
+				//			else:
+				//				$input_errors[] = gtext("Failed to save interface.");
+				//			endif;
+				//		endif;
+				//	endif;
+				//endif;
 
 				if (isset($_POST['vnet_interface']) && $_POST['vnet_interface']):
 					if($jail_vnet_interface_def !==  $jail_vnet_interface):
@@ -422,7 +423,6 @@ endif;
 					$a_action = $l_interfaces;
 					html_titleline2(gtext("Jail Configuration"));
 					html_inputbox("jname", gtext("Name"), $pconfig['jname'], gtext("Set the desired jail name, for example: jail_1. Warning: renaming a jail will also rename the directory/dataset."), true, 40);
-
 					html_inputbox("hostname", gtext("Hostname"), $pconfig['hostname'], gtext("Set the desired jail hostname, for example: jail.com, not to be confused with the jail name."), true, 40);
 					if ($jail_ipv4_def):
 						html_inputbox("ipv4", gtext("IPv4"), $pconfig['ipv4'], gtext("Set the desired jail IPv4 address, for example: 192.168.1.100, or 192.168.1.100/24."), true, 40);
@@ -430,9 +430,9 @@ endif;
 					if ($jail_ipv6_def):
 						html_inputbox("ipv6", gtext("IPv6"), $pconfig['ipv6'], gtext("Set the desired jail IPv4 address, for example: 2001:cdba::3257:9652, or 2001:cdba::3257:9652/64."), true, 40);
 					endif;
-					if (!$is_vnet):
-						html_combobox('interface', gtext('Interface'),$pconfig['interface'], $a_action, gtext("Set the network interface available from the dropdown menu, usually should not be changed unless replacing/renaming interface or moving jail from host."), true, false, 'action_change()');
-					endif;
+					//if (!$is_vnet):
+					//	html_combobox('interface', gtext('Interface'),$pconfig['interface'], $a_action, gtext("Set the network interface available from the dropdown menu, usually should not be changed unless replacing/renaming interface or moving jail from host."), true, false, 'action_change()');
+					//endif;
 					if(!$is_linux_jail):
 						html_inputbox("securelevel", gtext("securelevel"), $pconfig['securelevel'], gtext("The value of the jail's kern.securelevel. A jail never has a lower securelevel than its parent system, but by setting this parameter it may have a higher one, default is 2."), false, 20);
 					endif;
