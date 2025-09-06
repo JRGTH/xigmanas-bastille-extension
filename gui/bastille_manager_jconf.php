@@ -79,6 +79,7 @@ $pconfig['securelevel'] = exec("/usr/bin/grep '.*securelevel.*=' $jail_config | 
 $pconfig['devfs_ruleset'] = exec("/usr/bin/grep '.*devfs_ruleset.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['enforce_statfs'] = exec("/usr/bin/grep '.*enforce_statfs.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['vnet_interface'] = exec("/usr/bin/grep '.*vnet.interface.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
+$pconfig['boot_prio'] = exec("/usr/local/bin/bastille config {$item} get priority");
 
 // Set the jail config default parameters.
 $jail_name_def = $pconfig['jname'];
@@ -193,6 +194,9 @@ if ($_POST):
 			if(isset($pconfig['vnet_interface'])):
 				$jail_vnet_interface = $pconfig['vnet_interface'];
 			endif;
+			if(isset($pconfig['boot_prio'])):
+				$jail_boot_prio = $pconfig['boot_prio'];
+			endif;
 
 			// Check if the config has changed for each parameter.
 			// This could be done with a nice foreach loop in the future.
@@ -235,6 +239,7 @@ if ($_POST):
 				// Skip jail running check.
 				$retval = "1";
 			endif;
+
 			if($retval == 0):
 				$input_errors[] = gtext("This jail is running, please stop it before making jail.conf changes.");
 			else:
@@ -368,6 +373,18 @@ if ($_POST):
 					endif;
 				endif;
 
+				if (isset($_POST['boot_prio']) || $_POST['boot_prio']):
+					if($jail_boot_prio_def !== $jail_boot_prio):
+						$cmd = "/usr/local/bin/bastille config {$item} set priority $jail_boot_prio";
+						unset($output,$retval);mwexec2($cmd,$output,$retval);
+						if($retval == 0):
+							//$savemsg .= gtext("Priority changed successfully.");
+						else:
+							$input_errors[] = gtext("Failed to save priority .");
+						endif;
+					endif;
+				endif;
+
 				if (isset($_POST['jname']) && $_POST['jname']):
 					if($jail_name_def !== $jail_name):
 						$cmd = "/usr/local/bin/bastille rename $jail_name_def $jail_name";
@@ -424,13 +441,14 @@ endif;
 						html_inputbox("enforce_statfs", gtext("enforce_statfs"), $pconfig['enforce_statfs'], gtext("This determines what information processes in a jail are able to get about mount points. Affects the behaviour of the following syscalls: statfs, fstatfs, getfsstat and fhstatfs, default is 2."), false, 20);
 					//endif;
 					if ($is_vnet):
-						html_inputbox("vnet_interface", gtext("VNET Interface"), $pconfig['vnet_interface'], gtext("Set the VNET interface manually, usually should not be changed unless renaming the interface or moving jail from host."), false, 20);
+						html_inputbox("vnet_interface", gtext("VNET Interface"), $pconfig['vnet_interface'], gtext("Set the VNET interface manually, usually should not be changed unless renaming the interface or moving jail from host, Note: manual edit of the jail rc.conf file may be required."), false, 20);
 					endif;
 					?>
 					<?php
 					html_separator2();
 					html_titleline2(gtext("Misc Configuration"));
 					html_checkbox2('autostart',gtext('Autoboot'),!empty($pconfig['autostart']) ? true : false,gtext('Autoboot this jail after system reboot.'),'',false);
+					html_inputbox("boot_prio", gtext("Priority"), $pconfig['boot_prio'], gtext("Set the priority value of the jail. Affects the boot order behaviour."), false, 20);
 					//html_checkbox2('force_edit',gtext('Force edit'),!empty($pconfig['force_edit']) ? true : false,gtext('Automatically stop and start this jail if is already running.'),'',false);
 					?>
 				</table>

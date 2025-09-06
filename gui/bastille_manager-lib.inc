@@ -243,11 +243,27 @@ function get_jail_infos() {
 		elseif (!$r['rel']):
 			$r['rel'] = "-";
 		endif;
-		// Display interfaces.
-		$r['nic'] = exec("/usr/bin/grep -wE 'interface.*=.*;|vnet.interface.*=.*;' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
-		if (!$r['nic']):
-			$r['nic'] = "-";
+
+		// Display interface name for VNET jails.
+		if (exec("/usr/bin/grep -w '.*vnet.interface.*=.*;' {$jail_dir}/{$item}/jail.conf")):
+			$r['nic'] = exec("/usr/bin/grep -w '.*vnet.interface.*=.*;' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
+			if (!$r['nic']):
+				$r['nic'] = "-";
+			endif;
+		// Display interface name from the previous jail.conf syntax for simple shared IP jails.
+		elseif (exec("/usr/bin/grep -w '.*interface.*=.*;' {$jail_dir}/{$item}/jail.conf")):
+			$r['nic'] = exec("/usr/bin/grep -w '.*interface.*=.*;' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
+			if (!$r['nic']):
+				$r['nic'] = "-";
+			endif;
+		// Display interface name from the new jail.conf syntax for simple shared IP jails.
+		elseif (exec("/usr/bin/grep -w '.*ip4.addr.*=.*|.*' {$jail_dir}/{$item}/jail.conf")):
+			$r['nic'] = exec("/usr/bin/grep -w '.*ip4.addr.*=.*|.*' {$jail_dir}/{$item}/jail.conf | cut -d'|' -f1 | awk '{print $3}'");
+			if (!$r['nic']):
+				$r['nic'] = "-";
+			endif;
 		endif;
+
 		// Display path.
 		$r['path'] = exec("/usr/bin/grep -w 'path' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
 		if (!$r['path']):
