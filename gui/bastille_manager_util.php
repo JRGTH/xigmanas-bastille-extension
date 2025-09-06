@@ -318,6 +318,31 @@ if($_POST):
 				endif;
 				break;
 
+			case 'priority':
+				// Input validation required
+				if(empty($input_errors)):
+					$container = [];
+					$container['uuid'] = $_POST['uuid'];
+					$container['jailname'] = $_POST['jailname'];
+					$set_priority = $pconfig['prioritynumber'];
+					$item = $container['jailname'];
+					if(exec("/usr/sbin/sysrc -f {$jail_dir}/{$item}/{$jail_settings} -qn priority")):
+						if (is_numeric($set_priority)):
+							$cmd = ("/usr/local/bin/bastille config {$item} set priority {$set_priority}");
+							unset($output,$retval);mwexec2($cmd,$output,$retval);
+							if($retval == 0):
+								header('Location: bastille_manager_gui.php');
+								exit;
+							else:
+								$input_errors[] = gtext("Failed to set priority.");
+							endif;
+						else:
+							$input_errors[] = gtext("Priority value must be a number.");
+						endif;
+					endif;
+				endif;
+				break;
+
 			case 'fstab':
 				// Input validation not required
 				if(empty($input_errors)):
@@ -458,33 +483,44 @@ function action_change() {
 			showElementById('backup_tr', 'show');
 			showElementById('format_tr', 'show');
 			showElementById('safemode_tr', 'show');
+			showElementById('prioritynumber_tr','hide');
 			break;
 		case "clone":
 			showElementById('newname_tr','show');
 			showElementById('newipaddr_tr','show');
 			showElementById('clonestop_tr','show');
+			showElementById('prioritynumber_tr','hide');
 			break;
 		case "update":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
 			showElementById('update_base_tr','show');
 			showElementById('update_jail_tr','show');
+			showElementById('prioritynumber_tr','hide');
 			break;
 		case "base":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
 			showElementById('jail_release_tr', 'show');
 			showElementById('release_tr','show');
+			showElementById('prioritynumber_tr','hide');
 			break;
 		case "autoboot":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
 			showElementById('auto_boot_tr', 'show');
+			showElementById('prioritynumber_tr','hide');
 			break;
 		case "noauto":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
 			showElementById('no_autoboot_tr', 'show');
+			showElementById('prioritynumber_tr','hide');
+			break;
+		case "priority":
+			showElementById('confirmname_tr','hide');
+			showElementById('nowstop_tr','hide');
+			showElementById('prioritynumber_tr','show');
 			break;
 		case "fstab":
 			showElementById('confirmname_tr','hide');
@@ -495,15 +531,18 @@ function action_change() {
 			showElementById('readonly_tr','show');
 			showElementById('createdir_tr','show');
 			showElementById('automount_tr','show');
+			showElementById('prioritynumber_tr','hide');
 			break;
 		case "delete":
 			showElementById('confirmname_tr','show');
 			showElementById('nowstop_tr','show');
+			showElementById('prioritynumber_tr','hide');
 			break;
 		case "advanced":
 			showElementById('confirmname_tr','hide');
 			showElementById('nowstop_tr','hide');
 			showElementById('advanced_tr','show');
+			showElementById('prioritynumber_tr','hide');
 			break;
 		default:
 			break;
@@ -577,6 +616,7 @@ $document->render();
 				'base' => gettext('Release'),
 				'autoboot' => gettext('Autoboot'),
 				'noauto' => gettext('Noauto'),
+				'priority' => gettext('Priority'),
 				'fstab' => gettext('Fstab'),
 				'delete' => gettext('Destroy'),
 				'advanced' => gettext('Advanced'),
@@ -605,6 +645,7 @@ $document->render();
 				html_checkbox2('safemode',gettext('Safe ZFS export'),!empty($pconfig['safemode']) ? true : false,gettext('Safely stop and start a ZFS jail before the exporting process, this has no effect on .TGZ/TXZ since the jail should be stopped regardless.'),'',false);
 			endif;
 			html_inputbox2('confirmname',gettext('Enter name for confirmation'),!empty($pconfig['confirmname']),'',true,30);
+			html_inputbox2('prioritynumber',gettext('Enter priority value'),!empty($pconfig['prioritynumber']),'',true,30);
 			html_checkbox2('nowstop',gettext('Stop container'),!empty($pconfig['nowstop']) ? true : false,gettext('Stop the container if running before deletion.'),'',false);
 			html_inputbox2('newname',gettext('Enter a name for the new container'),!empty($pconfig['newname']),'',true,30);
 			html_inputbox2('newipaddr',gettext('Enter a IP address for the new container'),!empty($pconfig['newipaddr']),'',true,30);

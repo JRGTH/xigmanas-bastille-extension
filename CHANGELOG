@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.48......Add action to set priority value from utilities.
 1.1.47......Cosmetic changes and improvements.
 1.1.46......Display jail IP using bastille list buil-in command.
 1.1.45......Code update for recent bastille boot settings changes.
