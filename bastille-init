@@ -1366,6 +1366,10 @@ bastille_init()
 
 linux_compat()
 {
+	# Feature temporarily disabled.
+	echo "This feature is temporarily disabled due incompatibility with later ${PRDPRODUCT} releases."
+	exit 1
+
 	if ping -c1 -t5 freebsd.org > /dev/null; then
 		# Manually enable Linux compatibility(Experimental).
 		if ! sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
