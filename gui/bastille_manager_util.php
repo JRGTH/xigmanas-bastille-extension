@@ -598,7 +598,7 @@ $document->render();
 			html_checkbox2('createdir',gettext('Create Target Directory'),!empty($pconfig['createdir']) ? true : true,gettext('Create target directory if missing (recommended).'),'',true);
 			if ($is_thinjail):
 				html_checkbox2('update_base',gettext('Base update confirm'),!empty($pconfig['update_base']) ? true : false,gettext('This is a thin container, therefore the base release will be updated, this affects child containers.'),'',true);
-				html_checkbox2('update_base_force',gettext('Container update force confirm:'),!empty($pconfig['update_base']) ? true : false,gettext('This will perform a forced base update, this affects child containers.'),'',true);
+				html_checkbox2('update_base_force',gettext('Base update force confirm:'),!empty($pconfig['update_base']) ? true : false,gettext('This will perform a forced base update, this affects child containers.'),'',true);
 			else:
 				html_checkbox2('update_jail',gettext('Container update confirm:'),!empty($pconfig['update_jail']) ? true : false,gettext('This is a thick container, therefore the update will be performed within its root, current containers are not affected.'),'',true);
 				html_checkbox2('update_jail_force',gettext('Container update force confirm:'),!empty($pconfig['update_jail']) ? true : false,gettext('This will perform a forced jail update, current containers are not affected.'),'',true);
