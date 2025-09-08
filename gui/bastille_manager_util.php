@@ -258,6 +258,35 @@ if($_POST):
 				endif;
 				break;
 
+			case 'base':
+				// Input validation not required
+				if(empty($input_errors)):
+					$container = [];
+					$container['uuid'] = $_POST['uuid'];
+					$container['jailname'] = $_POST['jailname'];
+					$item = $container['jailname'];
+					$current_release = exec("/usr/bin/grep '\-RELEASE' {$jail_dir}/{$item}/fstab | awk '{print $1}' | grep -o '[^/]*$'");
+					$new_release = $pconfig['release'];
+
+					if(!$current_release):
+						$savemsg .= gtext("This is a thick container and should be interactively upgraded through the command line.");
+					else:
+						$cmd = ("/usr/local/sbin/bastille-init --upgrade {$item} {$current_release} {$new_release}");
+						unset($output,$retval);mwexec2($cmd,$output,$retval);
+						if($retval == 0):
+							$savemsg .= sprintf(gtext("Container base release changed to %s successfully."),$new_release);
+							exec("/usr/local/bin/bastille config {$item} set osrelease $new_release");
+							exec("echo '{$date}: {$application}: Container base release changed to {$new_release} on {$item} successfully' >> {$logfile}");
+							//header('Location: bastille_manager_gui.php');
+							//exit;
+						else:
+							$input_errors[] = sprintf(gtext("Failed to change container base release to %s, either it is running or is not a thin container."),$new_release);
+							exec("echo '{$date}: {$application}: Failed to change container base release to {$new_release} on {$item}' >> {$logfile}");
+						endif;
+					endif;
+				endif;
+				break;
+
 			case 'autoboot':
 				// Input validation not required
 				if(empty($input_errors)):
@@ -444,6 +473,8 @@ function action_change() {
 	showElementById('readonly_tr', 'hide');
 	showElementById('createdir_tr', 'hide');
 	showElementById('automount_tr', 'hide');
+	showElementById('jail_release_tr', 'hide');
+	showElementById('release_tr','hide');
 	showElementById('update_base_tr','hide');
 	showElementById('update_jail_tr','hide');
 	showElementById('update_base_force_tr', 'hide');
@@ -474,6 +505,10 @@ function action_change() {
 			showElementById('update_jail_tr','show');
 			showElementById('update_base_force_tr', 'show');
 			showElementById('update_jail_force_tr', 'show');
+			break;
+		case "base":
+			showElementById('jail_release_tr', 'show');
+			showElementById('release_tr','show');
 			break;
 		case "autoboot":
 			showElementById('auto_boot_tr', 'show');
@@ -545,7 +580,23 @@ $document->render();
 		<tbody>
 <?php
 
+			$b_action = $l_release;
+			#$current_release = exec("/usr/sbin/jexec {$pconfig['jailname']} freebsd-version 2>/dev/null");
+			$current_release = "";
+			$disable_base_change = "no";
+			$current_release = exec("/usr/bin/grep '\-RELEASE' {$jail_dir}/{$pconfig['jailname']}/fstab | awk '{print $1}' | grep -o '[^/]*$'");
 			$is_thinjail = exec("/usr/bin/grep -w '/.*/.bastille' {$jail_dir}/{$pconfig['jailname']}/fstab");
+			if (!$current_release):
+				$current_release = exec("/usr/bin/grep 'releng' {$jail_dir}/{$pconfig['jailname']}/root/COPYRIGHT | cut -d '/' -f2");
+				if(!$current_release):
+					//Assume is a running thickjail.
+					$current_release = exec("/usr/sbin/jexec {$pconfig['jailname']} freebsd-version 2>/dev/null");
+				endif;
+				$disable_base_change = "yes";
+				if (!$current_release):
+					$current_release = "-";
+				endif;
+			endif;
 			$pconfig['source_path'] = "";
 			$pconfig['target_path'] = "{$rootfolder}/jails/{$pconfig['jailname']}/root/mnt/";
 			html_text2('jailname',gettext('Container name:'),htmlspecialchars($pconfig['jailname']));
@@ -553,6 +604,7 @@ $document->render();
 				'backup' => gettext('Backup'),
 				'clone' => gettext('Clone'),
 				'update' => gettext('Update'),
+				'base' => gettext('Release'),
 				'autoboot' => gettext('Autoboot'),
 				'noauto' => gettext('Noauto'),
 				'priority' => gettext('Priority'),
@@ -603,9 +655,14 @@ $document->render();
 				html_checkbox2('update_jail',gettext('Container update confirm:'),!empty($pconfig['update_jail']) ? true : false,gettext('This is a thick container, therefore the update will be performed within its root, current containers are not affected.'),'',true);
 				html_checkbox2('update_jail_force',gettext('Container update force confirm:'),!empty($pconfig['update_jail']) ? true : false,gettext('This will perform a forced jail update, current containers are not affected.'),'',true);
 			endif;
+			html_text2('jail_release',gettext('Current base release:'),htmlspecialchars($current_release));
 			html_text2('auto_boot',gettext('Enable container auto-startup'),htmlspecialchars("This will cause the container to automatically start each time the system restart."));
 			html_text2('no_autoboot',gettext('Disable container auto-startup'),htmlspecialchars("This will disable the container automatic startup."));
 			html_text2('backup',gettext('Export container'),htmlspecialchars("This will export a container to a compressed file/image, please execute `bastille export` for more info in regards exporting formats, Default is .XZ on ZFS setups or .TXZ otherwise, For faster compressed backups consider .GZ/.TGZ."));
+
+			if ($disable_base_change == "no"):
+				html_combobox2('release',gettext('New base release'),!empty($pconfig['release']),$b_action,gettext("Warning: This will change current shared base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues, or use the command line for native upgrade."),true,false,);
+			endif;
 ?>
 		</tbody>
 	</table>

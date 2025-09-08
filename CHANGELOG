@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.1.52......Re-add Thin jail release change and code improvements.
 1.1.51......Code update/improvements, update jail config/util pages and bastille-init.
 1.1.50......Disable linux_compat due incompatibility with later releases.
 1.1.49......Disable basic interface to comply with bastille new syntax.

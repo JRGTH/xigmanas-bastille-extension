@@ -727,10 +727,15 @@ release_upgrade()
 				exit 0
 			fi
 			# Upgrade a release base.
+			if [ -n "${_forceopt}" ]; then
+				echo "Performing a forced release upgrade..."
+			else
+				echo "Performing a release upgrade..."
+			fi
 			echo "=> Run the command below several times when asked to finish installing updates."
 			echo "bastille-init install ${TARGET}"
 			echo
-			env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+			env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update ${_forceopt} --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
 			-d ${CWDIR}/freebsd-update -b "${bastille_releasesdir}/${TARGET}" --currently-running "${TARGET}" -r ${RELEASE} upgrade
 			echo
 			echo "=> Please run: 'bastille-init install ${TARGET}' to finish installing updates."
@@ -847,11 +852,16 @@ thickjail_upgrade()
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
 				if [ "$(jls name | grep -w "${TARGET}")" ]; then
 					# Upgrade a thick container.
+					if [ -n "${_forceopt}" ]; then
+						echo "Performing a forced jail upgrade..."
+					else
+						echo "Performing a jail upgrade..."
+					fi
 					echo "=> Run the command below several times when asked to finish installing updates."
 					echo "bastille-init install ${TARGET}"
 					echo
 					CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
-					env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+					env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update ${_forceopt} --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
 					-d ${CWDIR}/freebsd-update -b "${bastille_jailsdir}/${TARGET}/root" --currently-running "${CURRENT_VERSION}" -r ${RELEASE} upgrade
 					echo
 					echo "=> Please run: 'bastille-init install ${TARGET}' to finish installing updates."
@@ -1441,6 +1451,24 @@ upgrade|--upgrade)
 		fi
 		release_change
 	fi
+	_forceopt=
+	;;
+upgrade_force|--upgrade-force)
+	# Check container type to upgrade
+	if [ -z "${NEWRELEASE}" ]; then
+		if [ $# -gt 3 ] || [ $# -lt 3 ]; then
+			echo "Usage: ${SCRIPTNAME} [upgrade_force|--upgrade-force] [container|release] [release]"
+			exit 1
+		fi
+		thickjail_upgrade
+	else
+		if [ $# -gt 4 ] || [ $# -lt 4 ]; then
+			echo "Usage: ${SCRIPTNAME} [upgrade_force|--upgrade-force] [container] [release] [newrelease]"
+			exit 1
+		fi
+		release_change
+	fi
+	_forceopt="-F"
 	;;
 update|--update)
 	if [ $# -gt 2 ] || [ $# -lt 2 ]; then
@@ -1494,11 +1522,12 @@ while getopts ":ospruxUvgtZh" option; do
 		echo
 		echo "Advanced Usage: ${SCRIPTNAME} [option] [container] [release] | [newrelease]"
 		echo "Options:"
-		echo "              update|--update        Update a container/release to base -pX release."
-		echo "        update_force|--update-force  Update a container/release to base -pX release forcefully."
-		echo "             upgrade|--upgrade       Upgrade a container/release to X.Y-RELEASE."
-		echo "             install|--install       Finish installing pending updates on container/release."
-		echo "               clean|--clean         Cleanup the FreeBSD update/upgrade cached files/folders."
+		echo "              update|--update         Update a container/release to base -pX release."
+		echo "        update_force|--update-force   Update a container/release to base -pX release forcefully."
+		echo "             upgrade|--upgrade        Upgrade a container/release to X.Y-RELEASE."
+		echo "       upgrade_force|--upgrade-force  Upgrade a container/release to X.Y-RELEASE. forcefully"
+		echo "             install|--install        Finish installing pending updates on container/release."
+		echo "               clean|--clean          Cleanup the FreeBSD update/upgrade cached files/folders."
 		echo ""
 		echo ""
 		echo "Experimental:"
