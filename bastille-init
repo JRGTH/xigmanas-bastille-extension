@@ -793,6 +793,8 @@ release_change()
 								# If the previous conditions meets, proceed with the container base upgrade.
 								sed -i '' "s/${RELEASE}/${NEWRELEASE}/g" ${bastille_jailsdir}/${TARGET}/fstab
 								echo "${TARGET} release changed to ${NEWRELEASE}."
+								echo "Setting OS release for ${TARGET}."
+								bastille config ${TARGET} set osrelease ${NEWRELEASE}
 							elif cat "${bastille_jailsdir}/${TARGET}/fstab" | grep "${NEWRELEASE}" | grep -qw "/.*/.bastille"; then
 								echo "${TARGET} already using ${NEWRELEASE}."
 								exit 0

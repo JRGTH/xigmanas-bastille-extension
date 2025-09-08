@@ -275,7 +275,6 @@ if($_POST):
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
 							$savemsg .= sprintf(gtext("Container base release changed to %s successfully."),$new_release);
-							exec("/usr/local/bin/bastille config {$item} set osrelease $new_release");
 							exec("echo '{$date}: {$application}: Container base release changed to {$new_release} on {$item} successfully' >> {$logfile}");
 							//header('Location: bastille_manager_gui.php');
 							//exit;
