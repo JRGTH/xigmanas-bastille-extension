@@ -78,6 +78,7 @@ $pconfig['ipv6'] = exec("/usr/bin/grep '.*ip6.addr.*=' $jail_config | cut -d '='
 $pconfig['securelevel'] = exec("/usr/bin/grep '.*securelevel.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['devfs_ruleset'] = exec("/usr/bin/grep '.*devfs_ruleset.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['enforce_statfs'] = exec("/usr/bin/grep '.*enforce_statfs.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
+$pconfig['osrelease'] = exec("/usr/local/bin/bastille config {$item} get osrelease | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['vnet_interface'] = exec("/usr/bin/grep '.*vnet.interface.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['boot_prio'] = exec("/usr/local/bin/bastille config {$item} get priority");
 
@@ -90,6 +91,7 @@ $jail_ipv6_def = $pconfig['ipv6'];
 $jail_securelevel_def = $pconfig['securelevel'];
 $jail_devfs_ruleset_def = $pconfig['devfs_ruleset'];
 $jail_enforce_statfs_def = $pconfig['enforce_statfs'];
+$jail_osrelease_def = $pconfig['osrelease'];
 $jail_vnet_interface_def = $pconfig['vnet_interface'];
 $jail_boot_prio_def = $pconfig['boot_prio'];
 
@@ -142,20 +144,44 @@ if ($_POST):
 	//endif;
 
 	if(isset($_POST['securelevel'])):
-		if(!preg_match('/^[0-3]$/', $pconfig['securelevel'])):
-			$input_errors[] = gtext("A valid number must be specified for securelevel, between 0-3.");
+		if(!is_numeric($pconfig['securelevel'])):
+			$input_errors[] = gtext("This parameter must be a number.");
+		else:
+			if(!preg_match('/^[0-3]$/', $pconfig['securelevel'])):
+				$input_errors[] = gtext("A valid number must be specified for securelevel, between 0-3.");
+			endif;
 		endif;
 	endif;
 
 	if(isset($_POST['devfs_ruleset'])):
-		if(!preg_match('/^([0-9]{1,3})$/', $pconfig['devfs_ruleset'])):
-			$input_errors[] = gtext("A valid number must be specified for devfs_ruleset.");
+		if(!is_numeric($pconfig['devfs_ruleset'])):
+			$input_errors[] = gtext("This parameter must be a number.");
+		else:
+			if(!preg_match('/^([0-9]{1,3})$/', $pconfig['devfs_ruleset'])):
+				$input_errors[] = gtext("A valid number must be specified for devfs_ruleset.");
+			endif;
 		endif;
 	endif;
 
 	if(isset($_POST['enforce_statfs'])):
-		if(!preg_match('/^[0-2]$/', $pconfig['enforce_statfs'])):
-			$input_errors[] = gtext("A valid number must be specified for enforce_statfs, between 0-2.");
+		if(!is_numeric($pconfig['enforce_statfs'])):
+			$input_errors[] = gtext("This parameter must be a number.");
+		else:
+			if(!preg_match('/^[0-2]$/', $pconfig['enforce_statfs'])):
+				$input_errors[] = gtext("A valid number must be specified for enforce_statfs, between 0-2.");
+			endif;
+		endif;
+	endif;
+
+	if(isset($_POST['osrelease'])):
+		if(!is_string($pconfig['osrelease'])):
+			$input_errors[] = gtext("This parameter must be a string.");
+		endif;
+	endif;
+
+	if(isset($_POST['boot_prio'])):
+		if(!is_numeric($pconfig['boot_prio'])):
+			$input_errors[] = gtext("This parameter must be a number.");
 		endif;
 	endif;
 
@@ -192,6 +218,9 @@ if ($_POST):
 			if(isset($pconfig['enforce_statfs'])):
 				$jail_enforce_statfs = $pconfig['enforce_statfs'];
 			endif;
+			if(isset($pconfig['osrelease'])):
+				$jail_osrelease = $pconfig['osrelease'];
+			endif;
 			if(isset($pconfig['vnet_interface'])):
 				$jail_vnet_interface = $pconfig['vnet_interface'];
 			endif;
@@ -199,7 +228,8 @@ if ($_POST):
 				$jail_boot_prio = $pconfig['boot_prio'];
 			endif;
 
-			// Check if the config has changed for each parameter.
+			// Check if the config has changed for each parameters.
+			// This jails wide changes requires the jail to be already stopped.
 			// This could be done with a nice foreach loop in the future.
 			if($jail_name_def !== $jail_name):
 				$is_changed = "1";
@@ -242,7 +272,7 @@ if ($_POST):
 			endif;
 
 			if($retval == 0):
-				$input_errors[] = gtext("This jail is running, please stop it before making jail.conf changes.");
+				$input_errors[] = gtext("This jail is running, please stop it before making jail.conf wide changes.");
 			else:
 				if (isset($_POST['hostname']) && $_POST['hostname']):
 					if($jail_hostname_def !== $jail_hostname):
@@ -344,6 +374,18 @@ if ($_POST):
 					endif;
 				endif;
 
+				if (isset($_POST['osrelease']) || $_POST['osrelease']):
+					if($jail_osrelease_def !== $jail_osrelease):
+						$cmd = "/usr/local/bin/bastille config {$item} set osrelease $jail_osrelease";
+						unset($output,$retval);mwexec2($cmd,$output,$retval);
+						if($retval == 0):
+							//$savemsg .= gtext("Osrelease changed successfully.");
+						else:
+							$input_errors[] = gtext("Failed to save osrelease.");
+						endif;
+					endif;
+				endif;
+
 				if (isset($_POST['autostart']) && $_POST['autostart']):
 					//if($jail_name_def !== $jail_name):
 					//	// Remove obsolete variable.
@@ -439,6 +481,7 @@ endif;
 					html_inputbox("devfs_ruleset", gtext("devfs_ruleset"), $pconfig['devfs_ruleset'], gtext("The number of the devfs ruleset that is enforced for mounting devfs in this jail. A value of zero means no ruleset is enforced. default is 4, on VNET jails default is 13."), false, 20);
 					//if(!$is_linux_jail):
 						html_inputbox("enforce_statfs", gtext("enforce_statfs"), $pconfig['enforce_statfs'], gtext("This determines what information processes in a jail are able to get about mount points. Affects the behaviour of the following syscalls: statfs, fstatfs, getfsstat and fhstatfs, default is 2."), false, 20);
+						html_inputbox("osrelease", gtext("osrelease"), $pconfig['osrelease'], gtext("This sets the jail OS release, this parameter must be a string."), false, 20);
 					//endif;
 					if ($is_vnet):
 						html_inputbox("vnet_interface", gtext("VNET Interface"), $pconfig['vnet_interface'], gtext("Set the VNET interface manually, usually should not be changed unless renaming the interface or moving jail from host, Note: manual edit of the jail rc.conf file may be required."), false, 20);

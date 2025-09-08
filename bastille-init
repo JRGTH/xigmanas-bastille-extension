@@ -669,10 +669,19 @@ jail_update()
 						echo "Can't determine '${TARGET}' version."
 						exit 1
 					else
-						env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+						if [ -n "${_forceopt}" ]; then
+							echo "Performing a forced jail update..."
+						else
+							echo "Performing a jail update..."
+						fi
+						env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update ${_forceopt} --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
 						-d ${CWDIR}/freebsd-update -b "${bastille_jailsdir}/${TARGET}/root" fetch --currently-running "${CURRENT_VERSION}"
 						${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
 						-d ${CWDIR}/freebsd-update -b "${bastille_jailsdir}/${TARGET}/root" install --currently-running "${CURRENT_VERSION}"
+
+						echo "Setting OS release for ${TARGET}."
+						CURRENT_VERSION=$(jexec -l ${TARGET} freebsd-version)
+						bastille config ${TARGET} set osrelease ${CURRENT_VERSION}
 					fi
 				else
 					echo "Container not running."
@@ -689,11 +698,18 @@ jail_update()
 		fi
 	else
 		if [ -d "${bastille_releasesdir}/${TARGET}" ]; then
+			if [ -n "${_forceopt}" ]; then
+				echo "Performing a forced base update..."
+			else
+				echo "Performing a base update..."
+			fi
 			# Update container base(affects base child containers).
-			env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
+			env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update ${_forceopt} --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
 			-d ${CWDIR}/freebsd-update -b "${bastille_releasesdir}/${TARGET}" fetch --currently-running "${TARGET}"
 			${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
 			-d ${CWDIR}/freebsd-update -b "${bastille_releasesdir}/${TARGET}" install --currently-running "${TARGET}"
+
+			echo "Please manually set OS release on jail.conf for the required jails."
 		else
 			echo "${TARGET} not found. See bootstrap."
 			exit 1
@@ -1431,6 +1447,15 @@ update|--update)
 		echo "Usage: ${SCRIPTNAME} [update|--update] [container] | [release]"
 		exit 1
 	fi
+	_forceopt=
+	jail_update
+	;;
+update_force|--update-force)
+	if [ $# -gt 2 ] || [ $# -lt 2 ]; then
+		echo "Usage: ${SCRIPTNAME} [update_force|--update-force] [container] | [release]"
+		exit 1
+	fi
+	_forceopt="-F"
 	jail_update
 	;;
 clean|--clean)
@@ -1469,10 +1494,11 @@ while getopts ":ospruxUvgtZh" option; do
 		echo
 		echo "Advanced Usage: ${SCRIPTNAME} [option] [container] [release] | [newrelease]"
 		echo "Options:"
-		echo "        update|--update    Update a container/release to base -pX release."
-		echo "        upgrade|--upgrade  Upgrade a container/release to X.Y-RELEASE."
-		echo "        install|--install  Finish installing pending updates on container/release."
-		echo "        clean|--clean      Cleanup the FreeBSD update/upgrade cached files/folders."
+		echo "              update|--update        Update a container/release to base -pX release."
+		echo "        update_force|--update-force  Update a container/release to base -pX release forcefully."
+		echo "             upgrade|--upgrade       Upgrade a container/release to X.Y-RELEASE."
+		echo "             install|--install       Finish installing pending updates on container/release."
+		echo "               clean|--clean         Cleanup the FreeBSD update/upgrade cached files/folders."
 		echo ""
 		echo ""
 		echo "Experimental:"
