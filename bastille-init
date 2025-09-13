@@ -89,7 +89,7 @@ ARG="${2}"
 # Load bastille configuration file.
 if [ -f "${BASTILLECONF}" ]; then
 	. /${BASTILLECONF}
-else
+elif [ -f "${BASTILLECONF}" ]; then
 	. /${INSTALLPATH}/${BASTILLECONF}
 fi
 
