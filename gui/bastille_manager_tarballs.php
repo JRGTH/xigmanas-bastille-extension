@@ -2,7 +2,7 @@
 /*
 	bastille_manager_tarballs.php
 
-	Copyright (c) 2019 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Portions of XigmaNAS® (https://www.xigmanas.com).
@@ -67,6 +67,13 @@ function get_rel_list() {
 	endif;
 	return $result;
 }
+
+$zfs_status = get_state_zfs();
+if($zfs_status == "Invalid ZFS configuration"):
+	// Warning if invalid ZFS configuration.
+	$input_errors[] = gtext("WARNING: Invalid ZFS configuration detected.");
+endif;
+
 $rel_list = get_rel_list();
 $sphere_array = $rel_list;
 
@@ -76,26 +83,17 @@ if ($linux_compat_support == "YES"):
 		'14.2-RELEASE' => gettext('14.2-RELEASE'),
 		'14.1-RELEASE' => gettext('14.1-RELEASE'),
 		'14.0-RELEASE' => gettext('14.0-RELEASE'),
+		'13.5-RELEASE' => gettext('13.4-RELEASE'),
 		'13.4-RELEASE' => gettext('13.4-RELEASE'),
-		'13.3-RELEASE' => gettext('13.3-RELEASE'),
-		'13.2-RELEASE' => gettext('13.2-RELEASE'),
-		'13.1-RELEASE' => gettext('13.1-RELEASE'),
-		'13.0-RELEASE' => gettext('13.0-RELEASE'),
-		'12.4-RELEASE' => gettext('12.4-RELEASE'),
-		'12.3-RELEASE' => gettext('12.3-RELEASE'),
-		'12.2-RELEASE' => gettext('12.2-RELEASE'),
-		'12.1-RELEASE' => gettext('12.1-RELEASE'),
-		'12.0-RELEASE' => gettext('12.0-RELEASE'),
-		'11.4-RELEASE' => gettext('11.4-RELEASE'),
-		'11.3-RELEASE' => gettext('11.3-RELEASE'),
-		'11.2-RELEASE' => gettext('11.2-RELEASE'),
-		'ubuntu-jammy' => gettext('Ubuntu-Jammy'),
-		'ubuntu-focal' => gettext('Ubuntu-Focal'),
-		'ubuntu-bionic' => gettext('Ubuntu-Bionic'),
-		'debian-bookworm' => gettext('Debian-Bookworm'),
-		'debian-bullseye' => gettext('Debian-Bullseye'),
-		'debian-buster' => gettext('Debian-Buster'),
-		//'debian-stretch' => gettext('Debian-Stretch'), -> Obsolete, removed from bastille boostrap.
+		// Linux base release bootstrap is allowed from command-line.
+		//'ubuntu-jammy' => gettext('Ubuntu-noble'),
+		//'ubuntu-jammy' => gettext('Ubuntu-Jammy'), 
+		//'ubuntu-focal' => gettext('Ubuntu-Focal'),
+		//'ubuntu-bionic' => gettext('Ubuntu-Bionic'),
+		//'debian-bookworm' => gettext('Debian-Bookworm'),
+		//'debian-bullseye' => gettext('Debian-Bullseye'),
+		//'debian-buster' => gettext('Debian-Buster'),
+		//'debian-stretch' => gettext('Debian-Stretch'),
 	];
 else:
 	$a_action = [
@@ -103,19 +101,8 @@ else:
 		'14.2-RELEASE' => gettext('14.2-RELEASE'),
 		'14.1-RELEASE' => gettext('14.1-RELEASE'),
 		'14.0-RELEASE' => gettext('14.0-RELEASE'),
+		'13.5-RELEASE' => gettext('13.4-RELEASE'),
 		'13.4-RELEASE' => gettext('13.4-RELEASE'),
-		'13.3-RELEASE' => gettext('13.3-RELEASE'),
-		'13.2-RELEASE' => gettext('13.2-RELEASE'),
-		'13.1-RELEASE' => gettext('13.1-RELEASE'),
-		'13.0-RELEASE' => gettext('13.0-RELEASE'),
-		'12.4-RELEASE' => gettext('12.4-RELEASE'),
-		'12.3-RELEASE' => gettext('12.3-RELEASE'),
-		'12.2-RELEASE' => gettext('12.2-RELEASE'),
-		'12.1-RELEASE' => gettext('12.1-RELEASE'),
-		'12.0-RELEASE' => gettext('12.0-RELEASE'),
-		'11.4-RELEASE' => gettext('11.4-RELEASE'),
-		'11.3-RELEASE' => gettext('11.3-RELEASE'),
-		'11.2-RELEASE' => gettext('11.2-RELEASE'),
 	];
 endif;
 
@@ -137,6 +124,7 @@ if($_POST):
 		$check_release = ("{$rootfolder}/releases/{$get_release}");
 		$cmd = sprintf('/bin/echo "Y" | /usr/local/bin/bastille bootstrap %1$s > %2$s',$get_release,$logevent);
 		$base_mandatory = "base";
+		$zfs_status = get_state_zfs();
 
 		//unset($lib32,$ports,$src);
 		if (isset($_POST['lib32'])):
@@ -150,12 +138,12 @@ if($_POST):
 		endif;
 		$opt_tarballs = "$lib32 $ports $src";
 
-		// FreeBSD base release check.
-		//if(file_exists($check_release)):
-		//	$savemsg .= sprintf(gtext('%s base appears to be already extracted.'),$get_release);
-		//else:
-			// Download a FreeBSD base release.
-			if ($_POST['Download']):
+		// Download a FreeBSD base release.
+		if ($_POST['Download']):
+			if($zfs_status == "Invalid ZFS configuration"):
+				// Abort bootstrap if invalid ZFS configuration.
+				$input_errors[] = gtext("Cannot bootstrap with an invalid ZFS configuration.");
+			else:
 				$savemsg = "";
 				$errormsg = "";
 				if ($opt_tarballs):
@@ -179,8 +167,9 @@ if($_POST):
 				else:
 					$errormsg .= sprintf(gtext('%s Failed to download and/or extract release base.'),$get_release);
 				endif;
+
 			endif;
-		//endif;
+		endif;
 	endif;
 
 	if (isset($_POST['Destroy']) && $_POST['Destroy']):

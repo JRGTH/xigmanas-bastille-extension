@@ -2,7 +2,7 @@
 /*
 	bastille_manager_gui.php
 
-	Copyright (c) 2019-2020 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Portions of XigmaNAS® (https://www.xigmanas.com).
@@ -53,11 +53,13 @@ $gt_record_mod = gtext('Utilities');
 $gt_selection_start = gtext('Start Selected');
 $gt_selection_stop = gtext('Stop Selected');
 $gt_selection_restart = gtext('Restart Selected');
+$gt_selection_autoboot = gtext('Auto-boot Selected');
 $gt_record_conf = gtext('Jail Configuration');
 $gt_record_inf = gtext('Information');
 $gt_selection_start_confirm = gtext('Do you really want to start selected jail(s)?');
 $gt_selection_stop_confirm = gtext('Do you want to stop the selected jail(s)?');
 $gt_selection_restart_confirm = gtext('Do you want to restart the selected jail(s)?');
+$gt_selection_autoboot_confirm = gtext('Do you want to set auto-boot on selected jail(s)?');
 $img_path = [
 	'add' => 'images/add.png',
 	'mod' => 'images/edit.png',
@@ -88,6 +90,12 @@ if(!initial_install_banner()):
 			. gtext('Please click here then push "Save" button.')
 			. '</a>';
 		$prerequisites_ok = false;
+endif;
+
+$zfs_status = get_state_zfs();
+if($zfs_status == "Invalid ZFS configuration"):
+	// Warning if invalid ZFS configuration.
+	$input_errors[] = gtext("WARNING: Invalid ZFS configuration detected.");
 endif;
 
 if($_POST):
@@ -159,6 +167,24 @@ if($_POST):
 			endif;
 		endforeach;
 	endif;
+
+if(isset($_POST['autoboot_selected_jail']) && $_POST['autoboot_selected_jail']):
+		$checkbox_member_array = isset($_POST[$checkbox_member_name]) ? $_POST[$checkbox_member_name] : [];
+		foreach($checkbox_member_array as $checkbox_member_record):
+			if(false !== ($index = array_search_ex($checkbox_member_record, $sphere_array, 'jailname'))):
+				if(!isset($sphere_array[$index]['protected'])):
+					$cmd = ("/usr/local/bin/bastille config {$checkbox_member_record} set boot on");
+					$return_val = mwexec($cmd);
+					if($return_val == 0):
+						//$savemsg .= gtext("Jail(s) restarted successfully.");
+						header($sphere_header);
+					else:
+						$errormsg .= gtext("Failed to restart jail(s).");
+					endif;
+				endif;
+			endif;
+		endforeach;
+	endif;
 endif;
 
 $pgtitle = [gtext("Extensions"), gtext('Bastille')];
@@ -177,6 +203,9 @@ $(window).on("load", function() {
 	$("#restart_selected_jail").click(function () {
 		return confirm('<?=$gt_selection_restart_confirm;?>');
 	});
+	$("#autoboot_selected_jail").click(function () {
+		return confirm('<?=$gt_selection_restart_confirm;?>');
+	});
 	// Disable action buttons.
 	disableactionbuttons(true);
 
@@ -192,6 +221,7 @@ function disableactionbuttons(ab_disable) {
 	$("#start_selected_jail").prop("disabled", ab_disable);
 	$("#stop_selected_jail").prop("disabled", ab_disable);
 	$("#restart_selected_jail").prop("disabled", ab_disable);
+	$("#autoboot_selected_jail").prop("disabled", ab_disable);
 }
 
 function controlactionbuttons(ego, triggerbyname) {
@@ -362,6 +392,7 @@ $document->render();
 		<input name="start_selected_jail" id="start_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_start;?>"/>
 		<input name="stop_selected_jail" id="stop_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_stop;?>"/>
 		<input name="restart_selected_jail" id="restart_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_restart;?>"/>
+		<input name="autoboot_selected_jail" id="autoboot_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_autoboot;?>"/>
 	</div>
 <?php
 	include 'formend.inc';

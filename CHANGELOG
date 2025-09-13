@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.2.00......Re-add Linux jail feature, WebGUI fixes and overall improvements.
 1.1.53......Code changes, handle osrelease parameter update in bastille-init.
 1.1.52......Re-add Thin jail release change and code improvements.
 1.1.51......Code update/improvements, update jail config/util pages and bastille-init.

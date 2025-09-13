@@ -10,7 +10,7 @@
 # Debug script
 #set -x
 
-# Copyright (c) 2019-2024, José Rivera (joserprg@gmail.com).
+# Copyright (c) 2019-2025, Jose Rivera (joserprg@gmail.com).
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -51,20 +51,8 @@ error_notify() {
 	# Log/notify message on error and exit.
 	MSG="${*}"
 	logger -t "${SCRIPTNAME}" "${MSG}"
-	echo -e "${MSG}" >&2; exit 1
-}
-
-platform_check()
-{
-	# Check for working platform.
-	if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
-		pkg_symlink
-	else
-		if [ -d "/var/cache/pkg" ]; then
-			echo "Cleaning the pkg cache."
-			pkg clean -y -a
-		fi
-	fi
+	echo -e "${MSG}" >&2
+	exit 1
 }
 
 load_kmods() {
@@ -79,7 +67,7 @@ load_kmods() {
 
 	# Skip already loaded known modules.
 	for _req_kmod in ${required_mods}; do
-		if ! sysrc -f /boot/loader.conf -qn ${_req_kmod}_load=YES | grep -q "YES"; then
+		if ! sysrc -f /boot/loader.conf -qc ${_req_kmod}_load=YES; then
 			sysrc -f /boot/loader.conf ${_req_kmod}_load=YES
 		fi
 		if ! kldstat -m ${_req_kmod} >/dev/null 2>&1; then
@@ -95,66 +83,45 @@ load_kmods() {
 			kldload -v ${_lin_kmod}
 		fi
 	done
-	if ! sysrc -qn linux_enable=YES | grep -q "YES"; then
+	if ! sysrc -qc linux_enable=YES; then
 		sysrc linux_enable=YES
 	fi
 }
 
-pkg_symlink() {
-	if ! sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
-		echo "Creating pkg environment for embedded platforms."
+unload_kmods() {
+	required_mods="fdescfs linprocfs linsysfs tmpfs"
+	linuxarc_mods="linux linux64"
 
-		if [ -d "/var/cache/pkg" ]; then
-			if [ ! -L "/var/cache/pkg" ]; then
-				rm -R /var/cache/pkg
-				mkdir -p ${CWDIR}/system/cache/pkg
-				ln -vFs ${CWDIR}/system/cache/pkg /var/cache/pkg
-			fi
-		else
-			mkdir -m 0755 -p /var/cache
-			mkdir -p ${CWDIR}/system/cache/pkg
-			ln -vFs ${CWDIR}/system/cache/pkg /var/cache/pkg
+	for _req_kmod in ${required_mods}; do
+		if sysrc -f /boot/loader.conf -qc ${_req_kmod}_load=YES; then
+			echo "Unset kernel module: ${_req_kmod}"
+			sysrc -f /boot/loader.conf -x ${_req_kmod}_load
 		fi
+	done
 
-		if [ -d "/var/db/pkg" ]; then
-			if [ ! -L "/var/db/pkg" ]; then
-				rm -R /var/db/pkg
-				mkdir -p ${CWDIR}/system/pkg/db
-				ln -vFs ${CWDIR}/system/pkg/db /var/db/pkg
-			fi
-		else
-			mkdir -p ${CWDIR}/system/pkg/db
-			ln -vFs ${CWDIR}/system/pkg/db /var/db/pkg
-		fi
+	if sysrc -qc linux_enable=YES; then
+		echo "Unset linux_enable"
+		sysrc -x linux_enable
 	fi
 }
 
 fetch_pkg() {
-	if ! sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
-		echo "Fetching required packages."
+	echo "Fetching required packages."
+	# Fetch deboostrap and dependency packages.
+	pkg fetch -y -d -o ${CWDIR}/system/ debootstrap || error_notify "Error while fetching packages, exiting."
 
-		# Skip existing packages/ports bundled with XigmaNAS.
-		#PKGLIST="#bash #ca_root_nss debootstrap #gettext-runtime glib gmp gnugrep gnugpg gnutls #indexinfo libassuan #libedit #libffi libgcrypt libgpg-error #libiconv libidn2 libksba libtasn1 libunistring libxml2 mpdecimal nettle npth p11-kit #pcre perl5 pinentry pinentry-curses #python38 #readline #sqlite3 tpm-emulator #trousers ubuntu-keyring wget"
-		PKGLIST="debootstrap glib gmp gnugrep gnupg gnutls libassuan libgcrypt libgpg-error libidn2 libksba libtasn1 libunistring libxml2 mpdecimal nettle npth p11-kit perl5 pinentry pinentry-curses tpm-emulator ubuntu-keyring wget"
+	extract_pkg
+}
 
-		for pkg in ${PKGLIST}; do
-			pkg fetch -y "${pkg}" || error_notify "Error while fetching required [${pkg}] package, exiting."
-		done
-
-		extract_pkg
+fetch_debootstrap() {
+	if ! sysrc -f ${CWDIR}${EXTCONF} -qc LINUX_COMPAT_SUPPORT=YES; then
+		fetch_pkg
 	fi
 }
 
 extract_pkg() {
 	echo "Extracting required packages."
-
-	if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
-		FILELIST=$(find "${CWDIR}/system/cache/pkg" -type f)
-		LINKLIST=$(find "${CWDIR}/system/cache/pkg" -type l)
-	else
-		FILELIST=$(find "/var/cache/pkg" -type f)
-		LINKLIST=$(find "/var/cache/pkg" -type l)
-	fi
+	FILELIST=$(find "${CWDIR}/system/All" -type f)
 
 	for item in ${FILELIST}; do
 		if [ -f "${item}" ]; then
@@ -163,59 +130,68 @@ extract_pkg() {
 		fi
 	done
 
-	# Clean leftovers pkg symlinks
-	if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
-		for item in ${LINKLIST}; do
-			if [ -L "${item}" ]; then
-				rm -rf ${item}
-			fi
-		done
-	else
-		echo "Cleaning the pkg cache."
-		pkg clean -y -a
+	if [ -d "${CWDIR}/system/All" ]; then
+		rm -r ${CWDIR}/system/All
 	fi
 
 	if [ ! -d "${CWDIR}/templates" ]; then
 		mkdir -p ${CWDIR}/templates
 	fi
+
+	if [ ! -d "${CWDIR}/system/var/run" ]; then
+		mkdir -p ${CWDIR}/system/var/run
+	fi
+
+	echo "Done."
 }
 
 unionfs_on() {
 	if ! df | grep -q "${CWDIR}/system/usr/local"; then
-		echo "Enabling UnionFS mount for ${CWDIR}/system/usr/local."
-		mount_unionfs -o below ${CWDIR}/system/usr/local /usr/local
+		echo "Enabling UnionFS for ${CWDIR}/system/usr/local."
+		mount_unionfs -o above ${CWDIR}/system/usr/local /usr/local
 	fi
 	
 	if ! df | grep -q "${CWDIR}/system/var/run"; then
-		echo "Enabling UnionFS mount for ${CWDIR}/system/var/run."
-		mount_unionfs -o below ${CWDIR}/system/var/run /var/run
+		echo "Enabling UnionFS for ${CWDIR}/system/var/run."
+		mount_unionfs -o avobe ${CWDIR}/system/var/run /var/run
 	fi
 }
 
 unionfs_off() {
 	if df | grep -q "${CWDIR}/system/usr/local"; then
-		echo "Disabling UnionFS mounts for ${CWDIR}/system/usr/local."
+		echo "Disabling UnionFS for ${CWDIR}/system/usr/local."
 		umount -f /usr/local
 	fi
 
 	if df | grep -q "${CWDIR}/system/var/run"; then
-		echo "Disabling UnionFS mounts for ${CWDIR}/system/var/run."
+		echo "Disabling UnionFS for ${CWDIR}/system/var/run."
 		umount -f /var/run
 	fi
 }
 
+update_debootstrap() {
+	echo "Updating debootstrap..."
+	unionfs_off
+	fetch_pkg
+}
+
 case "${1}" in
-	fetch_pkg)
-		platform_check
-		fetch_pkg
+	fetch_debootstrap)
+		fetch_debootstrap
 	;;
 	load_kmods)
 		load_kmods
+	;;
+	unload_kmods)
+		unload_kmods
 	;;
 	unionfs_on)
 		unionfs_on
 	;;
 	unionfs_off)
 		unionfs_off
+	;;
+	update_debootstrap)
+		update_debootstrap
 	;;
 esac

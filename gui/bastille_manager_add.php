@@ -2,7 +2,7 @@
 /*
 	bastille_manager_add.php
 
-	Copyright (c) 2019 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Portions of XigmaNAS® (https://www.xigmanas.com).
@@ -59,6 +59,12 @@ if(!get_all_release_list()):
 		$prerequisites_ok = false;
 endif;
 
+$zfs_status = get_state_zfs();
+if($zfs_status == "Invalid ZFS configuration"):
+	// Warning if invalid ZFS configuration.
+	$input_errors[] = gtext("WARNING: Invalid ZFS configuration detected.");
+endif;
+
 if($_POST):
 	global $jail_dir;
 	global $configfile;
@@ -69,6 +75,12 @@ if($_POST):
 		exit;
 	endif;
 	if(isset($_POST['Create']) && $_POST['Create']):
+		$zfs_status = get_state_zfs();
+		if($zfs_status == "Invalid ZFS configuration"):
+			// Abort jail creation if invalid ZFS configuration.
+			$input_errors[] = gtext("Cannot create jail with an invalid ZFS configuration.");
+		else:
+
 		$jname = $pconfig['jailname'];
 		$ipaddr = $pconfig['ipaddress'];
 		$release = $pconfig['release'];
@@ -141,6 +153,8 @@ if($_POST):
 			else:
 				$errormsg .= gtext(" <<< Failed to create container.");
 			endif;
+		endif;
+
 		endif;
 	endif;
 endif;
@@ -316,7 +330,7 @@ $document->render();
 				endif;
 				html_checkbox2('emptyjail',gettext('Create an empty container'),!empty($pconfig['emptyjail']) ? true : false,gettext('This are ideal for custom builds, experimenting with unsupported RELEASES or Linux jails.'),'',false,false,'emptyjail_change()');
 				if($linux_compat_support == "YES"):
-					html_checkbox2('linuxjail',gettext('Create a Linux container'),!empty($pconfig['linuxjail']) ? true : false,gettext('This will create a Linux container, this is highly experimental and for testing purposes.'),'',false,false,'linuxjail_change()');
+					//html_checkbox2('linuxjail',gettext('Create a Linux container'),!empty($pconfig['linuxjail']) ? true : false,gettext('This will create a Linux container, this is highly experimental and for testing purposes.'),'',false,false,'linuxjail_change()');
 				endif;
 			endif;
 			//html_checkbox2('nowstart',gettext('Start after creation'),!empty($pconfig['nowstart']) ? true : false,gettext('Start the container after creation(May be overridden by later bastille releases).'),'',false);

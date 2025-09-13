@@ -9,7 +9,7 @@
 # Debug script
 #set -x
 
-# Copyright (c) 2019-2024, José Rivera (joserprg@gmail.com).
+# Copyright (c) 2019-2025, Jose Rivera (joserprg@gmail.com).
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -43,14 +43,11 @@ PATH=${PATH}:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 CWDIR=$(dirname $(realpath $0))
 
 # Global variables.
-CWDIR_TRIM=""
-BASTILLE_ZFS_ZPOOL_MOUNTPOINT=""
-BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM=""
-REQUIRED_UPDATE=""
 PLATFORM=$(uname -m)
 PRODUCT=$(uname -i)
 PRDVERSION=$(uname -r | cut -d '-' -f1 | tr -d '.')
 HOSTVERSION=$(freebsd-version | cut -d '-' -f1)
+BASTILLE_DIR=$(echo "${CWDIR}" | grep -o '[^/]*$')
 PRDPLATFORM=$(cat /etc/platform)
 PRDPRODUCT=$(cat /etc/prd.name)
 SCRIPTNAME=$(basename $0)
@@ -58,6 +55,7 @@ CONFIG="/cf/conf/config.xml"
 PRDNAME="Bastille"
 APPNAME="bastille"
 EXTLOGFILE="${CWDIR}/log/bastille_ext.log"
+EXTLOCKFILE="/tmp/bastille_ext.lock"
 FULLAPPNAME="${APPNAME}-dist"
 WWWPATH="/usr/local/www"
 PKGCACHE="/var/cache/pkg"
@@ -82,27 +80,42 @@ BASTILLE_VERSION="https://raw.githubusercontent.com/BastilleBSD/${APPNAME}/${BRA
 GITURL="https://github.com/JRGTH/xigmanas-${APPNAME}-extension/archive/${BRANCH}.zip"
 VERFILE="https://raw.githubusercontent.com/JRGTH/xigmanas-${APPNAME}-extension/${BRANCH}/version"
 URL_FREEBSD="http://ftp.freebsd.org/pub/FreeBSD/releases/"
+URL_FREEBSD_OLD="https://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/"
 URL_HARDENEDBSD="https://installers.hardenedbsd.org/pub/"
 URL_MIDNIGHTBSD="https://www.midnightbsd.org/ftp/MidnightBSD/releases/"
 OPT="${1}"
+ARG="${2}"
 
-# Bastille required
+# Load bastille configuration file.
 if [ -f "${BASTILLECONF}" ]; then
 	. /${BASTILLECONF}
-	if [ "${bastille_zfs_enable}" = "YES" -o "${bastille_zfs_enable}" = "yes" ]; then
-		if [ -n "${bastille_zfs_prefix}" ] && [ -n "${bastille_zfs_zpool}" ]; then
-			# Always enforce ZFS activation below "/mnt/" from the extension.
-			if echo "${CWDIR}" | grep -q '/mnt/'; then
-				CWDIR_TRIM=$(echo "${CWDIR}" | sed "s|/mnt/||;s|/${bastille_zfs_prefix}||")
-			fi
+else
+	. /${INSTALLPATH}/${BASTILLECONF}
+fi
 
-			BASTILLE_ZFS_ZPOOL_MOUNTPOINT=$(zfs get -H -o value mountpoint "${bastille_zfs_zpool}")
-			BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM=""
-			if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | grep -q '/mnt/'; then
-				BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM=$(echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | sed "s|/mnt/||;s|/${bastille_zfs_prefix}||")
-			fi
+# Unset variables.
+REQUIRED_UPDATE=
+CWDIR_TRIM=
+BASTILLE_ZFS_PREFIX_TRIM=
+BASTILLE_ZFS_ZPOOL_MOUNTPOINT=
+BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM=
+
+# Get extension ZFS config info.
+if [ "${bastille_zfs_enable}" = "YES" ] || [ "${bastille_zfs_enable}" = "yes" ]; then
+	if [ -n "${bastille_zfs_prefix}" ] && [ -n "${bastille_zfs_zpool}" ]; then
+		# Always enforce ZFS activation below "/mnt/" from the extension.
+		if echo "${CWDIR}" | grep -q '/mnt/'; then
+			CWDIR_TRIM=$(echo "${CWDIR}" | sed "s|/mnt/||;s|/${bastille_zfs_prefix}||")
 		fi
+		BASTILLE_ZFS_ZPOOL_MOUNTPOINT=$(zfs get -H -o value mountpoint "${bastille_zfs_zpool}" 2>/dev/null)
+		if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | grep -q '/mnt/'; then
+			BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM=$(echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | sed "s|/mnt/||;s|/${bastille_zfs_prefix}||")
+		fi
+		BASTILLE_ZFS_PREFIX_TRIM=$(echo "${bastille_zfs_prefix}" | sed "s|/${BASTILLE_DIR}||")
 	fi
+	# Check bastille ZFS config match on disk ZFS config.
+	BASTILLE_CONFIG_DISK=$(zfs list -H "${bastille_prefix}" 2>/dev/null | awk '{print $1}')
+	BASTILLE_CONFIG_FILE=$(echo "${bastille_zfs_zpool}/${bastille_zfs_prefix}")
 fi
 
 error_notify()
@@ -117,7 +130,7 @@ runtime_config()
 {
 	# Run-time configuration and checks.
 	if [ -f "${INSTALLPATH}/${BASTILLECONF}" ]; then
-		if ! sysrc -f ${BASTILLECONF} -qn bastille_prefix | grep -q "${CWDIR}"; then
+		if ! sysrc -f ${BASTILLECONF} -qc bastille_prefix="${CWDIR}"; then
 			sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_prefix="${CWDIR}" >/dev/null 2>&1
 		fi
 	fi
@@ -404,19 +417,11 @@ sys_symlinkdir()
 		ln -fhs ${INSTALLPATH}${USRLOCAL}/etc/${APPNAME} ${USRLOCAL}/etc/${APPNAME}
 	fi
 
-	# Link bastille config file.
-	#if [ -f "${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf.sample" ]; then
-	#	cd ${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}
-	#	if [ ! -f "${APPNAME}.conf" ]; then
-	#		cp ${APPNAME}.conf.sample ${APPNAME}.conf
-	#	fi
-	#else
-		if [ -f "${BASTILLECONF_EXT}" ]; then
-			if [ ! -f "${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf" ]; then
-				cp ${BASTILLECONF_EXT} ${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf
-			fi
+	if [ -f "${BASTILLECONF_EXT}" ]; then
+		if [ ! -f "${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf" ]; then
+			cp ${BASTILLECONF_EXT} ${INSTALLPATH}${USRLOCAL}/etc/${APPNAME}/${APPNAME}.conf
 		fi
-	#fi
+	fi
 
 	# Copy bastille shared.
 	if [ -d "${INSTALLPATH}${USRLOCAL}/share/${APPNAME}" ]; then
@@ -515,16 +520,14 @@ postinit_cmd()
 		touch ${CWDIR}/postinit || error_notify "Error: A problem has occurred while creating the postinit file."
 		chmod +x ${CWDIR}/postinit
 		if [ "${PRDVERSION}" -ge "110" ]; then
-			# Generate php script for start/stop commands.
+			# Generate php script only for start command for extension version 1.2 and later.
 			cat << EOF > ${CWDIR}/postinit
 <?php
 require_once("config.inc");
 require_once("functions.inc");
 \$cmd = dirname(__FILE__)."/${SCRIPTNAME}";
-\$cmd2 = dirname(__FILE__)."/${SCRIPTNAME} -p";
 \$name = "${PRDNAME} Extension";
 \$comment = "Start ${PRDNAME} Container Manager";
-\$comment2 = "Stop ${PRDNAME} Container Manager";
 \$rc = &array_make_branch(\$config,'rc','param'); 
 if(false === array_search_ex(\$cmd,\$rc,'cmd')):
 	\$rc_param = [];
@@ -533,20 +536,6 @@ if(false === array_search_ex(\$cmd,\$rc,'cmd')):
 	\$rc_param['value'] = \$cmd;
 	\$rc_param['comment'] = \$comment;
 	\$rc_param['typeid'] = '2';
-	\$rc_param['enable'] = true;
-	\$rc[] = \$rc_param;
-	write_config();
-endif;
-unset(\$rc);
-
-\$rc = &array_make_branch(\$config,'rc','param'); 
-if(false === array_search_ex(\$cmd2,\$rc,'cmd2')):
-	\$rc_param = [];
-	\$rc_param['uuid'] = uuid();
-	\$rc_param['name'] = \$name;
-	\$rc_param['value'] = \$cmd2;
-	\$rc_param['comment'] = \$comment2;
-	\$rc_param['typeid'] = '3';
 	\$rc_param['enable'] = true;
 	\$rc[] = \$rc_param;
 	write_config();
@@ -616,6 +605,8 @@ gui_enable()
 	else
 		error_notify "Error: Extension gui files not found."
 	fi
+
+	exit 0
 }
 
 gui_disable()
@@ -639,13 +630,15 @@ gui_disable()
 			rm -r ${WWWPATH}/ext
 		fi
 	fi
+
+	exit 0
 }
 
 jail_update()
 {
 	# Workaround since XigmaNAS does not ship with freebsd-update command.
 
-	if [ "${PRDPRODUCT}" = "XigmaNAS" -o "${PRDPRODUCT}" = "NAS4Free" ]; then
+	if [ "${PRDPRODUCT}" = "XigmaNAS" ] || [ "${PRDPRODUCT}" = "NAS4Free" ]; then
 		if [ ! -d "${FREEBSD_UPDATE}" ]; then
 			echo "Not supported on ${PRDPRODUCT} platform."
 			exit 1
@@ -834,7 +827,7 @@ thickjail_upgrade()
 {
 	# Workaround since XigmaNAS does not ship with freebsd-update command.
 
-	if [ "${PRDPRODUCT}" = "XigmaNAS" -o "${PRDPRODUCT}" = "NAS4Free" ]; then
+	if [ "${PRDPRODUCT}" = "XigmaNAS" ] || [ "${PRDPRODUCT}" = "NAS4Free" ]; then
 		if [ ! -d "${FREEBSD_UPDATE}" ]; then
 			echo "Not supported on ${PRDPRODUCT} platform."
 			exit 1
@@ -891,7 +884,7 @@ thickjail_install()
 {
 	# Workaround since XigmaNAS does not ship with freebsd-update command.
 
-	if [ "${PRDPRODUCT}" = "XigmaNAS" -o "${PRDPRODUCT}" = "NAS4Free" ]; then
+	if [ "${PRDPRODUCT}" = "XigmaNAS" ] || [ "${PRDPRODUCT}" = "NAS4Free" ]; then
 		if [ ! -d "${FREEBSD_UPDATE}" ]; then
 			echo "Not supported on ${PRDPRODUCT} platform."
 			exit 1
@@ -937,12 +930,7 @@ zfs_activate()
 	# Check if ZFS is already configured.
 	# Always enforce ZFS activation below "/mnt/" from the extension.
 	if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM}" | grep -qw "${CWDIR_TRIM}$"; then
-
-		BASTILLE_DIR=$(echo "${CWDIR}" | grep -o '[^/]*$')
-		if [ "${bastille_zfs_prefix}" != "${BASTILLE_DIR}" ]; then
-			error_notify "Invalid ZFS configuration."
-		fi
-		if zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
+		if zfs list "${bastille_zfs_zpool}/${bastille_zfs_prefix}" > /dev/null 2>&1; then
 			echo "Bastille ZFS is already configured."
 			sysrc -f ${CWDIR}${EXTCONF} ZFS_ACTIVATED="YES" >/dev/null 2>&1
 			exit 0
@@ -958,23 +946,26 @@ zfs_activate()
 
 		echo "Enabling ZFS on ${PRDNAME} Extension..."
 		# Confirm before conversion.
-		while :
-			do
-				read -p "Do you really wish to enable ZFS for ${PRDNAME} Extension? [y/N]:" yn
-				case ${yn} in
-				[Yy]) break;;
-				[Nn]) exit 0;;
-				esac
-			done
+		while :; do
+			read -p "Do you really want to enable ZFS for ${PRDNAME} Extension? [y/N]:" _yn
+			case ${_yn} in
+				[Yy])
+					break
+					;;
+				[Nn])
+					exit 0
+					;;
+			esac
+		done
 		echo "Proceeding..."
 
 		if [ "${bastille_zfs_enable}" = "YES" ]; then
-			if [ ! -z "${bastille_zfs_zpool}" ]; then
+			if [ -n "${bastille_zfs_zpool}" ]; then
 				if zfs list "${bastille_zfs_zpool}" > /dev/null 2>&1; then
-					if ! zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
-						echo "Renaming existing '${BASTILLE_DIR}' directory"
+					if ! zfs list "${bastille_zfs_zpool}/${bastille_zfs_prefix}" > /dev/null 2>&1; then
+						echo "Renaming existing '${BASTILLE_DIR}' directory..."
 						mv ${CWDIR} ${CWDIR}.old
-						echo "Creating a new ZFS dataset for '${BASTILLE_DIR}'"
+						echo "Creating a new ZFS dataset for '${BASTILLE_DIR}'..."
 						zfs create ${bastille_zfs_options} ${bastille_zfs_zpool}/${bastille_zfs_prefix}
 						if [ $? -ne 0 ]; then
 							MSG="Failed to enable ZFS, reverting changes."
@@ -990,7 +981,7 @@ zfs_activate()
 						echo "Bastille ZFS is already configured."
 					fi
 				else
-					error_notify "ERROR: ${bastille_zfs_zpool} is not a ZFS pool/dataset."
+					error_notify "ERROR: ${bastille_zfs_zpool} is not a ZFS pool."
 				fi
 			else
 				error_notify "Bastille ZPOOL is not set."
@@ -1021,11 +1012,40 @@ pkg_upgrade()
 
 reset_install()
 {
+	# Confirm for addon config reset.
+	while :; do
+		read -p "Do you really want to proceed with the ${PRDNAME} Extension config reset? [y/N]:" _yn
+		case ${_yn} in
+			[Yy])
+				break
+				;;
+			[Nn])
+				exit 0
+				;;
+		esac
+	done
+	echo "Proceeding..."
+
+	# Check for running jails before config reset.
+	for _jail in $(bastille list jail); do
+		if jls -j ${_jail} >/dev/null 2>&1; then
+			echo "Looks like there are running bastille jails, aborting."
+			exit 1
+		fi
+	done
+
 	# Reset the extension environment.
 	echo "Removing extension files..."
+	
 	if [ -f "${CWDIR}/conf/bastille_config" ]; then
-		rm -rf ${CWDIR}/conf/bastille_config
+		echo "Backup current extension config file."
+		if [ -f "${CWDIR}/conf/bastille_config.old" ]; then
+			# Remove previous backup file.
+			rm -f ${CWDIR}/conf/bastille_config.old
+		fi
+		mv -vf ${CWDIR}/conf/bastille_config ${CWDIR}/conf/bastille_config.old
 	fi
+
 	if [ -d "${CWDIR}/${FULLAPPNAME}" ]; then
 		rm -rf ${CWDIR}/${FULLAPPNAME}
 	fi
@@ -1036,56 +1056,68 @@ reset_install()
 		rm -f ${CWDIR}/version
 	fi
 
+	sleep 3
+
 	# Set default config.
-	sysrc -f ${CWDIR}${EXTCONF} GUI_ENABLE=YES INSTALL_DIR=${CWDIR} >/dev/null 2>&1
+	touch ${CWDIR}/conf/bastille_config
+	sysrc -f ${CWDIR}${EXTCONF} GUI_ENABLE="YES" >/dev/null 2>&1
+	sysrc -f ${CWDIR}${EXTCONF} INSTALL_DIR="${CWDIR}" >/dev/null 2>&1
+	sysrc -f ${CWDIR}${EXTCONF} BASTILLE_CONFIG="${CWDIR}/${FULLAPPNAME}${BASTILLECONF}" >/dev/null 2>&1
+	sysrc -f ${CWDIR}${EXTCONF} BACKUP_DIR="${CWDIR}/backups" >/dev/null 2>&1
+	sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="NO" >/dev/null 2>&1
 
 	echo ""
 	echo "*************************************************************************************************************"
 	echo "* The configuration was reset, please go to [Extensions > Bastille > Configuration] to configure bastille.  *"
-	echo "* Alternatively you can edit the '/usr/local/etc/bastille/bastille.conf' file manually.                     *"
+	echo "* Alternatively you can edit the 'addon/bastille-dist/usr/local/etc/bastille/bastille.conf' file manually.  *"
 	echo "*************************************************************************************************************"
 	echo ""
-	echo "Notice: If Linux Jail support was enabled, please execute the below command to re-enable it:"
+	echo "Notice: If Linux Jail support was enabled, please execute the below command to manually re-enable it:"
 	echo "==> sysrc -f ${CWDIR}${EXTCONF} LINUX_COMPAT_SUPPORT=\"YES\""
 	echo ""
+
+	# Tell Bastille Extension that config was reset.
+	touch ${CWDIR}/conf/config_reset.lock
 }
 
 remove_addon()
 {
 	# Confirm for addon removal.
-	while :
-		do
-			read -p "Do you wish to proceed with the ${FULLAPPNAME} removal? [y/N]:" yn
-			case ${yn} in
-			[Yy]) break;;
-			[Nn]) exit 0;;
-			esac
-		done
+	while :; do
+		read -p "Do you want to proceed with the ${FULLAPPNAME} removal? [y/N]:" _yn
+		case ${_yn} in
+			[Yy]) break
+				;;
+			[Nn]) exit 0
+				;;
+		esac
+	done
 	echo "Proceeding..."
 
-	# Check for working platform and remove symlinks.
-	if [ "${PRDPLATFORM}" = "x64-embedded" ] || [ "${PRDPLATFORM}" = "x64-full" ]; then
-		if [ -d "${USRLOCAL}/share/licenses/${APPNAME}-*" ]; then
-			rm -rf ${USRLOCAL}/share/licenses/${APPNAME}-*
-		fi
-		if [ -d $"{USRLOCAL}/share/locale-bastille" ]; then
-			rm -rf ${USRLOCAL}/share/locale-bastille
-		fi
-		if [ -f "${USRLOCAL}/etc/rc.d/${APPNAME}" ]; then
-			rm -f ${USRLOCAL}/etc/rc.d/${APPNAME}
-		fi
-		if [ -f "${USRLOCAL}/etc/${APPNAME}.conf" ]; then
-			rm -f ${USRLOCAL}/etc/${APPNAME}.conf
-		fi
-		if [ -f "${BASTILLEPATH}/${APPNAME}" ]; then
-			rm -f ${BASTILLEPATH}/${APPNAME}
-		fi
-		if [ -f "${USRLOCAL}/sbin/${APPNAME}-init" ]; then
-			rm -rf ${USRLOCAL}/sbin/${APPNAME}-init
-		fi
-		if [ -d "${VARLOG}/${APPNAME}" ]; then
-			rm -rf ${VARLOG}/${APPNAME}
-		fi
+	# Check and disable extension unionfs in case it is enabled.
+	${CWDIR}/unionfs.sh unionfs_off
+
+	# Check and remove extension files/symlinks.
+	if [ -d "${USRLOCAL}/share/licenses/${APPNAME}-*" ]; then
+		rm -rf ${USRLOCAL}/share/licenses/${APPNAME}-*
+	fi
+	if [ -d "${USRLOCAL}/share/locale-bastille" ]; then
+		rm -rf ${USRLOCAL}/share/locale-bastille
+	fi
+	if [ -f "${USRLOCAL}/etc/rc.d/${APPNAME}" ]; then
+		rm -f ${USRLOCAL}/etc/rc.d/${APPNAME}
+	fi
+	if [ -f "${USRLOCAL}/etc/${APPNAME}" ]; then
+		rm -f ${USRLOCAL}/etc/${APPNAME}
+	fi
+	if [ -f "${BASTILLEPATH}/${APPNAME}" ]; then
+		rm -f ${BASTILLEPATH}/${APPNAME}
+	fi
+	if [ -f "${BASTILLEPATH}/${APPNAME}-init" ]; then
+		rm -rf ${BASTILLEPATH}/${APPNAME}-init
+	fi
+	if [ -d "${VARLOG}/${APPNAME}" ]; then
+		rm -rf ${VARLOG}/${APPNAME}
 	fi
 
 	# Remove extension and GUI components.
@@ -1112,21 +1144,22 @@ remove_addon()
 	# Remove addon related files and folders only-
 	# to protect any user-created custom files-
 	# as well as for the containers dirs/files.
-	FILES="conf download freebsd-update gui locale-bastille log bastille-dist LICENSE README.md postinit CHANGELOG version bastille-init"
+	FILES="bastille-dist conf download freebsd-update gui locale-bastille log system CHANGELOG LICENSE README.md bastille-init postinit unionfs.sh version"
 	for FILE in ${FILES}; do
 		if [ -f "${CWDIR}/${FILE}" ] || [ -d "${CWDIR}/${FILE}" ]; then
 			rm -rf ${CWDIR}/${FILE}
 		fi
 	done
 
-	BIN_FILES="/usr/local/bin/ar /usr/local/bin/jib /usr/sbin/setfib /usr/bin/sum /usr/bin/diff3 /usr/bin/makewhatis"
+	# Remove this files since they are not part of the base.
+	BIN_FILES="/usr/bin/ar /usr/local/bin/jib /usr/sbin/setfib /usr/bin/sum /usr/bin/diff3 /usr/bin/makewhatis"
 	for FILE in ${BIN_FILES}; do
 		if [ -f "${FILE}" ]; then
 			rm -rf ${FILE}
 		fi
 	done
 
-	# Don't remove this files on 13.x versions since they are part of the base.
+	# Don't remove this files on 13.x and later versions since they are part of the base.
 	if [ "$(freebsd-version | cut -d '.' -f1)" -le 12 ]; then
 		PF_FILES="/sbin/pfctl /sbin/pfilctl /sbin/pflogd /etc/pf.os"
 		for FILE in ${PF_FILES}; do
@@ -1159,29 +1192,25 @@ get_versions()
 
 ext_start()
 {
-	if sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
+	if sysrc -f ${CWDIR}${EXTCONF} -qc LINUX_COMPAT_SUPPORT=YES; then
 		${CWDIR}/unionfs.sh load_kmods
-		${CWDIR}/unionfs.sh unionfs_on
 	fi
 
 	# Start bastille jails.
 	if [ -d "${CWDIR}/jails" ]; then
-		JAIL_LIST=$(bastille list jail)
-		# This loop is for backward compatibility only.
-		for jail in ${JAIL_LIST}; do
-			if grep -qw "${jail}_AUTO_START=\"YES\"" ${CWDIR}${EXTCONF}; then
-				if ! jls | sed "1 d" | awk '{print $3}' | grep -qw ${jail}; then
-					bastille start ${jail}
-				fi
-			fi
-		done
-
-		# Required for embedded platforms.
+		# Required for embedded platforms due late startup.
 		if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
 			if sysrc -qc bastille_enable=YES; then
-				service bastille start
+				if [ ! -f "${EXTLOCKFILE}" ]; then
+					service bastille start
+				fi
 			fi
 		fi
+	fi
+
+	# Create extension lock file after boot.
+	if [ ! -f "${EXTLOCKFILE}" ]; then
+		touch ${EXTLOCKFILE}
 	fi
 
 	if [ $? -eq 0 ]; then
@@ -1195,12 +1224,37 @@ ext_start()
 	fi
 }
 
+zfs_support_enabled()
+{
+	sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="YES" >/dev/null 2>&1
+	sysrc -f ${CWDIR}${EXTCONF} ZFS_ACTIVATED="YES" >/dev/null 2>&1
+}
+
+zfs_support_error()
+{
+	echo "WARNING: Invalid ZFS configuration."
+	sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="ERR" >/dev/null 2>&1
+	sysrc -f ${CWDIR}${EXTCONF} -x ZFS_ACTIVATED >/dev/null 2>&1
+}
+
+zfs_support_avail()
+{
+	echo "WARNING: ZFS support available but not enabled."
+	sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="AVA" >/dev/null 2>&1
+}
+
+zfs_support_disabled()
+{
+	sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="NO" >/dev/null 2>&1
+	sysrc -f ${CWDIR}${EXTCONF} -x ZFS_ACTIVATED >/dev/null 2>&1
+}
+
 rc_params()
 {
 	# Bastille required parameters.
 
 	# Set bastille prefix.
-	if ! sysrc -f ${BASTILLECONF} -qn bastille_prefix | grep -q "${CWDIR}"; then
+	if ! sysrc -f ${BASTILLECONF} -qc bastille_prefix="${CWDIR}"; then
 		sysrc -f ${BASTILLECONF} bastille_prefix="${CWDIR}" >/dev/null 2>&1
 	fi
 
@@ -1216,13 +1270,13 @@ rc_params()
 	fi
 
 	# Set bastille.conf location.
-	if ! sysrc -f ${CWDIR}${EXTCONF} -n BASTILLE_CONFIG 2>/dev/null | grep -q "${CWDIR}/${FULLAPPNAME}${BASTILLECONF}"; then
+	if ! sysrc -f ${CWDIR}${EXTCONF} -qc BASTILLE_CONFIG="${CWDIR}/${FULLAPPNAME}${BASTILLECONF}"; then
 		sysrc -f ${CWDIR}${EXTCONF} BASTILLE_CONFIG="${CWDIR}/${FULLAPPNAME}${BASTILLECONF}" >/dev/null 2>&1
 	fi
 
 	# Default first network interface.
 	ACTIVE_NETIF=$(ifconfig | grep "UP,BROADCAST" | awk -F":" '{print $1}' | sed 1q)
-	if ! sysrc -f ${BASTILLECONF} -qn bastille_network_shared | grep -q "${ACTIVE_NETIF}" >/dev/null 2>&1; then
+	if ! sysrc -f ${BASTILLECONF} -qc bastille_network_shared="${ACTIVE_NETIF}" >/dev/null 2>&1; then
 		#echo "" >> ${BASTILLECONF} && echo "## default network interface" >> ${BASTILLECONF}
 		sysrc -f ${BASTILLECONF} bastille_network_shared="${ACTIVE_NETIF}" >/dev/null 2>&1
 	else
@@ -1233,33 +1287,64 @@ rc_params()
 		fi
 	fi
 
-	# Do't start containers by default.
-	#if ! sysrc -qn bastille_enable >/dev/null 2>&1; then
-	#	sysrc bastille_enable="NO" >/dev/null 2>&1
-	#fi
+	# Check if extension config was reset.
+	if [ -f "${CWDIR}/conf/config_reset.lock" ]; then
+		zfs_support_error
+		echo "WARNING: ${PRDNAME} Extension config was reset."
+		rm ${CWDIR}/conf/config_reset.lock
+	fi
 
-	# Check if sane ZFS is enabled in this setup.
+	# Check for sane ZFS parameters in this setup.
 	if [ "${bastille_zfs_enable}" = "YES" ]; then
 		if [ -n "${bastille_zfs_zpool}" ]; then
-			if zfs list "${bastille_zfs_zpool}" > /dev/null 2>&1; then
-				BASTILLE_DIR=$(echo ${CWDIR} | grep -o '[^/]*$')
-				if zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" > /dev/null 2>&1; then
-					sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="YES" >/dev/null 2>&1
-				else
-					if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM}" | grep -qw "${CWDIR_TRIM}$"; then
-						sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="AVA" >/dev/null 2>&1
+			if zfs list "${bastille_zfs_zpool}" >/dev/null 2>&1; then
+
+				# Check bastille ZFS config match on disk ZFS config if activation is already enabled in the config file.
+				if sysrc -f ${CWDIR}${EXTCONF} -qc ZFS_SUPPORT=YES && sysrc -f ${CWDIR}${EXTCONF} -qc ZFS_ACTIVATED=YES; then
+					if [ "${BASTILLE_CONFIG_DISK}" != "${BASTILLE_CONFIG_FILE}" ]; then
+						zfs_support_error
+						exit 1
 					else
-						sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="ERR" >/dev/null 2>&1
+						# Check and don't allow child datasets in bastille_zfs_zpool.
+						if echo "${bastille_zfs_zpool}" | grep -q '\/'; then
+							zfs_support_error
+							exit 1
+						fi
 					fi
 				fi
+
+				# Perform some checks against on-disk and file configurations.
+				if zfs list "${bastille_zfs_zpool}/${BASTILLE_ZFS_PREFIX_TRIM}/${BASTILLE_DIR}" >/dev/null 2>&1; then
+					# Looks like ZFS support is already configured, then set parameters.
+					zfs_support_enabled
+				elif zfs list "${bastille_zfs_zpool}" >/dev/null 2>&1 && \
+					[ "${bastille_zfs_prefix}" = "${BASTILLE_ZFS_PREFIX_TRIM}/${BASTILLE_DIR}" ]; then
+					# Looks like ZFS support is available for activation.
+					zfs_support_avail
+				elif zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" >/dev/null 2>&1; then
+					zfs_support_enabled
+				elif zfs list "${bastille_zfs_zpool}" >/dev/null 2>&1 && \
+					[ "${BASTILLE_ZFS_PREFIX_TRIM}" = "${BASTILLE_DIR}" ]; then
+						# Looks like ZFS support is available for activation.
+						zfs_support_avail
+				elif zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" >/dev/null 2>&1; then
+					zfs_support_enabled
+				else
+					zfs_support_error
+				fi
 			else
-				sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="ERR" >/dev/null 2>&1
+				zfs_support_error
 			fi
 		else
-			sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="ERR" >/dev/null 2>&1
+			zfs_support_error
 		fi
 	else
-		sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="NO" >/dev/null 2>&1
+		# Check for orphaned configuration and/or config reset.
+		if zfs list -H "${CWDIR}" >/dev/null 2>&1; then
+			zfs_support_error
+		else
+			zfs_support_disabled
+		fi
 	fi
 
 	# Enable bastille in /etc/rc.conf
@@ -1347,9 +1432,7 @@ bastille_stop()
 {
 	# Stop all bastille containers.
 	echo "${PRDNAME} Extension: Stopping all containers..."
-	if ! sysrc -qc bastille_enable=YES; then
-		bastille stop ALL
-	fi
+	bastille stop ALL
 	if [ $? -eq 0 ]; then
 		exit 0
 	else
@@ -1389,21 +1472,19 @@ bastille_init()
 	gui_start
 	rc_params
 	ext_start
-
 }
 
-linux_compat()
+linux_compat_enable()
 {
-	# Feature temporarily disabled.
-	echo "This feature is temporarily disabled due incompatibility with later ${PRDPRODUCT} releases."
-	exit 1
-
+	# Experimental feature.
 	if ping -c1 -t5 freebsd.org > /dev/null; then
 		# Manually enable Linux compatibility(Experimental).
-		if ! sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
-			${CWDIR}/unionfs.sh fetch_pkg && ${CWDIR}/unionfs.sh load_kmods && ${CWDIR}/unionfs.sh unionfs_on && sysrc -f ${CWDIR}${EXTCONF} LINUX_COMPAT_SUPPORT="YES" >/dev/null 2>&1
+		if ! sysrc -f ${CWDIR}${EXTCONF} -qc LINUX_COMPAT_SUPPORT=YES; then
+			echo "Enabling Linux compatibility support..."
+			#${CWDIR}/unionfs.sh fetch_pkg && ${CWDIR}/unionfs.sh load_kmods && ${CWDIR}/unionfs.sh unionfs_on && sysrc -f ${CWDIR}${EXTCONF} LINUX_COMPAT_SUPPORT="YES" >/dev/null 2>&1
+			${CWDIR}/unionfs.sh fetch_debootstrap && ${CWDIR}/unionfs.sh load_kmods && sysrc -f ${CWDIR}${EXTCONF} LINUX_COMPAT_SUPPORT="YES" >/dev/null 2>&1
 		else
-			echo "Already enabled."
+			echo "Linux compatibility already enabled."
 		fi
 		exit 0
 	else
@@ -1412,13 +1493,80 @@ linux_compat()
 	fi
 }
 
+bootstrap_dist()
+{
+	# Workaround since XigmaNAS does not ship with debootstrap command.
+	if sysrc -f ${CWDIR}${EXTCONF} -qc LINUX_COMPAT_SUPPORT=YES; then
+		# List of tested/working Linux distributions on FreeBSD 14.x.
+		LINUX_FLAVORS="ubuntu-bionic ubuntu-focal ubuntu-jammy"
+		if [ -n "${LINUX_DIST}" ]; then
+			for _linux_flavor in ${LINUX_FLAVORS}; do
+
+				if [ "${LINUX_DIST}" = "${_linux_flavor}" ]; then
+					LINUX_FLAVOR="${_linux_flavor}"
+					break
+				fi
+			
+			done
+		fi
+
+		if [ -z "${LINUX_FLAVOR}" ]; then
+			echo "Available Linux flavors:"
+			echo "${LINUX_FLAVORS}"
+			exit 1
+		fi
+
+		# Enable debootstrap environment.
+		${CWDIR}/unionfs.sh unionfs_on
+
+		# Bootstrap Linux flavor using bastille.
+		bastille bootstrap ${_linux_flavor}
+
+		# Disable debootstrap environment.
+		${CWDIR}/unionfs.sh unionfs_off
+
+		else
+			echo "Linux compatibility disabled."
+			exit 1
+	fi
+
+	exit 0
+}
+
+update_debootstrap()
+{
+	# Update debootstrap and dependencies.
+	if sysrc -f ${CWDIR}${EXTCONF} -qc LINUX_COMPAT_SUPPORT=YES; then
+		${CWDIR}/unionfs.sh update_debootstrap
+	else
+		echo "Linux compatibility disabled."
+		exit 1
+	fi
+
+	exit 0
+}
+
 linux_compat_disable()
 {
-	if sysrc -f ${CWDIR}${EXTCONF} -qn LINUX_COMPAT_SUPPORT | grep -q "YES"; then
-		echo "Disabling Linux jail compatibility support..."
+	if sysrc -f ${CWDIR}${EXTCONF} -qc LINUX_COMPAT_SUPPORT=YES; then
+		echo "Disabling Linux compatibility support..."
 		sysrc -f ${CWDIR}${EXTCONF} -x LINUX_COMPAT_SUPPORT
-		echo "Done!, server reboot is recommended."
+		${CWDIR}/unionfs.sh unionfs_off
+		${CWDIR}/unionfs.sh unload_kmods
+
+		if [ -d "${CWDIR}/system/usr" ]; then
+			echo "Removing debootstrap environment..."
+			rm -rf ${CWDIR}/system/usr
+			if [ -d "${CWDIR}/system/var" ]; then
+				rm -rf ${CWDIR}/system/var
+			fi
+		fi
+		echo "Done!, please reboot server now."
+	else
+		echo "Linux compatibility disabled."
+		exit 1
 	fi
+
 	exit 0
 }
 
@@ -1495,7 +1643,14 @@ clean|--clean)
 	exit 0
 	;;
 linux_compat)
-	linux_compat
+	linux_compat_enable
+	;;
+bootstrap)
+	LINUX_DIST="${ARG}"
+	bootstrap_dist
+	;;
+update_debootstrap)
+	update_debootstrap
 	;;
 linux_compat_disable)
 	linux_compat_disable
@@ -1505,7 +1660,7 @@ bastillebsd_update)
 	;;
 esac
 
-while getopts ":ospruxUvgtZh" option; do
+while getopts "ospruxUvgtZh" option; do
 	case ${option} in
 		[h]) echo "Usage: ${SCRIPTNAME} -[option] | [container] | [path]";
 		echo "Options:"
@@ -1539,6 +1694,8 @@ while getopts ":ospruxUvgtZh" option; do
 		echo ""
 		echo "Support:"
 		echo "To update BastilleBSD core files only to the latest patches and fixes, please execute: \"${SCRIPTNAME} bastillebsd_update\""
+		echo "To bootstrap a Linux distribution please execute: \"${SCRIPTNAME} bootstrap linux_flavor\""
+		echo "To update debootstrap package and dependencies please execute: \"${SCRIPTNAME} update_debootstrap\""
 		echo ""; exit 0;;
 		[o]) OBI_INSTALL="ON";; # To prevent nested PHP-CGI call for installation with OBI.
 		[s]) bastille_start;;
@@ -1548,8 +1705,8 @@ while getopts ":ospruxUvgtZh" option; do
 		[x]) reset_install;;
 		[U]) remove_addon;;
 		[v]) get_versions;;
-		[g]) gui_enable; exit 0 ;; # For enable the addon gui.
-		[t]) gui_disable; exit 0 ;; # For disable the addon gui.
+		[g]) gui_enable;;  # Enable the addon gui.
+		[t]) gui_disable;; # Disable the addon gui.
 		[Z]) zfs_activate;;
 		#[L]) linux_compat;;
 		[?]) echo "Invalid option, -h for usage."; exit 1;;

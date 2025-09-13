@@ -2,7 +2,7 @@
 /*
 	bastille_manager_maintenance.php
 
-	Copyright (c) 2019-2020 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Copyright (c) 2016 Andreas Schmidhuber
@@ -52,6 +52,12 @@ if(!initial_install_banner()):
 			. '</br>'
 			. gtext('Or click the "Save" button to store the default configuration.');
 		$prerequisites_ok = false;
+endif;
+
+$zfs_status = get_state_zfs();
+if($zfs_status == "Invalid ZFS configuration"):
+	// Warning if invalid ZFS configuration.
+	$input_errors[] = gtext("WARNING: Invalid ZFS configuration detected.");
 endif;
 
 // For legacy product versions.
@@ -120,8 +126,8 @@ if ($_POST) {
 			$uninstall_cmd = "echo 'y' | /usr/local/sbin/bastille-init -U";
 			mwexec($uninstall_cmd, true);
 			if (is_link("/usr/local/share/{$prdname}")) mwexec("rm /usr/local/share/{$prdname}", true);
-			if (is_link("/var/cache/pkg")) mwexec("rm /var/cache/pkg", true);
-			if (is_link("/var/db/pkg")) mwexec("rm /var/db/pkg && mkdir /var/db/pkg", true);
+			//if (is_link("/var/cache/pkg")) mwexec("rm /var/cache/pkg", true);
+			//if (is_link("/var/db/pkg")) mwexec("rm /var/db/pkg && mkdir /var/db/pkg", true);
 
 			// Remove start postinit cmd in later product versions.
 			if (is_array($config['rc']) && is_array($config['rc']['param'])) {

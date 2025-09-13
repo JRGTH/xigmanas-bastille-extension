@@ -2,7 +2,7 @@
 /*
 	bastille_manager-lib.inc
 
-	Copyright (c) 2019-2020 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without
@@ -70,15 +70,17 @@ $linux_compat_support = exec("/usr/bin/grep 'LINUX_COMPAT_SUPPORT=' $configfile 
 $jail_settings = "settings.conf";
 
 // Ensure the root directory is configured.
-if ($rootfolder == "")
+if ($rootfolder == ""):
 	$input_errors[] = gtext("Extension installed with fault");
-else {
+else:
 // Initialize locales.
 	$textdomain = "/usr/local/share/locale";
 	$textdomain_bastille = "/usr/local/share/locale-bastille";
-	if (!is_link($textdomain_bastille)) { mwexec("ln -s {$rootfolder}/locale-bastille {$textdomain_bastille}", true); }
+	if (!is_link($textdomain_bastille)):
+		mwexec("ln -s {$rootfolder}/locale-bastille {$textdomain_bastille}", true);
+	endif;
 	bindtextdomain("xigmanas", $textdomain_bastille);
-}
+endif;
 if (is_file("{$rootfolder}/postinit")) unlink("{$rootfolder}/postinit");
 
 // Check releases dir.
@@ -90,18 +92,17 @@ function is_dir_empty($reldir) {
 // Get bastille version
 function get_version_bastille() {
 	global $tarballversion, $prdname;
-	if (is_file("{$tarballversion}")) {
+	if (is_file("{$tarballversion}")):
 		// For some reason bastille bin version value isn't double quoted anymore so we can't use the old delimiter.
 		// we will keep the old line for reference.
 
 		//exec("/usr/bin/grep 'BASTILLE_VERSION=' {$tarballversion} | cut -d'\"' -f2", $result);
 		exec("/usr/bin/grep 'BASTILLE_VERSION=' {$tarballversion} | cut -d'=' -f2", $result);
 		return ($result[0] ?? '');
-	}
-	else {
+	else:
 		exec("/usr/local/bin/{$prdname} version | awk 'NR==1'", $result);
 		return ($result[0] ?? '');
-	}
+	endif;
 }
 
 // Initial install banner
@@ -148,7 +149,9 @@ function get_state_zfs() {
 function get_all_release_list() {
 	global $rootfolder;
 	global $g;
-	exec("/bin/echo; /bin/ls {$rootfolder}/releases 2>/dev/null | /usr/bin/tr -s ' ' '\n'",$relinfo);
+	// Don't show Linux base releases under create jail page for now.
+	#exec("/bin/echo; /bin/ls {$rootfolder}/releases 2>/dev/null | /usr/bin/tr -s ' ' '\n'",$relinfo);
+	exec("/bin/echo; /bin/ls {$rootfolder}/releases | grep RELEASE 2>/dev/null | /usr/bin/tr -s ' ' '\n'",$relinfo);
 	array_shift($relinfo);
 	$rellist = [];
 	foreach($relinfo as $rel):
@@ -223,6 +226,7 @@ function get_jail_infos() {
 		if (!$r['id']):
 			$r['id'] = "-";
 		endif;
+
 		// Set the IP address on the running jails using bastille list command instead.
 		//$r['ip'] = exec("/usr/bin/grep -w 'ip4.addr' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
 		$r['ip'] = exec("/usr/local/bin/bastille list {$item} | awk '{print $7}' | sed 1d");
@@ -236,11 +240,18 @@ function get_jail_infos() {
 		if (!$r['ip']):
 			$r['ip'] = "-";
 		endif;
+
 		// Display release.
 		$r['rel'] = exec("/usr/sbin/jexec {$item} freebsd-version 2>/dev/null");
 		if (!$r['rel']):
-			$r['rel'] = exec("/usr/sbin/jexec {$item} uname -o 2>/dev/null");
-		elseif (!$r['rel']):
+			if(is_file("{$jail_dir}/{$item}/root/etc/os-release")):
+				$r['rel'] = exec("/bin/cat {$jail_dir}/{$item}/root/etc/os-release | grep 'PRETTY_NAME=' | tr -d 'PRETTY_NAME=\"'");
+			else:
+				$r['rel'] = exec("/usr/sbin/jexec {$item} uname -o 2>/dev/null");
+			endif;
+		endif;
+		// We can't get release version info or jail stopped.
+		if (!$r['rel']):
 			$r['rel'] = "-";
 		endif;
 
@@ -269,16 +280,18 @@ function get_jail_infos() {
 		if (!$r['path']):
 			$r['path'] = "-";
 		endif;
+
 		// Display auto-start settings.
 		//$jail_autostart = exec("/usr/bin/grep -w {$item}_AUTO_START $configfile | cut -d'=' -f2 | tr -d '\"'");
 		$jail_autostart = exec("/usr/bin/grep -w boot {$jail_dir}/{$item}/settings.conf | cut -d'=' -f2 | tr -d '\"'");
-		if ($jail_autostart == 'on') {
+		if ($jail_autostart == 'on'):
 			$r['boot'] = $img_path['ena'];
-		} elseif ($jail_autostart == 'off') {
+		elseif ($jail_autostart == 'off'):
 			$r['boot'] = $img_path['dis'];
-		} else {
+		else:
 			$r['boot'] = $img_path['dis'];
-		}
+		endif;
+
 		// Display running status icons.
 		$jail_running = exec("/usr/sbin/jls name | /usr/bin/awk '/^{$item}\$/'");
 		if ($jail_running):
@@ -286,6 +299,7 @@ function get_jail_infos() {
 		else:
 			$r['stat'] = $img_path['dis'];
 		endif;
+
 		// Display custom template icons if available.
 		$template_icon = "{$jail_dir}/{$item}/plugin_icon.png";
 		if(file_exists($template_icon)):

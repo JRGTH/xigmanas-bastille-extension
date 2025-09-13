@@ -2,7 +2,7 @@
 /*
     bastille_manager_config.php
 
-	Copyright (c) 2019 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
     All rights reserved.
 
     Copyright (c) 2018 Andreas Schmidhuber
@@ -62,6 +62,12 @@ if(!initial_install_banner()):
 			. gtext('Please click here then push "Save" button.')
 			. '</a>';
 		$prerequisites_ok = false;
+endif;
+
+$zfs_status = get_state_zfs();
+if($zfs_status == "Invalid ZFS configuration"):
+	// Warning if invalid ZFS configuration.
+	$input_errors[] = gtext("WARNING: Invalid ZFS configuration detected.");
 endif;
 
 function htmlInput($name, $title, $value="", $size=80) {

@@ -2,7 +2,7 @@
 /*
 	bastille_manager_jconf.inc
 
-	Copyright (c) 2020 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,12 @@
 require_once 'auth.inc';
 require_once 'guiconfig.inc';
 require_once("bastille_manager-lib.inc");
+
+$zfs_status = get_state_zfs();
+if($zfs_status == "Invalid ZFS configuration"):
+	// Warning if invalid ZFS configuration.
+	$input_errors[] = gtext("WARNING: Invalid ZFS configuration detected.");
+endif;
 
 if (isset($_GET['uuid']))
 	$uuid = $_GET['uuid'];
