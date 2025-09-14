@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.2.03......Added post upgrade function for convenience, cleanup obsolete code.
 1.2.02......Always execute extension script after upgrade from WebGUI, code changes.
 1.2.01......Fix extension script missing statement preventing for new installs.
 1.2.00......Re-add Linux jail feature, WebGUI fixes and overall improvements.

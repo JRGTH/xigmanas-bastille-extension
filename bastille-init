@@ -332,6 +332,8 @@ extension_upgrade()
 				echo "*  WARNING: System reboot is required when upgrading from v${CURRENTVER_FULL} to v${UPDATEVER_FULL}     *"
 				echo "***********************************************************************************"
 			fi
+			# Tell the extension was upgraded. 
+			sysrc -f ${CWDIR}${EXTCONF} EXTENSION_UPGRADED="1" >/dev/null 2>&1
 		else
 			echo "Extension is on the latest version!"
 			rm -R ${CWDIR}/update
@@ -1197,6 +1199,22 @@ get_versions()
 	exit 0
 }
 
+post_upgrade()
+{
+	# Check/apply for required/pending updates/fixes if any.
+	# This file will be removed after success execution.
+	if sysrc -f ${CWDIR}${EXTCONF} -qc EXTENSION_UPGRADED=1; then	
+		if [ -f "${CWDIR}/post_upgrade.sh" ]; then
+			echo "Executing post_upgrade.sh file..."
+			${CWDIR}/post_upgrade.sh
+			sleep 5
+		else
+			echo "Nothing to do."
+		fi
+		sysrc -f ${CWDIR}${EXTCONF} EXTENSION_UPGRADED="0" >/dev/null 2>&1
+	fi
+}
+
 ext_start()
 {
 	if sysrc -f ${CWDIR}${EXTCONF} -qc LINUX_COMPAT_SUPPORT=YES; then
@@ -1221,6 +1239,7 @@ ext_start()
 	fi
 
 	if [ $? -eq 0 ]; then
+		post_upgrade
 		MSG="script has been started successfully!"
 		logger -t ${SCRIPTNAME} ${MSG}
 		exit 0
