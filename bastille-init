@@ -111,7 +111,7 @@ if [ "${bastille_zfs_enable}" = "YES" ] || [ "${bastille_zfs_enable}" = "yes" ];
 		if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | grep -q '/mnt/'; then
 			BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM=$(echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | sed "s|/mnt/||;s|/${bastille_zfs_prefix}||")
 		fi
-		BASTILLE_ZFS_PREFIX_TRIM=$(echo "${bastille_zfs_prefix}" | sed "s|/${BASTILLE_DIR}||")
+		BASTILLE_ZFS_PREFIX_TRIM=$(echo "${bastille_zfs_prefix}" | sed "s|/${APPNAME}||")
 	fi
 	# Check bastille ZFS config match on disk ZFS config.
 	BASTILLE_CONFIG_DISK=$(zfs list -H "${bastille_prefix}" 2>/dev/null | awk '{print $1}')
@@ -308,6 +308,8 @@ extension_upgrade()
 
 	# Compare version files and fetch latest package if available.
 	if [ -f "${CWDIR}/update/version" ]; then
+		UPDATEVER_FULL=$(cat ${CWDIR}/update/version)
+		CURRENTVER_FULL=$(cat ${CWDIR}/version)
 		UPDATEVER=$(cat ${CWDIR}/update/version | tr -d .)
 		CURRENTVER=$(cat ${CWDIR}/version | tr -d .)
 		if [ "${UPDATEVER}" -gt "${CURRENTVER}" ]; then
@@ -325,6 +327,11 @@ extension_upgrade()
 			echo "${DATE}: Extension upgraded to ${UPDATEVERSION}" >> ${EXTLOGFILE}
 			echo "Extension upgraded to version ${UPDATEVERSION}"
 			echo "Extension package upgrade completed!"
+			if [ "${CURRENTVER}" -le "1153" ]; then
+				echo "***********************************************************************************"
+				echo "*  WARNING: System reboot is required when upgrading from v${CURRENTVER_FULL} to v${UPDATEVER_FULL}     *"
+				echo "***********************************************************************************"
+			fi
 		else
 			echo "Extension is on the latest version!"
 			rm -R ${CWDIR}/update
@@ -1299,35 +1306,41 @@ rc_params()
 		if [ -n "${bastille_zfs_zpool}" ]; then
 			if zfs list "${bastille_zfs_zpool}" >/dev/null 2>&1; then
 
+				# Check and don't allow child datasets in bastille_zfs_zpool.
+				if echo "${bastille_zfs_zpool}" | grep -q '\/'; then
+					zfs_support_error
+					exit 1
+				fi
+
+				# Check and make sure bastille_zfs_prefix end with "bastille".
+				if ! echo "${bastille_zfs_prefix}" | grep -qw "${APPNAME}"; then
+					zfs_support_error
+					exit 1
+				fi
+
 				# Check bastille ZFS config match on disk ZFS config if activation is already enabled in the config file.
 				if sysrc -f ${CWDIR}${EXTCONF} -qc ZFS_SUPPORT=YES && sysrc -f ${CWDIR}${EXTCONF} -qc ZFS_ACTIVATED=YES; then
 					if [ "${BASTILLE_CONFIG_DISK}" != "${BASTILLE_CONFIG_FILE}" ]; then
 						zfs_support_error
 						exit 1
-					else
-						# Check and don't allow child datasets in bastille_zfs_zpool.
-						if echo "${bastille_zfs_zpool}" | grep -q '\/'; then
-							zfs_support_error
-							exit 1
-						fi
 					fi
 				fi
 
 				# Perform some checks against on-disk and file configurations.
-				if zfs list "${bastille_zfs_zpool}/${BASTILLE_ZFS_PREFIX_TRIM}/${BASTILLE_DIR}" >/dev/null 2>&1; then
+				if zfs list "${bastille_zfs_zpool}/${BASTILLE_ZFS_PREFIX_TRIM}/${APPNAME}" >/dev/null 2>&1; then
 					# Looks like ZFS support is already configured, then set parameters.
 					zfs_support_enabled
 				elif zfs list "${bastille_zfs_zpool}" >/dev/null 2>&1 && \
-					[ "${bastille_zfs_prefix}" = "${BASTILLE_ZFS_PREFIX_TRIM}/${BASTILLE_DIR}" ]; then
+					[ "${bastille_zfs_prefix}" = "${BASTILLE_ZFS_PREFIX_TRIM}/${APPNAME}" ]; then
 					# Looks like ZFS support is available for activation.
 					zfs_support_avail
-				elif zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" >/dev/null 2>&1; then
+				elif zfs list "${bastille_zfs_zpool}/${APPNAME}" >/dev/null 2>&1; then
 					zfs_support_enabled
 				elif zfs list "${bastille_zfs_zpool}" >/dev/null 2>&1 && \
-					[ "${BASTILLE_ZFS_PREFIX_TRIM}" = "${BASTILLE_DIR}" ]; then
+					[ "${BASTILLE_ZFS_PREFIX_TRIM}" = "${APPNAME}" ]; then
 						# Looks like ZFS support is available for activation.
 						zfs_support_avail
-				elif zfs list "${bastille_zfs_zpool}/${BASTILLE_DIR}" >/dev/null 2>&1; then
+				elif zfs list "${bastille_zfs_zpool}/${APPNAME}" >/dev/null 2>&1; then
 					zfs_support_enabled
 				else
 					zfs_support_error

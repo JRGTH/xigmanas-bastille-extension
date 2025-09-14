@@ -85,6 +85,9 @@ if ($_POST) {
 		$output = [];
 		exec($cmd,$output,$return_val);
 		if($return_val == 0):
+			// Execute extension script after upgrade for convenience.
+			// This will cause the script to early trigger zfs config checks.
+			exec("{$rootfolder}/bastille-init");
 			ob_start();
 			include("{$logevent}");
 			$ausgabe = ob_get_contents();
