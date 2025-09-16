@@ -106,9 +106,27 @@ unload_kmods() {
 }
 
 fetch_pkg() {
+	if [ ! -d "/var/db/pkg" ]; then
+		mkdir -p "/var/db/pkg"
+	fi
+	if [ ! -d "${CWDIR}/system/var/db/pkg" ]; then
+		mkdir -p ${CWDIR}/system/var/db/pkg
+	fi
+
+	if ! df | grep -q "${CWDIR}/system/var/db/pkg"; then
+		echo "Enabling UnionFS for ${CWDIR}/system/var/db/pkg."
+		mount_unionfs -o avobe ${CWDIR}/system/var/db/pkg /var/db/pkg
+	fi
+
 	echo "Fetching required packages."
 	# Fetch deboostrap and dependency packages.
 	pkg fetch -y -d -o ${CWDIR}/system/ debootstrap || error_notify "Error while fetching packages, exiting."
+	echo "Done."
+
+	if df | grep -q "${CWDIR}/system/var/db/pkg"; then
+		echo "Disabling UnionFS for ${CWDIR}/system/var/db/pkg."
+		umount -f /var/db/pkg
+	fi
 
 	extract_pkg
 }
@@ -150,7 +168,7 @@ unionfs_on() {
 		echo "Enabling UnionFS for ${CWDIR}/system/usr/local."
 		mount_unionfs -o above ${CWDIR}/system/usr/local /usr/local
 	fi
-	
+
 	if ! df | grep -q "${CWDIR}/system/var/run"; then
 		echo "Enabling UnionFS for ${CWDIR}/system/var/run."
 		mount_unionfs -o avobe ${CWDIR}/system/var/run /var/run

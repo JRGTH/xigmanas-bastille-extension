@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.2.05......Mount unionfs for pkg while fetching debootstrap packages.
 1.2.04......Fix for missing variable affecting embedded platforms, thanks to tga.
 1.2.03......Added post upgrade function for convenience, cleanup obsolete code.
 1.2.02......Always execute extension script after upgrade from WebGUI, code changes.
