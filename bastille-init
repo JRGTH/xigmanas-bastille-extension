@@ -343,8 +343,12 @@ extension_upgrade()
 
 create_addon_env()
 {
-	# Set bastille dir required permissions.
+	# Set bastille dir/files required permissions.
 	chmod 0750 ${CWDIR}
+
+	if [ -f "${CWDIR}/unionfs.sh" ]; then
+		chmod 0755 ${CWDIR}/unionfs.sh
+	fi
 
 	# Create required directories.
 	if [ ! -d "${CWDIR}/backups" ]; then
@@ -448,35 +452,42 @@ include_files()
 	if [ "$(freebsd-version | cut -d '.' -f1)" -ge 12 ]; then
 		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="YES" >/dev/null 2>&1
 		# Include missing system files.
-		if [ ! -f "/usr/bin/ar" ]; then
-			if [ -f "${SYSTEM_INCLUDE}/ar" ]; then
-				install -m 0555 ${SYSTEM_INCLUDE}/ar /usr/bin/ar
-			fi
-		fi
-		if [ ! -f "/usr/local/bin/jib" ]; then
-			if [ -f "${SYSTEM_INCLUDE}/jib" ]; then
-				install -m 0544 ${SYSTEM_INCLUDE}/jib /usr/local/bin/jib
-			fi
-		fi
-		if [ ! -f "/usr/sbin/setfib" ]; then
-			if [ -f "${SYSTEM_INCLUDE}/setfib" ]; then
-				install -m 0555 ${SYSTEM_INCLUDE}/setfib /usr/sbin/setfib
-			fi
-		fi
-		if [ ! -f "/usr/bin/sum" ]; then
-			if [ -f "${SYSTEM_INCLUDE}/sum" ]; then
-				install -m 0555 ${SYSTEM_INCLUDE}/sum /usr/bin/sum
-			fi
-		fi
-		if [ ! -f "/usr/bin/diff3" ]; then
-			if [ -f "${SYSTEM_INCLUDE}/diff3" ]; then
-				install -m 0555 ${SYSTEM_INCLUDE}/diff3 /usr/bin/diff3
-			fi
-		fi
-		if [ ! -f "/usr/bin/makewhatis" ]; then
-			if [ -f "${SYSTEM_INCLUDE}/makewhatis" ]; then
-				install -m 0555 ${SYSTEM_INCLUDE}/makewhatis /usr/bin/makewhatis
-			fi
+		# Symlink the files in embedded platforms.
+		USRBIN_FILES="ar diff3 makewhatis setfib sum"
+		LOCALBIN_FILES="jib"
+		if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
+			for _usrbin_file in ${USRBIN_FILES}; do
+				if [ -f "/usr/bin/${_usrbin_file}" ] && [ ! -L "/usr/bin/${_usrbin_file}" ]; then
+					rm -r /usr/bin/${_usrbin_file}
+				fi
+				if [ ! -f "/usr/bin/${_usrbin_file}" ]; then
+					chmod 0555  "${SYSTEM_INCLUDE}/${_usrbin_file}"
+					ln -fhs ${SYSTEM_INCLUDE}/${_usrbin_file} /usr/bin/${_usrbin_file}
+				fi
+			done
+			for _localbin_file in ${LOCALBIN_FILES}; do
+				if [ -f "/usr/local/bin/${_localbin_file}" ] && [ ! -L "/usr/local/bin/${_localbin_file}" ]; then
+					rm -r /usr/local/bin/${_localbin_file}
+				fi
+				if [ ! -f "/usr/bin/${_localbin_file}" ]; then
+					chmod 0555  "${SYSTEM_INCLUDE}/${_localbin_file}"
+					ln -fhs ${SYSTEM_INCLUDE}/${_localbin_file} /usr/local/bin/${_localbin_file}
+				fi
+			done
+		else
+			# Install the files in full platforms natively.
+			for _usrbin_file in ${USRBIN_FILES}; do
+				if [ ! -f "/usr/bin/${_usrbin_file}" ]; then
+					install -m 0555  "${SYSTEM_INCLUDE}/${_usrbin_file}" /usr/bin/${_usrbin_file}
+				fi
+			done
+			for _localbin_file in ${LOCALBIN_FILES}; do
+				if [ ! -f "/usr/local/bin/${_localbin_file}" ]; then
+					if [ -f "${SYSTEM_INCLUDE}/${_localbin_file}" ]; then
+						install -m 0544 ${SYSTEM_INCLUDE}/${_localbin_file} /usr/local/bin/${_localbin_file}
+					fi
+				fi
+			done
 		fi
 	else
 		sysrc -f ${CWDIR}${EXTCONF} VNET_ENABLE="NO" >/dev/null 2>&1
