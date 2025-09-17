@@ -483,9 +483,7 @@ include_files()
 			done
 			for _localbin_file in ${LOCALBIN_FILES}; do
 				if [ ! -f "/usr/local/bin/${_localbin_file}" ]; then
-					if [ -f "${SYSTEM_INCLUDE}/${_localbin_file}" ]; then
-						install -m 0544 ${SYSTEM_INCLUDE}/${_localbin_file} /usr/local/bin/${_localbin_file}
-					fi
+					install -m 0544 ${SYSTEM_INCLUDE}/${_localbin_file} /usr/local/bin/${_localbin_file}
 				fi
 			done
 		fi
