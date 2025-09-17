@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.2.07......Minor cosmetic/wording changes.
 1.2.06......Code changes, symlink bundled files in embedded platforms.
 1.2.05......Mount unionfs for pkg while fetching debootstrap packages.
 1.2.04......Fix for missing variable affecting embedded platforms, thanks to tga.

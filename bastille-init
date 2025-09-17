@@ -1220,7 +1220,7 @@ post_upgrade()
 			${CWDIR}/post_upgrade.sh
 			sleep 5
 		else
-			echo "Nothing to do."
+			echo "No post upgrade changes pending."
 		fi
 		sysrc -f ${CWDIR}${EXTCONF} EXTENSION_UPGRADED="0" >/dev/null 2>&1
 	fi
