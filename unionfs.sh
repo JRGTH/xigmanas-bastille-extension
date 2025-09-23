@@ -52,6 +52,7 @@ error_notify() {
 	MSG="${*}"
 	logger -t "${SCRIPTNAME}" "${MSG}"
 	echo -e "${MSG}" >&2
+	unionfs_disable
 	exit 1
 }
 
@@ -105,6 +106,31 @@ unload_kmods() {
 	fi
 }
 
+unionfs_disable() {
+	# Check and disable uniofs mounts on error.
+	unionfs_pkgoff
+	unionfs_off
+}
+
+unionfs_pkgon() {
+	if ! df | grep -q "${CWDIR}/system/var/db/pkg"; then
+		echo "Enabling UnionFS for ${CWDIR}/system/var/db/pkg."
+		mount_unionfs -o avobe ${CWDIR}/system/var/db/pkg /var/db/pkg
+	fi
+}
+
+unionfs_pkgoff() {
+	if df | grep -q "${CWDIR}/system/var/db/pkg"; then
+		echo "Disabling UnionFS for ${CWDIR}/system/var/db/pkg."
+		umount -f /var/db/pkg
+	fi
+}
+
+fetch_cmd() {
+	PKG_LIST="debootstrap debian-keyring"
+	pkg fetch -y -d -o ${CWDIR}/system/ ${PKG_LIST}
+}
+
 fetch_pkg() {
 	if [ ! -d "/var/db/pkg" ]; then
 		mkdir -p "/var/db/pkg"
@@ -113,20 +139,16 @@ fetch_pkg() {
 		mkdir -p ${CWDIR}/system/var/db/pkg
 	fi
 
-	if ! df | grep -q "${CWDIR}/system/var/db/pkg"; then
-		echo "Enabling UnionFS for ${CWDIR}/system/var/db/pkg."
-		mount_unionfs -o avobe ${CWDIR}/system/var/db/pkg /var/db/pkg
-	fi
+	unionfs_pkgon
 
 	echo "Fetching required packages."
 	# Fetch deboostrap and dependency packages.
-	pkg fetch -y -d -o ${CWDIR}/system/ debootstrap debian-keyring || error_notify "Error while fetching packages, exiting."
+	fetch_cmd || echo "Cleaning addon stale pkg db"
+	rm -rf ${CWDIR}/system/var/db/pkg/*
+	fetch_cmd || error_notify "Error while fetching packages, exiting."
 	echo "Done."
 
-	if df | grep -q "${CWDIR}/system/var/db/pkg"; then
-		echo "Disabling UnionFS for ${CWDIR}/system/var/db/pkg."
-		umount -f /var/db/pkg
-	fi
+	unionfs_pkgoff
 
 	extract_pkg
 }

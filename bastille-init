@@ -1568,9 +1568,9 @@ bootstrap_dist()
 		# Disable debootstrap environment.
 		${CWDIR}/unionfs.sh unionfs_off
 
-		else
-			echo "Linux compatibility disabled."
-			exit 1
+	else
+		echo "Linux compatibility disabled."
+		exit 1
 	fi
 
 	exit 0
