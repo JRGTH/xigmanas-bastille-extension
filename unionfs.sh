@@ -120,7 +120,7 @@ fetch_pkg() {
 
 	echo "Fetching required packages."
 	# Fetch deboostrap and dependency packages.
-	pkg fetch -y -d -o ${CWDIR}/system/ debootstrap || error_notify "Error while fetching packages, exiting."
+	pkg fetch -y -d -o ${CWDIR}/system/ debootstrap debian-keyring || error_notify "Error while fetching packages, exiting."
 	echo "Done."
 
 	if df | grep -q "${CWDIR}/system/var/db/pkg"; then

@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.2.09......Add Debian keyring and minor code changes.
 1.2.08......Code cleanup, remove unnecessary statement. 
 1.2.07......Minor cosmetic/wording changes.
 1.2.06......Code changes, symlink bundled files in embedded platforms.
