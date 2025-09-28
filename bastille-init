@@ -1539,8 +1539,7 @@ bootstrap_dist()
 	# Workaround since XigmaNAS does not ship with debootstrap command.
 	if sysrc -f ${CWDIR}${EXTCONF} -qc LINUX_COMPAT_SUPPORT=YES; then
 		# List of tested/working Linux distributions on FreeBSD 14.x.
-		#LINUX_FLAVORS="ubuntu-bionic ubuntu-focal ubuntu-jammy ubuntu-noble debian-buster debian-bullseye debian-bookworm"
-		LINUX_FLAVORS="ubuntu-bionic ubuntu-focal ubuntu-jammy"
+		LINUX_FLAVORS="ubuntu-bionic ubuntu-focal ubuntu-jammy ubuntu-noble debian-buster debian-bullseye debian-bookworm"
 		if [ -n "${LINUX_DIST}" ]; then
 			for _linux_flavor in ${LINUX_FLAVORS}; do
 

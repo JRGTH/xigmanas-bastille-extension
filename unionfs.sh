@@ -52,7 +52,7 @@ error_notify() {
 	MSG="${*}"
 	logger -t "${SCRIPTNAME}" "${MSG}"
 	echo -e "${MSG}" >&2
-	unionfs_disable
+	posterror_exec
 	exit 1
 }
 
@@ -106,6 +106,11 @@ unload_kmods() {
 	fi
 }
 
+posterror_exec() {
+	# Commands to be executed post errors.
+	unionfs_disable
+}
+
 unionfs_disable() {
 	# Check and disable uniofs mounts on error.
 	unionfs_pkgoff
@@ -143,7 +148,7 @@ fetch_pkg() {
 
 	echo "Fetching required packages."
 	# Fetch deboostrap and dependency packages.
-	fetch_cmd || echo "Cleaning addon stale pkg db"
+	fetch_cmd || echo "Cleaning addon stale pkg db and retry..."
 	rm -rf ${CWDIR}/system/var/db/pkg/*
 	fetch_cmd || error_notify "Error while fetching packages, exiting."
 	echo "Done."
