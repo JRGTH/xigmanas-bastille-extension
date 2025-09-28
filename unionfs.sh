@@ -109,6 +109,11 @@ unload_kmods() {
 posterror_exec() {
 	# Commands to be executed post errors.
 	unionfs_disable
+
+	# Clean for stale pkg.
+	if [ -d "${CWDIR}/system/All" ]; then
+		rm -r ${CWDIR}/system/All
+	fi
 }
 
 unionfs_disable() {

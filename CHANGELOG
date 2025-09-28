@@ -3,6 +3,8 @@
 ======================
 Version    Description
 
+1.2.12......Minor code improvements, clean stale pkg files on error.
+1.2.11......Add all bastille Linux flavors bootstrap options.
 1.2.10......Minor code improvements and cleanup.
 1.2.09......Add Debian keyring and minor code changes.
 1.2.08......Code cleanup, remove unnecessary statement. 
