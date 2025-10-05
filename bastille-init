@@ -1220,8 +1220,8 @@ post_upgrade()
 	if sysrc -f ${CWDIR}${EXTCONF} -qc EXTENSION_UPGRADED=1; then	
 		if [ -f "${CWDIR}/post_upgrade.sh" ]; then
 			echo "Executing post_upgrade.sh file..."
-			${CWDIR}/post_upgrade.sh
-			sleep 5
+			chmod +x ${CWDIR}/post_upgrade.sh && ${CWDIR}/post_upgrade.sh
+			sleep 3
 		else
 			echo "No post upgrade changes pending."
 		fi
