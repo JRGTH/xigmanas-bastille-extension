@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.2.14......Make sure bastille-prefix ends with bastille.
 1.2.13... ..Fallback for custom bastille prefix name.
 1.2.12......Minor code improvements, clean stale pkg files on error.
 1.2.11......Add all bastille Linux flavors bootstrap options.

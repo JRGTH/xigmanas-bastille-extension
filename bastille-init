@@ -1346,7 +1346,10 @@ rc_params()
 				fi
 
 				# Check and make sure bastille_zfs_prefix end with "bastille".
-				if ! echo "${bastille_zfs_prefix}" | grep -qw "${DAFAULT_BASTILLE_PREFIX}"; then
+				if echo "${DAFAULT_BASTILLE_PREFIX}" | ! grep -iq "${APPNAME}"; then
+					zfs_support_error
+					exit 1
+				elif ! echo "${bastille_zfs_prefix}" | grep -qw "${DAFAULT_BASTILLE_PREFIX}"; then
 					zfs_support_error
 					exit 1
 				fi
