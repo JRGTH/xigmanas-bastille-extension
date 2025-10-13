@@ -1286,7 +1286,7 @@ zfs_support_avail()
 zfs_support_disabled()
 {
 	sysrc -f ${CWDIR}${EXTCONF} ZFS_SUPPORT="NO" >/dev/null 2>&1
-	sysrc -f ${CWDIR}${EXTCONF} -x ZFS_ACTIVATED >/dev/null 2>&1
+	sysrc -f ${CWDIR}${EXTCONF} ZFS_ACTIVATED="NO" >/dev/null 2>&1
 }
 
 rc_params()
@@ -1389,7 +1389,7 @@ rc_params()
 		fi
 	else
 		# Check for orphaned configuration and/or config reset.
-		if zfs list -H "${CWDIR}" >/dev/null 2>&1; then
+		if zfs list -H "${CWDIR}" | awk '{print $1}' | grep -qw "${DAFAULT_BASTILLE_PREFIX}"; then
 			zfs_support_error
 		else
 			zfs_support_disabled
