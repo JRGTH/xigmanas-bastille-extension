@@ -1392,7 +1392,9 @@ rc_params()
 		if zfs list -H "${CWDIR}" | awk '{print $1}' | grep -qw "${DAFAULT_BASTILLE_PREFIX}"; then
 			zfs_support_error
 		else
-			zfs_support_disabled
+			if [ "${bastille_zfs_enable}" = "NO" ] || [ "${bastille_zfs_enable}" = "no" ]; then
+				zfs_support_disabled
+			fi
 		fi
 	fi
 
