@@ -4,6 +4,6 @@
 
 **Credits:**
 
- Christer Edwards (cedwards) Bastille, J.M. Rivera (JRGTH) XigmaNAS Add-on.
+ Christer Edwards (cedwards) Bastille, J.M. Rivera (JRGTH) Bastille and XigmaNAS Add-on.
 
 Additional information on Bastille: <a href="http://bastillebsd.org/">http://bastillebsd.org/</a>
