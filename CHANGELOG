@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.2.18......Fix typo in tarballs download page, thanks to Lux.
 1.2.17......Check if bastille_zfs_enable is actually set to NO before zfs disable.
 1.2.16......Disable zfs activation warnings if bastille_zfs_enable is set to NO.
 1.2.15......Minor code changes/improvements.

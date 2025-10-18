@@ -83,7 +83,7 @@ if ($linux_compat_support == "YES"):
 		'14.2-RELEASE' => gettext('14.2-RELEASE'),
 		'14.1-RELEASE' => gettext('14.1-RELEASE'),
 		'14.0-RELEASE' => gettext('14.0-RELEASE'),
-		'13.5-RELEASE' => gettext('13.4-RELEASE'),
+		'13.5-RELEASE' => gettext('13.5-RELEASE'),
 		'13.4-RELEASE' => gettext('13.4-RELEASE'),
 		// Linux base release bootstrap is allowed from command-line.
 		//'ubuntu-jammy' => gettext('Ubuntu-noble'),
