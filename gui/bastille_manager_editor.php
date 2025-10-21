@@ -60,7 +60,7 @@ if(isset($_POST['submit'])) {
 				} else {
 					$savemsg = sprintf('%s %s', gtext('File not found'), $savetopath);
 					$content = '';
-					$savetopath = '';			
+					$savetopath = '';
 				}
 			}
 			break;
@@ -128,7 +128,7 @@ $(window).on("load", function() {
 					<button name="submit" type="submit" class="formbtn" id="Edit" value="edit"><?=gtext('Edit');?></button>
 					<button name="submit" type="submit" class="formbtn" id="Save" value="save"><?=gtext('Save');?></button>
 					<button name="submit" type="submit" class="formbtn" id="Return" value="bastille"><?=gtext('Return to Bastille');?></button>
-					<hr noshade="noshade" />					
+					<hr noshade="noshade" />
 				</td>
 			</tr>
 <?php

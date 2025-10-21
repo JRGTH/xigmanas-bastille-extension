@@ -319,12 +319,12 @@ $(document).ready(function(){
 <form action="bastille_manager_maintenance.php" method="post" name="iform" id="iform" onsubmit="spinner()">
 	<table width="100%" border="0" cellpadding="0" cellspacing="0">
 		<tr><td class="tabnavtbl">
-    		<ul id="tabnav">
-    			<li class="tabinact"><a href="bastille_manager_gui.php"><span><?=gettext("Containers");?></span></a></li>
+			<ul id="tabnav">
+				<li class="tabinact"><a href="bastille_manager_gui.php"><span><?=gettext("Containers");?></span></a></li>
 				<li class="tabact"><a href="bastille_manager_info.php"><span><?=gettext("Information");?></span></a></li>
-    			<li class="tabact"><a href="bastille_manager_maintenance.php"><span><?=gettext("Maintenance");?></span></a></li>
-    		</ul>
-    	</td></tr>
+				<li class="tabact"><a href="bastille_manager_maintenance.php"><span><?=gettext("Maintenance");?></span></a></li>
+			</ul>
+		</td></tr>
 		<tr><td class="tabnavtbl">
 		<ul id="tabnav2">
 			<li class="tabact"><a href="bastille_manager_config.php"><span><?=gettext("Bastille Configuration");?></span></a></li>

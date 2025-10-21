@@ -53,7 +53,7 @@ function get_rel_list() {
 	if (is_dir("{$rootfolder}/releases")):
 		$entries = preg_grep('/^[0-9]+\.[0-9]+\-RELEASE|(Debian[0-9]{1,2}$)|(Ubuntu_[0-9]{4}$)/', scandir("{$rootfolder}/releases"));
 		foreach($entries as $entry):
-   		$a = preg_split('/\t/',$entry);
+		$a = preg_split('/\t/',$entry);
 		$r = [];
 		$name = $a[0];
 		if(preg_match('/^[0-9]+\.[0-9]+\-RELEASE|(Debian[0-9]{1,2}$)|(Ubuntu_[0-9]{4}$)/', $name, $m)):
@@ -101,7 +101,7 @@ else:
 		'14.2-RELEASE' => gettext('14.2-RELEASE'),
 		'14.1-RELEASE' => gettext('14.1-RELEASE'),
 		'14.0-RELEASE' => gettext('14.0-RELEASE'),
-		'13.5-RELEASE' => gettext('13.4-RELEASE'),
+		'13.5-RELEASE' => gettext('13.5-RELEASE'),
 		'13.4-RELEASE' => gettext('13.4-RELEASE'),
 	];
 endif;
@@ -213,7 +213,7 @@ if($_POST):
 						else:
 							$errormsg .= sprintf(gtext('%s failed to delete.'),$get_release);
 						endif;
-					endif;		
+					endif;
 				endif;
 			endif;
 		endif;
@@ -275,7 +275,7 @@ $document->render();
 <?php
 			if (is_dir($reldir)):
 				if (!is_dir_empty($reldir)):
-						html_titleline2(gettext('FreeBSD/Linux Base Release Installed'));
+					html_titleline2(gettext('FreeBSD/Linux Base Release Installed'));
 				endif;
 				foreach ($sphere_array as $sphere_record):
 					if (file_exists("{$reldir}/{$sphere_record['relname']}/root/.profile")):
