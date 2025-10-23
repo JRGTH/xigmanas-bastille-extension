@@ -149,6 +149,7 @@ fetch_pkg() {
 		mkdir -p ${CWDIR}/system/var/db/pkg
 	fi
 
+	trap "unionfs_pkgoff" 0 1 2 5 15
 	unionfs_pkgon
 
 	echo "Fetching required packages."

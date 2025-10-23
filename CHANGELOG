@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.2.20......Allow install in zroot platform with optional zfs dataset.
 1.2.19......Fix typo in tarballs page and cleanup, thanks to Lux.
 1.2.18......Fix typo in tarballs download page, thanks to Lux.
 1.2.17......Check if bastille_zfs_enable is actually set to NO before zfs disable.

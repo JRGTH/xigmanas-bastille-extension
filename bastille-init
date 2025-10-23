@@ -116,6 +116,17 @@ if [ "${bastille_zfs_enable}" = "YES" ] || [ "${bastille_zfs_enable}" = "yes" ];
 		if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | grep -q '/mnt/'; then
 			BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM=$(echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | sed "s|/mnt/||;s|/${bastille_zfs_prefix}||")
 		fi
+		# Check if is a zroot install with optional zfs dataset.
+		if [ -z "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM}" ]; then
+			ZROOT=$(mount | awk -F '/' '/ \/ / {print $1}')
+			if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | grep -q "/${ZROOT}"; then
+				BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM="/${ZROOT}"
+				CWDIR_TRIM=$(echo "${CWDIR}" | sed "s|/mnt/||;s|/${DAFAULT_BASTILLE_PREFIX}||")
+				if zfs get -H -o value mountpoint "${ZROOT}/${CWDIR_TRIM}"; then
+					CWDIR_TRIM="/${ZROOT}"
+				fi
+			fi
+		fi
 		BASTILLE_ZFS_PREFIX_TRIM=$(echo "${bastille_zfs_prefix}" | sed "s|/${DAFAULT_BASTILLE_PREFIX}||")
 	fi
 	# Check bastille ZFS config match on disk ZFS config.
@@ -1532,7 +1543,6 @@ linux_compat_enable()
 		# Manually enable Linux compatibility(Experimental).
 		if ! sysrc -f ${CWDIR}${EXTCONF} -qc LINUX_COMPAT_SUPPORT=YES; then
 			echo "Enabling Linux compatibility support..."
-			#${CWDIR}/unionfs.sh fetch_pkg && ${CWDIR}/unionfs.sh load_kmods && ${CWDIR}/unionfs.sh unionfs_on && sysrc -f ${CWDIR}${EXTCONF} LINUX_COMPAT_SUPPORT="YES" >/dev/null 2>&1
 			${CWDIR}/unionfs.sh fetch_debootstrap && ${CWDIR}/unionfs.sh load_kmods && sysrc -f ${CWDIR}${EXTCONF} LINUX_COMPAT_SUPPORT="YES" >/dev/null 2>&1
 		else
 			echo "Linux compatibility already enabled."
@@ -1569,6 +1579,7 @@ bootstrap_dist()
 		fi
 
 		# Enable debootstrap environment.
+		trap "${CWDIR}/unionfs.sh unionfs_off" 0 1 2 5 15
 		${CWDIR}/unionfs.sh unionfs_on
 
 		# Bootstrap Linux flavor using bastille.
