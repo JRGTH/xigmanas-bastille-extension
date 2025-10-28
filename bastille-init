@@ -122,7 +122,7 @@ if [ "${bastille_zfs_enable}" = "YES" ] || [ "${bastille_zfs_enable}" = "yes" ];
 			if echo "${BASTILLE_ZFS_ZPOOL_MOUNTPOINT}" | grep -q "/${ZROOT}"; then
 				BASTILLE_ZFS_ZPOOL_MOUNTPOINT_TRIM="/${ZROOT}"
 				CWDIR_TRIM=$(echo "${CWDIR}" | sed "s|/mnt/||;s|/${DAFAULT_BASTILLE_PREFIX}||")
-				if zfs get -H -o value mountpoint "${ZROOT}/${CWDIR_TRIM}"; then
+				if zfs get -H -o value mountpoint "${ZROOT}/${CWDIR_TRIM}" >/dev/null 2>&1; then
 					CWDIR_TRIM="/${ZROOT}"
 				fi
 			fi
@@ -1417,7 +1417,10 @@ update_config()
 {
 	# Update config based on minimum version.
 
-	# Network parameters.
+	# Update network parameters.
+	if grep -qw 'bastille_jail_loopback=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sed -i '' 's/bastille_jail_loopback=/bastille_network_loopback=/' ${INSTALLPATH}/${BASTILLECONF}
+	fi
 	if grep -qw 'bastille_jail_loopback=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sed -i '' 's/bastille_jail_loopback=/bastille_network_loopback=/' ${INSTALLPATH}/${BASTILLECONF}
 	fi
@@ -1427,6 +1430,8 @@ update_config()
 	if grep -qw 'bastille_jail_gateway=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sed -i '' 's/bastille_jail_gateway=/bastille_network_gateway=/' ${INSTALLPATH}/${BASTILLECONF}
 	fi
+
+	# Fetch parameters.
 	if ! grep -qw 'bastille_url_freebsd=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_url_freebsd="${URL_FREEBSD}"
 	fi
@@ -1437,17 +1442,30 @@ update_config()
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_url_midnightbsd="${URL_MIDNIGHTBSD}"
 	fi
 
+	# Check/append network parameters.
+	if ! grep -qw 'bastille_network_vnet_type=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_vnet_type="if_bridge"
+	fi
+	if ! grep -qw 'bastille_network_loopback=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_loopback=""
+	fi
 	if ! grep -qw 'bastille_network_pf_ext_if=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_pf_ext_if="ext_if"
 	fi
 	if ! grep -qw 'bastille_network_pf_table=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_pf_table="jails"
 	fi
+	if ! grep -qw 'bastille_network_shared=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_shared=""
+	fi
+	if ! grep -qw 'bastille_network_gateway=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_gateway=""
+	fi
 	if ! grep -qw 'bastille_network_gateway6=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_gateway6=""
 	fi
 
-	# Template parameters.
+	# Check/append template parameters.
 	if ! grep -qw 'bastille_template_base=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_base="default/base"
 	fi
@@ -1457,11 +1475,17 @@ update_config()
 	if ! grep -qw 'bastille_template_thick=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_thick="default/thick"
 	fi
+	if ! grep -qw 'bastille_template_clone=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_clone="default/clone"
+	fi
 	if ! grep -qw 'bastille_template_thin=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_thin="default/thin"
 	fi
 	if ! grep -qw 'bastille_template_vnet=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_vnet="default/vnet"
+	fi
+	if ! grep -qw 'bastille_template_vlan=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_template_vlan="default/vlan"
 	fi
 
 	# Remove deprecated parameters based on minimum version.
