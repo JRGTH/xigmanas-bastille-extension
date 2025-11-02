@@ -202,7 +202,7 @@ runtime_config()
 bastille_initial_download()
 {
 	# Check if bastille already exist.
-	
+
 	if [ -n "${REQUIRED_UPDATE}" ] || [ ! -f "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}" ]; then
 		# Fetch latest bastille package.
 		echo "Fetching ${APPNAME} files..."
@@ -273,7 +273,7 @@ bastille_upgrade()
 bastille_core_update()
 {
 	# Check if bastille already exist.
-	
+
 	if [ -f "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}" ]; then
 		# Fetch latest bastille package.
 		echo "Fetching ${APPNAME} files..."
@@ -348,7 +348,7 @@ extension_upgrade()
 				echo "*  WARNING: System reboot is required when upgrading from v${CURRENTVER_FULL} to v${UPDATEVER_FULL}     *"
 				echo "***********************************************************************************"
 			fi
-			# Tell the extension was upgraded. 
+			# Tell the extension was upgraded.
 			sysrc -f ${CWDIR}${EXTCONF} EXTENSION_UPGRADED="1" >/dev/null 2>&1
 		else
 			echo "Extension is on the latest version!"
@@ -432,7 +432,7 @@ sys_symlinkdir()
 		mkdir -p ${USRLOCAL}/share/licenses
 	fi
 
-	# Required symlinks for bastille. 
+	# Required symlinks for bastille.
 	if [ -d "${INSTALLPATH}${USRLOCAL}/share/licenses" ]; then
 		cd ${INSTALLPATH}${USRLOCAL}/share/licenses
 		for file in *
@@ -562,7 +562,7 @@ require_once("functions.inc");
 \$cmd = dirname(__FILE__)."/${SCRIPTNAME}";
 \$name = "${PRDNAME} Extension";
 \$comment = "Start ${PRDNAME} Container Manager";
-\$rc = &array_make_branch(\$config,'rc','param'); 
+\$rc = &array_make_branch(\$config,'rc','param');
 if(false === array_search_ex(\$cmd,\$rc,'cmd')):
 	\$rc_param = [];
 	\$rc_param['uuid'] = uuid();
@@ -686,7 +686,7 @@ jail_update()
 		exit 1
 	fi
 
-	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
+	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then
 		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -qw "/.*/.bastille"; then
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
 				if [ "$(jls name | grep -w "${TARGET}")" ]; then
@@ -777,7 +777,7 @@ release_upgrade()
 
 release_install()
 {
-	if [ -d "${bastille_releasesdir}/${TARGET}" ]; then 
+	if [ -d "${bastille_releasesdir}/${TARGET}" ]; then
 			if [ -f "${bastille_releasesdir}/${TARGET}/COPYRIGHT" ]; then
 					# Finish installing upgrade on a thick container.
 					env PAGER="/bin/cat" ${FREEBSD_UPDATE}/freebsd-update --not-running-from-cron -f ${FREEBSD_UPDATE}/freebsd-update.conf \
@@ -876,7 +876,7 @@ thickjail_upgrade()
 	fi
 
 	# Verify for user input and handle some errors.
-	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
+	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then
 		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -qw "/.*/.bastille"; then
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
 				if [ "$(jls name | grep -w "${TARGET}")" ]; then
@@ -932,7 +932,7 @@ thickjail_install()
 		exit 1
 	fi
 
-	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then 
+	if [ -d "${bastille_jailsdir}/${TARGET}" ]; then
 		if ! cat "${bastille_jailsdir}/${TARGET}/fstab" 2>/dev/null | grep -w "${TARGET}" | grep -qw "/.*/.bastille"; then
 			if [ -f "${bastille_jailsdir}/${TARGET}/root/COPYRIGHT" ]; then
 				if [ "$(jls name | grep -w "${TARGET}")" ]; then
@@ -1011,7 +1011,7 @@ zfs_activate()
 							echo "Synchronizing '${BASTILLE_DIR}' data on new dataset"
 							rsync -a ${CWDIR}.old/ ${CWDIR}/
 						fi
-					else	
+					else
 						echo "Bastille ZFS is already configured."
 					fi
 				else
@@ -1070,7 +1070,7 @@ reset_install()
 
 	# Reset the extension environment.
 	echo "Removing extension files..."
-	
+
 	if [ -f "${CWDIR}/conf/bastille_config" ]; then
 		echo "Backup current extension config file."
 		if [ -f "${CWDIR}/conf/bastille_config.old" ]; then
@@ -1226,15 +1226,12 @@ get_versions()
 
 post_upgrade()
 {
-	# Check/apply for required/pending updates/fixes if any.
-	# This file will be removed after success execution.
-	if sysrc -f ${CWDIR}${EXTCONF} -qc EXTENSION_UPGRADED=1; then	
+	# This function is intended to apply several/temporary changes to the extension once.
+	if sysrc -f ${CWDIR}${EXTCONF} -qc EXTENSION_UPGRADED=1; then
 		if [ -f "${CWDIR}/post_upgrade.sh" ]; then
-			echo "Executing post_upgrade.sh file..."
+			echo "Executing post upgrade file..."
 			chmod +x ${CWDIR}/post_upgrade.sh && ${CWDIR}/post_upgrade.sh
 			sleep 3
-		else
-			echo "No post upgrade changes pending."
 		fi
 		sysrc -f ${CWDIR}${EXTCONF} EXTENSION_UPGRADED="0" >/dev/null 2>&1
 	fi
@@ -1543,7 +1540,7 @@ bastille_init()
 	# Check for system compatibility.
 	if [ ! "${PLATFORM}" = "amd64" ]; then
 		echo "Unsupported platform!"; exit 1
-	fi 
+	fi
 	# Check for product compatibility.
 	if [ ! "${PRDVERSION}" -ge "112" ]; then
 		echo "Unsupported version!"; exit 1
@@ -1591,7 +1588,7 @@ bootstrap_dist()
 					LINUX_FLAVOR="${_linux_flavor}"
 					break
 				fi
-			
+
 			done
 		fi
 

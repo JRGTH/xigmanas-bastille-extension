@@ -88,8 +88,11 @@ if ($_POST) {
 			ob_start();
 			include("{$logevent}");
 			$ausgabe = ob_get_contents();
-			ob_end_clean(); 
+			ob_end_clean();
 			$savemsg .= str_replace("\n", "<br />", $ausgabe)."<br />";
+			// Silently execute bastille-init post upgrade for pending changes.
+			// This is to make sure that minor changes are always applied.
+			exec('bastille-init');
 		else:
 			$input_errors[] = gtext('An error has occurred during upgrade process.');
 			$cmd = sprintf('echo %s: %s An error has occurred during upgrade process. >> %s',$date,$application,$logfile);
@@ -106,7 +109,7 @@ if ($_POST) {
 			ob_start();
 			include("{$logevent}");
 			$ausgabe = ob_get_contents();
-			ob_end_clean(); 
+			ob_end_clean();
 			$savemsg .= str_replace("\n", "<br />", $ausgabe)."<br />";
 		else:
 			$input_errors[] = gtext('An error has occurred during core update process.');
@@ -122,7 +125,7 @@ if ($_POST) {
 			if (is_link($textdomain_bastille)) mwexec("rm -f {$textdomain_bastille}", true);
 			if (is_dir($confdir)) mwexec("rm -Rf {$confdir}", true);
 			mwexec("rm /usr/local/www/bastille_manager_gui.php && rm -R /usr/local/www/ext/bastille", true);
-			mwexec("{$rootfolder}/usr/local/sbin/bastille-init -t", true);		
+			mwexec("{$rootfolder}/usr/local/sbin/bastille-init -t", true);
 			$uninstall_cmd = "echo 'y' | /usr/local/sbin/bastille-init -U";
 			mwexec($uninstall_cmd, true);
 			if (is_link("/usr/local/share/{$prdname}")) mwexec("rm /usr/local/share/{$prdname}", true);
@@ -217,7 +220,7 @@ if ($_POST) {
 						ob_start();
 						include("{$logevent}");
 						$ausgabe = ob_get_contents();
-						ob_end_clean(); 
+						ob_end_clean();
 						$savemsg .= str_replace("\n", "<br />", $ausgabe)."<br />";
 						exec("/usr/sbin/sysrc -f {$configfile} ZFS_ACTIVATED=\"YES\"");
 					else:
@@ -243,8 +246,6 @@ if ($_POST) {
 				$savemsg .= gtext("ZFS activation option has been skipped.");
 			endif;
 		endif;
-		# Run bastille-init to update config.
-		exec("bastille-init");
 	}
 
 		if (isset($_POST['restore']) && $_POST['restore']) {
