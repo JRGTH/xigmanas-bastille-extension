@@ -1442,11 +1442,15 @@ update_config()
 	# Check/append network parameters.
 	if ! grep -qw 'bastille_network_vnet_type=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_vnet_type="if_bridge"
+	elif ! sysrc -f ${INSTALLPATH}/${BASTILLECONF} -n bastille_network_vnet_type | grep -q 'if_bridge'; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_vnet_type="if_bridge"
 	fi
 	if ! grep -qw 'bastille_network_loopback=' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_loopback=""
 	fi
 	if ! grep -qw 'bastille_network_pf_ext_if=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_pf_ext_if="ext_if"
+	elif ! sysrc -f ${INSTALLPATH}/${BASTILLECONF} -n bastille_network_pf_ext_if | grep -q 'ext_if'; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_network_pf_ext_if="ext_if"
 	fi
 	if ! grep -qw 'bastille_network_pf_table=' ${INSTALLPATH}/${BASTILLECONF}; then
