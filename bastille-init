@@ -470,6 +470,7 @@ include_files()
 		# Include missing system files.
 		# Symlink the files in embedded platforms.
 		USRBIN_FILES="ar diff3 makewhatis setfib sum"
+		USRSBIN_FILES="etcupdate"
 		LOCALBIN_FILES="jib"
 		if [ "${PRDPLATFORM}" = "x64-embedded" ]; then
 			for _usrbin_file in ${USRBIN_FILES}; do
@@ -479,6 +480,15 @@ include_files()
 				if [ ! -f "/usr/bin/${_usrbin_file}" ]; then
 					chmod 0555  "${SYSTEM_INCLUDE}/${_usrbin_file}"
 					ln -fhs ${SYSTEM_INCLUDE}/${_usrbin_file} /usr/bin/${_usrbin_file}
+				fi
+			done
+			for _usrsbin_file in ${USRSBIN_FILES}; do
+				if [ -f "/usr/sbin/${_usrsbin_file}" ] && [ ! -L "/usr/sbin/${_usrsbin_file}" ]; then
+					rm -r /usr/sbin/${_usrsbin_file}
+				fi
+				if [ ! -f "/usr/sbin/${_usrsbin_file}" ]; then
+					chmod 0555  "${SYSTEM_INCLUDE}/${_usrsbin_file}"
+					ln -fhs ${SYSTEM_INCLUDE}/${_usrsbin_file} /usr/sbin/${_usrsbin_file}
 				fi
 			done
 			for _localbin_file in ${LOCALBIN_FILES}; do
@@ -495,6 +505,11 @@ include_files()
 			for _usrbin_file in ${USRBIN_FILES}; do
 				if [ ! -f "/usr/bin/${_usrbin_file}" ]; then
 					install -m 0555  "${SYSTEM_INCLUDE}/${_usrbin_file}" /usr/bin/${_usrbin_file}
+				fi
+			done
+			for _usrsbin_file in ${USRSBIN_FILES}; do
+				if [ ! -f "/usr/sbin/${_usrsbin_file}" ]; then
+					install -m 0555  "${SYSTEM_INCLUDE}/${_usrsbin_file}" /usr/sbin/${_usrsbin_file}
 				fi
 			done
 			for _localbin_file in ${LOCALBIN_FILES}; do
@@ -993,7 +1008,7 @@ zfs_activate()
 		done
 		echo "Proceeding..."
 
-		if [ "${bastille_zfs_enable}" = "YES" ]; then
+		if [ "${bastille_zfs_enable}" = "YES" ] || [ "${bastille_zfs_enable}" = "yes" ]; then
 			if [ -n "${bastille_zfs_zpool}" ]; then
 				if zfs list "${bastille_zfs_zpool}" > /dev/null 2>&1; then
 					if ! zfs list "${bastille_zfs_zpool}/${bastille_zfs_prefix}" > /dev/null 2>&1; then
@@ -1343,7 +1358,7 @@ rc_params()
 	fi
 
 	# Check for sane ZFS parameters in this setup.
-	if [ "${bastille_zfs_enable}" = "YES" ]; then
+	if [ "${bastille_zfs_enable}" = "YES" ] || [ "${bastille_zfs_enable}" = "yes" ]; then
 		if [ -n "${bastille_zfs_zpool}" ]; then
 			if zfs list "${bastille_zfs_zpool}" >/dev/null 2>&1; then
 
@@ -1397,7 +1412,7 @@ rc_params()
 		fi
 	else
 		# Check for orphaned configuration and/or config reset.
-		if zfs list -H "${CWDIR}" | awk '{print $1}' | grep -qw "${DAFAULT_BASTILLE_PREFIX}"; then
+		if zfs list -H "${CWDIR}" 2>/dev/null | awk '{print $1}' | grep -qw "${DAFAULT_BASTILLE_PREFIX}"; then
 			zfs_support_error
 		else
 			if [ "${bastille_zfs_enable}" = "NO" ] || [ "${bastille_zfs_enable}" = "no" ]; then

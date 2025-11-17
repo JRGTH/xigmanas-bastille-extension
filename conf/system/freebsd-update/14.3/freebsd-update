@@ -1046,6 +1046,26 @@ IDS_check_params () {
 	fetch_setup_verboselevel
 }
 
+# Packaged base and freebsd-update are incompatible.  Exit with an error if
+# packaged base is in use.
+check_pkgbase()
+{
+	# Packaged base requires that pkg is bootstrapped.
+	if ! pkg -c ${BASEDIR} -N >/dev/null 2>/dev/null; then
+		return
+	fi
+	# uname(1) is used by pkg to determine ABI, so it should exist.
+	# If it comes from a package then this system uses packaged base.
+	if ! pkg -c ${BASEDIR} which /usr/bin/uname >/dev/null; then
+		return
+	fi
+	cat <<EOF
+freebsd-update is incompatible with the use of packaged base.  Please see
+https://wiki.freebsd.org/PkgBase for more information.
+EOF
+	exit 1
+}
+
 #### Core functionality -- the actual work gets done here
 
 # Use an SRV query to pick a server.  If the SRV query doesn't provide
@@ -3043,10 +3063,28 @@ Kernel updates have been installed.  Please reboot and run
 		    grep -E '^/libexec/ld-elf[^|]*\.so\.[0-9]+\|' > INDEX-NEW
 		install_from_index INDEX-NEW || return 1
 
-		# Install new shared libraries next
+		# Next, in order, libsys, libc, and libthr.
 		grep -vE '^/boot/' $1/INDEX-NEW |
 		    grep -vE '^[^|]+\|d\|' |
 		    grep -vE '^/libexec/ld-elf[^|]*\.so\.[0-9]+\|' |
+		    grep -E '^[^|]*/lib/libsys\.so\.[0-9]+\|' > INDEX-NEW
+		install_from_index INDEX-NEW || return 1
+		grep -vE '^/boot/' $1/INDEX-NEW |
+		    grep -vE '^[^|]+\|d\|' |
+		    grep -vE '^/libexec/ld-elf[^|]*\.so\.[0-9]+\|' |
+		    grep -E '^[^|]*/lib/libc\.so\.[0-9]+\|' > INDEX-NEW
+		install_from_index INDEX-NEW || return 1
+		grep -vE '^/boot/' $1/INDEX-NEW |
+		    grep -vE '^[^|]+\|d\|' |
+		    grep -vE '^/libexec/ld-elf[^|]*\.so\.[0-9]+\|' |
+		    grep -E '^[^|]*/lib/libthr\.so\.[0-9]+\|' > INDEX-NEW
+		install_from_index INDEX-NEW || return 1
+
+		# Install the rest of the shared libraries next
+		grep -vE '^/boot/' $1/INDEX-NEW |
+		    grep -vE '^[^|]+\|d\|' |
+		    grep -vE '^/libexec/ld-elf[^|]*\.so\.[0-9]+\|' |
+		    grep -vE '^[^|]*/lib/(libsys|libc|libthr)\.so\.[0-9]+\|' |
 		    grep -E '^[^|]*/lib/[^|]*\.so\.[0-9]+\|' > INDEX-NEW
 		install_from_index INDEX-NEW || return 1
 
@@ -3540,6 +3578,9 @@ export LC_ALL=C
 
 # Clear environment variables that may affect operation of tools that we use.
 unset GREP_OPTIONS
+
+# Disallow use with packaged base.
+check_pkgbase
 
 get_params $@
 for COMMAND in ${COMMANDS}; do

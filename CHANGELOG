@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.2.25......Add 'etcupdate' missing command, update bundled files.
 1.2.24......Minor code changes/improvements.
 1.2.23......Check/update bastille config parameters on runtime.
 1.2.22......Make sure minor changes are always applied.
