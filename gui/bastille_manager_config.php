@@ -2,7 +2,7 @@
 /*
     bastille_manager_config.php
 
-	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
     Copyright (c) 2018 Andreas Schmidhuber
@@ -141,7 +141,7 @@ if ($_POST) {
 
 	if (isset($_POST['saveParam']) && $_POST['saveParam']) {					// saveParam s/n/v
 		$buttonTag = explode("#", $_POST['saveParam']);							// buttonTag[0] = section, buttonTag[1] = paramName
-		$hashTag = str_replace(["[", "]", ".", "#"], "", $buttonTag[0]);		// create destination to jump to after post 
+		$hashTag = str_replace(["[", "]", ".", "#"], "", $buttonTag[0]);		// create destination to jump to after post
 		$nameTag = str_replace(["[", "]", ".", "#"], "", $_POST['saveParam']);	// nameTag = <input title='$nameTag + addParam' ... />
 		$configArray[$buttonTag[0]][$buttonTag[1]] = $_POST[$nameTag];			// save param to section
 		#$savemsg .= "saveParam s/n/v: ".$_POST['saveParam']." ".$nameTag." ".$_POST[$nameTag];
@@ -171,10 +171,10 @@ bindtextdomain("xigmanas", $textdomain_bastille);
 				echo "<tr><td colspan='2' style='padding-left:0px; padding-right:0px;'>";
 					if (!empty($input_errors)) print_input_errors($input_errors);
 					if (!empty($savemsg)) print_info_box($savemsg);
-				echo "</td></tr>";		
+				echo "</td></tr>";
 				// loop through configuration
 				$firstSection = true;														// prevent first html_separator in loop
-				if (is_array($configArray) && !empty($configArray))	
+				if (is_array($configArray) && !empty($configArray))
 					foreach($configArray as $key => $line) {								// traverse array, key = section
 						$nameTag = str_replace(["[", "]", "."], "", $key);					// create tag for post jump address and config changes
 						if (is_array($line)) {

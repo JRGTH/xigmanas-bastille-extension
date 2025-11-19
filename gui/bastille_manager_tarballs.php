@@ -2,7 +2,7 @@
 /*
 	bastille_manager_tarballs.php
 
-	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Portions of XigmaNAS® (https://www.xigmanas.com).
@@ -87,7 +87,7 @@ if ($linux_compat_support == "YES"):
 		'13.4-RELEASE' => gettext('13.4-RELEASE'),
 		// Linux base release bootstrap is allowed from command-line.
 		//'ubuntu-noble' => gettext('Ubuntu-noble'),
-		//'ubuntu-jammy' => gettext('Ubuntu-Jammy'), 
+		//'ubuntu-jammy' => gettext('Ubuntu-Jammy'),
 		//'ubuntu-focal' => gettext('Ubuntu-Focal'),
 		//'ubuntu-bionic' => gettext('Ubuntu-Bionic'),
 		//'debian-bookworm' => gettext('Debian-Bookworm'),
@@ -203,7 +203,7 @@ if($_POST):
 				// Do not delete base releases with containers child.
 				if ($check_used):
 					$errormsg .= sprintf(gtext('%s base appears to have containers child.'),$get_release);
-				else:			
+				else:
 					// Delete the FreeBSD base release/directory.
 					if ($_POST['Destroy']):
 						unset($output,$retval);mwexec2($cmd,$output,$retval);

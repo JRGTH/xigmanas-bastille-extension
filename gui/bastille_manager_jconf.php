@@ -2,7 +2,7 @@
 /*
 	bastille_manager_jconf.inc
 
-	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without

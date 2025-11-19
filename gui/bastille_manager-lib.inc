@@ -2,7 +2,7 @@
 /*
 	bastille_manager-lib.inc
 
-	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without
@@ -85,7 +85,7 @@ if (is_file("{$rootfolder}/postinit")) unlink("{$rootfolder}/postinit");
 
 // Check releases dir.
 function is_dir_empty($reldir) {
-	if (!is_readable($reldir)) return NULL; 
+	if (!is_readable($reldir)) return NULL;
 	return (count(scandir($reldir)) == 2);
 }
 
@@ -127,7 +127,7 @@ function initial_install_banner() {
 			return $is_bootstrapped = "YES";
 			break;
 			endif;
-		endforeach;	
+		endforeach;
 	endif;
 }
 

@@ -2,7 +2,7 @@
 /*
 	bastille_manager_maintenance.php
 
-	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Copyright (c) 2016 Andreas Schmidhuber

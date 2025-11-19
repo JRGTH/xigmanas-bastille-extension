@@ -2,7 +2,7 @@
 /*
 	bastille_manager_info.php
 
-	Copyright (c) 2019-2025 Jose Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2025 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Portions of XigmaNAS® (https://www.xigmanas.com).
@@ -147,7 +147,7 @@ $document->render();
 			</tr>
 		<tbody>
 	</table>
-<tbody>	
+<tbody>
 </td></tr></tbody></table>
 <?php
 include 'fend.inc';
