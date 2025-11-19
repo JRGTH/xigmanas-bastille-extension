@@ -246,9 +246,9 @@ if($_POST):
 					if($retval == 0):
 						$update_release = exec("/usr/sbin/jexec -l {$item} freebsd-version");
 						if (($_POST['update_jail_force']) || ($_POST['update_base_force'])):
-							$savemsg .= sprintf(gtext("Container release forcefully updated to %s successfully."),$update_release);
+							$savemsg .= sprintf(gtext("Container release forcefully updated to %s successfully, a restart is required to apply pending changes."),$update_release);
 						else:
-							$savemsg .= sprintf(gtext("Container release updated to %s successfully."),$update_release);
+							$savemsg .= sprintf(gtext("Container release updated to %s successfully, a restart is required to apply pending changes."),$update_release);
 						endif;
 						if ($_POST['update_base']):
 							exec("/usr/local/bin/bastille config {$item} set osrelease $update_release");
