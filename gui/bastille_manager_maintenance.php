@@ -364,7 +364,7 @@ $(document).ready(function(){
 			<div id="submit">
 				<input id="save" name="save" type="submit" class="formbtn" title="<?=gtext("Save settings");?>" value="<?=gtext("Save");?>"/>
 				<input name="upgrade" type="submit" class="formbtn" title="<?=gtext("Upgrade Extension and Bastille Core Packages");?>" value="<?=gtext("Upgrade");?>" />
-				<input name="update" type="submit" class="formbtn" title="<?=gtext("Update Bastille Core Package Only");?>" value="<?=gtext("Update");?>" />
+				<input name="update" type="submit" class="formbtn" title="<?=gtext("Apply Bastille Core latest Patches and Fixes");?>" value="<?=gtext("Update");?>" />
 				<input name="restore" type="submit" class="formbtn" title="<?=gtext("Restore a container");?>" value="<?=gtext("Restore");?>" />
 			</div>
 			<div id="remarks">
