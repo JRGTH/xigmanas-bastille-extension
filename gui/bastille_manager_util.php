@@ -152,7 +152,7 @@ if($_POST):
 					if ($zfs_activated == "YES"):
 						if($pconfig['safemode']):
 							if(!$skip_safemode):
-								$export_option = "--safe";
+								$export_option = "--auto";
 							endif;
 						endif;
 					endif;
