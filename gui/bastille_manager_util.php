@@ -122,7 +122,8 @@ if($_POST):
 					$bastille_version_min = "0920210714";
 					$bastille_version_format = str_replace(".", "", $bastille_version);
 					$export_option = "";
-					$skip_safemode = "";
+					#$skip_safemode = "";
+					$skip_livemode = "";
 
 					if(isset($_POST['format'])):
 						$export_format = $_POST['format'];
@@ -138,21 +139,35 @@ if($_POST):
 							break;
 						case 'tgz':
 							$user_export_format = "--tgz";
-							$skip_safemode = "yes";
+							#$skip_safemode = "yes";
+							$skip_livemode = "yes";
 							break;
 						case 'txz':
 							$user_export_format = "--txz";
-							$skip_safemode = "yes";
+							#$skip_safemode = "yes";
+							$skip_livemode = "yes";
+							break;
+						case 'tzst':
+							$user_export_format = "--tzst";
+							#$skip_safemode = "yes";
+							$skip_livemode = "yes";
 							break;
 						case 'xz':
 							$user_export_format = "--xz";
 							break;
+						case 'zst':
+							$user_export_format = "--zst";
+							break;
 					endswitch;
 
+					if($pconfig['safemode']):
+						$export_option = "--auto";
+					endif;
+
 					if ($zfs_activated == "YES"):
-						if($pconfig['safemode']):
-							if(!$skip_safemode):
-								$export_option = "--auto";
+						if($pconfig['livemode']):
+							if(!$export_option):
+								$export_option = "--live";
 							endif;
 						endif;
 					endif;
@@ -167,9 +182,9 @@ if($_POST):
 						else:
 							if ($pconfig['format'] == "default"):
 								$export_format = "--txz";
-								$cmd = ("/usr/local/bin/bastille export $export_format '{$item}'");
+								$cmd = ("/usr/local/bin/bastille export $export_option $export_format '{$item}'");
 							else:
-								$cmd = ("/usr/local/bin/bastille export $user_export_format '{$item}'");
+								$cmd = ("/usr/local/bin/bastille export $export_option $user_export_format '{$item}'");
 							endif;
 						endif;
 
@@ -492,6 +507,7 @@ function action_change() {
 	showElementById('backup_tr', 'hide');
 	showElementById('format_tr', 'hide');
 	showElementById('safemode_tr', 'hide');
+	showElementById('livemode_tr', 'hide');
 	showElementById('prioritynumber_tr','hide');
 	var action = document.iform.action.value;
 	switch (action) {
@@ -499,6 +515,7 @@ function action_change() {
 			showElementById('backup_tr', 'show');
 			showElementById('format_tr', 'show');
 			showElementById('safemode_tr', 'show');
+			showElementById('livemode_tr', 'show');
 			break;
 		case "clone":
 			showElementById('newname_tr','show');
@@ -625,20 +642,26 @@ $document->render();
 					'raw' => gettext('RAW'),
 					'tgz' => gettext('TGZ'),
 					'txz' => gettext('TXZ'),
+					'tzst' => gettext('TZST'),
 					'xz' => gettext('XZ'),
+					'zst' => gettext('ZST'),
 				];
 			else:
 				$c_action = [
 					'default' => gettext('Default'),
 					'tgz' => gettext('TGZ'),
 					'txz' => gettext('TXZ'),
+					'tzst' => gettext('TZST'),
 				];
 			endif;
 
 			html_combobox2('action',gettext('Action'),!empty($pconfig['action']),$a_action,'',true,false,'action_change()');
 			html_combobox2('format',gettext('Archive format'),!empty($pconfig['format']),$c_action,'',true,false);
 			if ($zfs_activated == "YES"):
-				html_checkbox2('safemode',gettext('Safe ZFS export'),!empty($pconfig['safemode']) ? true : false,gettext('Safely stop and start a ZFS jail before the exporting process, this has no effect on .TGZ/TXZ since the jail should be stopped regardless.'),'',false);
+				html_checkbox2('safemode',gettext('Safe Jail export'),!empty($pconfig['safemode']) ? true : false,gettext('Safely stop and start the jail before the exporting process.'),'',false);
+				html_checkbox2('livemode',gettext('Live ZFS export'),!empty($pconfig['livemode']) ? true : false,gettext('Export a running ZFS jail, safe export overrides this option, this has no effect on .TGZ/TXZ/TZST since the jail should be stopped regardless.'),'',false);
+			else:
+				html_checkbox2('safemode',gettext('Safe Jail export'),!empty($pconfig['safemode']) ? true : false,gettext('Safely stop and start the jail before the exporting process.'),'',false);
 			endif;
 			html_inputbox2('confirmname',gettext('Enter name for confirmation'),!empty($pconfig['confirmname']),'',true,30);
 			html_inputbox2('prioritynumber',gettext('Enter priority value'),!empty($pconfig['prioritynumber']),'',true,30);
@@ -649,7 +672,7 @@ $document->render();
 			html_filechooser("source_path",gtext("Source Data Directory"),!empty($pconfig['source_path']), gtext("Source data directory to be shared, full path here, if the path contain spaces they will be automatically escaped with the ASCII \"\\040\" octal code."), !empty($source_path), false, 60);
 			html_filechooser("target_path",gtext("Target Data Directory"),!empty($pconfig['target_path']), gtext("Target data directory to be mapped, full path to jail here, if the path contain spaces they will be automatically escaped with the ASCII \"\\040\" octal code."), !empty($target_path), false, 60);
 			html_checkbox2("path_check", gettext("Source/Target path check"),!empty($pconfig['path_check']) ? true : false, gettext("If this option is selected no examination of the source/target directory paths will be performed."), "<b><font color='red'>".gettext("Please use this option only if you know what you are doing here!")."</font></b>", false);
-			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I want to edit the jail files manually, Warning: It is recommended to stop the jail before config edit to prevent issues.'),'',true);
+			html_checkbox2('advanced',gettext('Advanced jail configuration Files'),!empty($pconfig['advanced']) ? true : false,gettext('I want to edit the jail files manually, Warning: It is recommended to stop the jail before editing the config to prevent issues.'),'',true);
 			html_checkbox2('readonly',gettext('Read-Only Mode'),!empty($pconfig['readonly']) ? true : false,gettext('Set target directory in Read-Only mode.'),'',true);
 			html_checkbox2('automount',gettext('Auto-mount Nullfs'),!empty($pconfig['automount']) ? true : false,gettext('Auto-mount the nullfs mountpoint if the container is already running.'),'',true);
 			html_checkbox2('createdir',gettext('Create Target Directory'),!empty($pconfig['createdir']) ? true : true,gettext('Create target directory if missing (recommended).'),'',true);
@@ -664,7 +687,7 @@ $document->render();
 			html_text2('jail_release',gettext('Current base release:'),htmlspecialchars($current_release));
 			html_text2('auto_boot',gettext('Enable container auto-startup'),htmlspecialchars("This will cause the container to automatically start each time the system restart."));
 			html_text2('no_autoboot',gettext('Disable container auto-startup'),htmlspecialchars("This will disable the container automatic startup."));
-			html_text2('backup',gettext('Export container'),htmlspecialchars("This will export a container to a compressed file/image, please execute `bastille export` for more info in regards exporting formats, Default is .XZ on ZFS setups or .TXZ otherwise, For faster compressed backups consider .GZ/.TGZ."));
+			html_text2('backup',gettext('Export container'),htmlspecialchars("This will export a container to a compressed file/image, please execute `bastille export` for more info in regards exporting formats, Default is .XZ on ZFS setups or .TXZ otherwise, For faster compressed backups consider .ZST/.TZST or .GZ/.TGZ"));
 
 			if ($disable_base_change == "no"):
 				html_combobox2('release',gettext('New base release'),!empty($pconfig['release']),$b_action,gettext("Warning: This will change current shared base to the selected base on the thin container only, the user is responsible for package updates and/or general incompatibilities issues, or use the command line for native upgrade."),true,false,);

@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.2.30......Add auto and live export modes, add ZST compression support.
 1.2.29......Fix jail backup.
 1.2.28......Minor cosmetic/wording changes.
 1.2.27......Minor cosmetic/wording changes.
