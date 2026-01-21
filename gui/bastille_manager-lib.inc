@@ -2,7 +2,7 @@
 /*
 	bastille_manager-lib.inc
 
-	Copyright (c) 2019-2025 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2026 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without
@@ -219,85 +219,88 @@ function get_jail_infos() {
 			$r['name'] = '-';
 		endif;
 		$r['jailname'] = $r['name'];
-
-		// Set the JID on the running jails.
 		$item = $r['jailname'];
-		$r['id'] = exec("/usr/sbin/jls | /usr/bin/awk '/{$item}\ /{print $1}'");
+
+		# Get some jail infos from 'bastille list' then dump data to temporary file.
+		# JID  Name  Boot  Prio  State  Type  IP_Address  Published_Ports  Release  Tags
+		$jail_info = "bastille list | grep -w $item | while read _jid _name _boot _prio _state _type _ip _ports _release _tag; do \
+			echo \$_jid \$_name \$_boot \$_prio \$_state \$_type \$_ip \$_ports \$_release \$_tag > /tmp/jail.$item.state; done";
+		exec("$jail_info");
+		$jid = exec("cat /tmp/jail.$item.state | awk '{print $1}'");
+		$boot = exec("cat /tmp/jail.$item.state | awk '{print $3}'");
+		$prio = exec("cat /tmp/jail.$item.state | awk '{print $4}'");
+		$state = exec("cat /tmp/jail.$item.state | awk '{print $5}'");
+		$type = exec("cat /tmp/jail.$item.state | awk '{print $6}'");
+		$ipvx = exec("cat /tmp/jail.$item.state | awk '{print $7}'");
+		$ports = exec("cat /tmp/jail.$item.state | awk '{print $8}'");
+		$release = exec("cat /tmp/jail.$item.state | awk '{print $9}'");
+		$tags = exec("cat /tmp/jail.$item.state | awk '{print $10}'");
+
+		// Set the jail JID.
+		$r['id'] = $jid;
 		if (!$r['id']):
 			$r['id'] = "-";
 		endif;
 
-		// Set the IP address on the running jails using bastille list command instead.
-		//$r['ip'] = exec("/usr/bin/grep -w 'ip4.addr' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
-		$r['ip'] = exec("/usr/local/bin/bastille list {$item} | awk '{print $7}' | sed 1d");
-		if (!$r['ip']):
-			$r['ip'] = exec("/usr/bin/grep -w 'ip6.addr' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
+		// Set the jail Boot.
+		$r['boot'] = $boot;
+		if (!$r['boot']):
+			$r['boot'] = "-";
 		endif;
-		// Try to get ip from vnet config.
-		if(!$r['ip']):
-			$r['ip'] = exec("/usr/local/bin/bastille cmd {$item} cat /etc/rc.conf | /usr/bin/grep 'ifconfig_vnet0=' | cut -d'\"' -f2 | sed 's/inet //'");
+
+		// Set the jail Prio.
+		$r['prio'] = $prio;
+		if (!$r['prio']):
+			$r['prio'] = "-";
 		endif;
+
+		// Set the jail State.
+		$r['state'] = $state;
+		if (!$r['state']):
+			$r['state'] = "-";
+		endif;
+
+		// Set the jail Type.
+		$r['type'] = $type;
+		if (!$r['type']):
+			$r['type'] = "-";
+		endif;
+
+		// Set the jail IP Address.
+		$r['ip'] = $ipvx;
 		if (!$r['ip']):
 			$r['ip'] = "-";
 		endif;
 
-		// Display release.
-		$r['rel'] = exec("/usr/sbin/jexec {$item} freebsd-version 2>/dev/null");
-		if (!$r['rel']):
-			if(is_file("{$jail_dir}/{$item}/root/etc/os-release")):
-				$r['rel'] = exec("/bin/cat {$jail_dir}/{$item}/root/etc/os-release | grep 'PRETTY_NAME=' | tr -d 'PRETTY_NAME=\"'");
-			else:
-				$r['rel'] = exec("/usr/sbin/jexec {$item} uname -o 2>/dev/null");
-			endif;
+		// Set the jail Published Ports.
+		$r['ports'] = $ports;
+		if (!$r['ports']):
+			$r['ports'] = "-";
 		endif;
-		// We can't get release version info or jail stopped.
+
+		// Set the jail Release.
+		$r['rel'] = $release;
 		if (!$r['rel']):
 			$r['rel'] = "-";
 		endif;
 
-		// Display interface name for VNET jails.
-		if (exec("/usr/bin/grep -w '.*vnet.interface.*=.*;' {$jail_dir}/{$item}/jail.conf")):
-			$r['nic'] = exec("/usr/bin/grep -w '.*vnet.interface.*=.*;' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
-			if (!$r['nic']):
-				$r['nic'] = "-";
-			endif;
-		// Display interface name from the previous jail.conf syntax for simple shared IP jails.
-		elseif (exec("/usr/bin/grep -w '.*interface.*=.*;' {$jail_dir}/{$item}/jail.conf")):
-			$r['nic'] = exec("/usr/bin/grep -w '.*interface.*=.*;' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
-			if (!$r['nic']):
-				$r['nic'] = "-";
-			endif;
-		// Display interface name from the new jail.conf syntax for simple shared IP jails.
-		elseif (exec("/usr/bin/grep -w '.*ip4.addr.*=.*|.*' {$jail_dir}/{$item}/jail.conf")):
-			$r['nic'] = exec("/usr/bin/grep -w '.*ip4.addr.*=.*|.*' {$jail_dir}/{$item}/jail.conf | cut -d'|' -f1 | awk '{print $3}'");
-			if (!$r['nic']):
-				$r['nic'] = "-";
-			endif;
-		endif;
-
-		// Display path.
-		$r['path'] = exec("/usr/bin/grep -w 'path' {$jail_dir}/{$item}/jail.conf | /usr/bin/awk '{print $3}' | /usr/bin/tr -d ';'");
-		if (!$r['path']):
-			$r['path'] = "-";
-		endif;
-
-		// Display auto-start settings.
-		//$jail_autostart = exec("/usr/bin/grep -w {$item}_AUTO_START $configfile | cut -d'=' -f2 | tr -d '\"'");
-		$jail_autostart = exec("/usr/bin/grep -w boot {$jail_dir}/{$item}/settings.conf | cut -d'=' -f2 | tr -d '\"'");
-		if ($jail_autostart == 'on'):
-			$r['boot'] = $img_path['ena'];
-		elseif ($jail_autostart == 'off'):
-			$r['boot'] = $img_path['dis'];
-		else:
-			$r['boot'] = $img_path['dis'];
+		// Set the jail Tags.
+		$r['tags'] = $tags;
+		if (!$r['tags']):
+			$r['tags'] = "-";
 		endif;
 
 		// Display running status icons.
-		$jail_running = exec("/usr/sbin/jls name | /usr/bin/awk '/^{$item}\$/'");
-		if ($jail_running):
+		if ($state == "Up"):
 			$r['stat'] = $img_path['ena'];
 		else:
 			$r['stat'] = $img_path['dis'];
+		endif;
+
+		# Cleanup temporary file.
+		$info_tmpfile = "/tmp/jail.$item.state";
+		if(is_file("$info_tmpfile")):
+			unlink("$info_tmpfile");
 		endif;
 
 		// Display custom template icons if available.

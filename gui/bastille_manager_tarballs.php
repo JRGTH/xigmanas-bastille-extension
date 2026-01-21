@@ -2,7 +2,7 @@
 /*
 	bastille_manager_tarballs.php
 
-	Copyright (c) 2019-2025 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2026 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Portions of XigmaNAS® (https://www.xigmanas.com).

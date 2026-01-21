@@ -2,7 +2,7 @@
 /*
 	bastille_manager_gui.php
 
-	Copyright (c) 2019-2025 José Rivera (joserprg@gmail.com).
+	Copyright (c) 2019-2026 José Rivera (joserprg@gmail.com).
     All rights reserved.
 
 	Portions of XigmaNAS® (https://www.xigmanas.com).
@@ -284,32 +284,38 @@ $document->render();
 	</table>
 	<table class="area_data_selection">
 		<colgroup>
-			<col style="width:5%">
-			<col style="width:5%">
-			<col style="width:12%">
+			<col style="width:2%">
+			<col style="width:2%">
+			<col style="width:10%">
+			<col style="width:3%">
+			<col style="width:3%">
+			<col style="width:3%">
+			<col style="width:3%">
 			<col style="width:10%">
 			<col style="width:10%">
+			<col style="width:5%">
 			<col style="width:10%">
-			<col style="width:25%">
-			<col style="width:5%">
-			<col style="width:5%">
-			<col style="width:5%">
+			<col style="width:3%">
+			<col style="width:3%">
 			<col style="width:5%">
 		</colgroup>
 		<thead>
 <?php
 			html_separator2();
-			html_titleline2(gettext('Overview'), 11);
+			html_titleline2(gettext('Overview'), 14);
 ?>
 			<tr>
 				<th class="lhelc"><?=gtext('Select');?></th>
 				<th class="lhell"><?=gtext('JID');?></th>
-				<th class="lhell"><?=gtext('IP Address');?></th>
 				<th class="lhell"><?=gtext('Name');?></th>
-				<th class="lhell"><?=gtext('Release');?></th>
-				<th class="lhell"><?=gtext('Interface');?></th>
-				<th class="lhell"><?=gtext('Path');?></th>
 				<th class="lhell"><?=gtext('Boot');?></th>
+				<th class="lhell"><?=gtext('Prio');?></th>
+				<th class="lhell"><?=gtext('State');?></th>
+				<th class="lhell"><?=gtext('Type');?></th>
+				<th class="lhell"><?=gtext('IP Address');?></th>
+				<th class="lhell"><?=gtext('Published Ports');?></th>
+				<th class="lhell"><?=gtext('Release');?></th>
+				<th class="lhell"><?=gtext('Tags');?></th>
 				<th class="lhell"><?=gtext('Active');?></th>
 				<th class="lhell"><?=gtext('Template');?></th>
 				<th class="lhebl"><?=gtext('Toolbox');?></th>
@@ -338,12 +344,15 @@ $document->render();
 ?>
 					</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['id']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['ip']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['name']);?>&nbsp;</td>
+					<td class="lcell"><?=htmlspecialchars($sphere_record['boot']);?>&nbsp;</td>
+					<td class="lcell"><?=htmlspecialchars($sphere_record['prio']);?>&nbsp;</td>
+					<td class="lcell"><?=htmlspecialchars($sphere_record['state']);?>&nbsp;</td>
+					<td class="lcell"><?=htmlspecialchars($sphere_record['type']);?>&nbsp;</td>
+					<td class="lcell"><?=htmlspecialchars($sphere_record['ip']);?>&nbsp;</td>
+					<td class="lcell"><?=htmlspecialchars($sphere_record['ports']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['rel']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['nic']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['path']);?>&nbsp;</td>
-					<td class="lcell"><img src="<?=$sphere_record['boot'];?>"></td>
+					<td class="lcell"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
 					<td class="lcell"><img src="<?=$sphere_record['stat'];?>"></td>
 					<td class="lcell"><img src="<?=$sphere_record['logo'];?>"></td>
 					<td class="lcebld">
@@ -381,7 +390,7 @@ $document->render();
 		</tbody>
 		<tfoot>
 			<tr>
-				<td class="lcenl" colspan="10"></td>
+				<td class="lcenl" colspan="13"></td>
 				<td class="lceadd">
 					<a href="bastille_manager_add.php"><img src="<?=$img_path['add'];?>" title="<?=$gt_record_add;?>" border="0" alt="<?=$gt_record_add;?>" class="spin oneemhigh"/></a>
 				</td>
