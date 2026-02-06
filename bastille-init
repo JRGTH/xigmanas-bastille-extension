@@ -1516,6 +1516,25 @@ update_config()
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_decompress_zst_options="-k -d -c -v"
 	fi
 
+	# Check/append pkgbase parameters.
+	if ! grep -qw 'bastille_pkgbase_packages=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_pkgbase_packages="base-jail"
+	fi
+
+	# Check/append monitor parameters.
+	if ! grep -qw 'bastille_monitor_cron_path=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_monitor_cron_path="/usr/local/etc/cron.d/bastille-monitor"
+	fi
+	if ! grep -qw 'bastille_monitor_cron=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_monitor_cron="*/5 * * * * root /usr/local/bin/bastille monitor ALL >/dev/null 2>&1"
+	fi
+	if ! grep -qw 'bastille_monitor_logfile=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_monitor_logfile="\${bastille_logsdir}/monitor.log"
+	fi
+	if ! grep -qw 'bastille_monitor_healthchecks=' ${INSTALLPATH}/${BASTILLECONF}; then
+		sysrc -f ${INSTALLPATH}/${BASTILLECONF} bastille_monitor_healthchecks=""
+	fi
+
 	# Remove deprecated parameters based on minimum version.
 	if grep -qw 'bastille_jail_interface' ${INSTALLPATH}/${BASTILLECONF}; then
 		sysrc -f ${INSTALLPATH}/${BASTILLECONF} -x bastille_jail_interface
