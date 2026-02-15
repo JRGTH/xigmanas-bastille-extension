@@ -422,6 +422,13 @@ $(window).on("load", function() {
 	disableactionbuttons(true);
 	$("#iform").submit(function() { spinner(); });
 	$(".spin").click(function() { spinner(); });
+
+	// Attempt to load the previously saved interval
+	var savedInterval = localStorage.getItem('bastille_refresh_interval');
+    if (savedInterval !== null) {
+        $("#refresh-interval").val(savedInterval);
+        autoRefresh.interval = parseInt(savedInterval);
+    }
 	// --- REFRESH INIT ---
     startAutoRefresh();
 
@@ -429,8 +436,10 @@ $(window).on("load", function() {
         updateJailTable();
     });
 
+    // save interval value in local storage
     $("#refresh-interval").change(function() {
         var val = parseInt($(this).val());
+        localStorage.setItem('bastille_refresh_interval', val);
         stopAutoRefresh();
         if (val > 0) {
             autoRefresh.interval = val;
