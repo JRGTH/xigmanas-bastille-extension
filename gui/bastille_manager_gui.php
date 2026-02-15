@@ -39,6 +39,36 @@ require_once 'auth.inc';
 require_once 'guiconfig.inc';
 require_once 'bastille_manager-lib.inc';
 
+// --- START AUTO-REFRESH LOGIC ---
+if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
+    error_reporting(0);
+    ini_set('display_errors', 0);
+    ob_start();
+
+    // Force cache invalidation
+    $cache_file = '/tmp/bastille_jail_info_cache.json';
+    if (file_exists($cache_file)) {
+        if (!@unlink($cache_file)) {
+            // Try system level delete if PHP fails (permissions)
+            mwexec("/bin/rm -f " . escapeshellarg($cache_file));
+        }
+    }
+
+    // Fetch fresh data
+    $jls_list = [];
+    if (function_exists('get_jail_infos')) {
+        $jls_list = get_jail_infos();
+    }
+
+    // Return JSON
+    ob_clean();
+    header('Content-Type: application/json');
+    header('Cache-Control: no-cache');
+    echo json_encode(['success' => true, 'jails' => $jls_list ?: []]);
+    exit;
+}
+// --- END AUTO-REFRESH LOGIC ---
+
 function mwexec_parallel($commands) {
 	$processes = [];
 	$results = [];
@@ -53,7 +83,6 @@ function mwexec_parallel($commands) {
 		$process = proc_open($command, $descriptors, $pipes);
 
 		if (is_resource($process)) {
-
 			stream_set_blocking($pipes[1], false);
 			stream_set_blocking($pipes[2], false);
 
@@ -71,7 +100,6 @@ function mwexec_parallel($commands) {
 	foreach ($processes as $key => $proc) {
 		$elapsed = time() - $start_time;
 		if ($elapsed < $timeout) {
-
 			$stdout = stream_get_contents($proc['pipes'][1]);
 			$stderr = stream_get_contents($proc['pipes'][2]);
 
@@ -102,8 +130,8 @@ function mwexec_parallel($commands) {
 }
 
 function mwexec_background($command) {
-	$command = $command . ' > /dev/null 2>&1 &';
-	exec($command);
+    $command = $command . ' > /dev/null 2>&1 &';
+    exec($command);
 }
 
 $sphere_scriptname = basename(__FILE__);
@@ -184,19 +212,16 @@ if($_POST):
 	if(isset($_POST['start_selected_jail']) && $_POST['start_selected_jail']):
 		$checkbox_member_array = isset($_POST[$checkbox_member_name]) ? $_POST[$checkbox_member_name] : [];
 		$commands = [];
-		$jail_names = [];
 
 		foreach($checkbox_member_array as $checkbox_member_record):
 			if(false !== ($index = array_search_ex($checkbox_member_record, $sphere_array, 'jailname'))):
 				if(!isset($sphere_array[$index]['protected'])):
 					$commands[] = "/usr/local/bin/bastille start {$checkbox_member_record}";
-					$jail_names[] = $checkbox_member_record;
 				endif;
 			endif;
 		endforeach;
 
 		if (!empty($commands)):
-
 			$results = mwexec_parallel($commands);
 
 			$success_count = 0;
@@ -345,7 +370,7 @@ if($_POST):
 	endif;
 endif;
 
-$pgtitle = [gtext("Extensions"), gtext('Bastille')];
+$pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Manager')];
 include 'fbegin.inc';
 ?>
 <script type="text/javascript">
@@ -353,27 +378,29 @@ include 'fbegin.inc';
 $(window).on("load", function() {
 	// Init action buttons
 	$("#start_selected_jail").click(function () {
+        stopAutoRefresh(); // Pause for safety
 		return confirm('<?=$gt_selection_start_confirm;?>');
 	});
 	$("#stop_selected_jail").click(function () {
+        stopAutoRefresh();
 		return confirm('<?=$gt_selection_stop_confirm;?>');
 	});
 	$("#restart_selected_jail").click(function () {
+        stopAutoRefresh();
 		return confirm('<?=$gt_selection_restart_confirm;?>');
 	});
 	$("#autoboot_selected_jail").click(function () {
-		return confirm('<?=$gt_selection_restart_confirm;?>');
+        stopAutoRefresh();
+		return confirm('<?=$gt_selection_autoboot_confirm;?>');
 	});
 	// Disable action buttons.
 	disableactionbuttons(true);
-
-	// Init member checkboxes
-	$("input[name='<?=$checkbox_member_name;?>[]']").click(function() {
-		controlactionbuttons(this, '<?=$checkbox_member_name;?>[]');
-	});
-	// Init spinner onsubmit()
 	$("#iform").submit(function() { spinner(); });
 	$(".spin").click(function() { spinner(); });
+});
+
+    startAutoRefresh();
+    $("#refresh-now").click(function() { updateJailTable(); });
 });
 function disableactionbuttons(ab_disable) {
 	$("#start_selected_jail").prop("disabled", ab_disable);
@@ -396,6 +423,79 @@ function controlactionbuttons(ego, triggerbyname) {
 		}
 	}
 	disableactionbuttons(ab_disable);
+}
+
+// --- AUTO-REFRESH JS ---
+var autoRefresh = {
+    enabled: true,
+    interval: 30000,
+    timerId: null,
+    lastUpdate: Date.now(),
+    isUpdating: false
+};
+
+function updateJailTable() {
+    if (autoRefresh.isUpdating) return;
+    autoRefresh.isUpdating = true;
+    $("#refresh-status").text('Updating...');
+
+    $.ajax({
+        url: 'bastille_manager_gui.php?action=refresh_table',
+        dataType: 'json',
+        success: function(data) {
+            if (data.success) {
+                var tbody = $(".area_data_selection tbody");
+                tbody.empty();
+                data.jails.forEach(function(jail) {
+                    var row = $('<tr>');
+                    var checkCell = $('<td class="lcelc">');
+                    var cb = $('<input type="checkbox">')
+                        .attr('name', '<?=$checkbox_member_name;?>[]')
+                        .attr('value', jail.jailname)
+                        .attr('id', jail.jailname)
+                        .click(function() { controlactionbuttons(this, '<?=$checkbox_member_name;?>[]'); });
+                    checkCell.append(cb);
+                    row.append(checkCell);
+
+                    // 2. Data Columns
+                    row.append($('<td class="lcell">').text(jail.id || '-'));
+                    row.append($('<td class="lcell">').text(jail.name || '-'));
+                    row.append($('<td class="lcell">').text(jail.boot || '-'));
+                    row.append($('<td class="lcell">').text(jail.prio || '-'));
+                    row.append($('<td class="lcell">').text(jail.state || '-'));
+                    row.append($('<td class="lcell">').text(jail.type || '-'));
+                    row.append($('<td class="lcell">').text(jail.ip || '-'));
+                    row.append($('<td class="lcell">').text(jail.ports || '-'));
+                    row.append($('<td class="lcell">').text(jail.rel || '-'));
+                    row.append($('<td class="lcell">').text(jail.tags || '-'));
+
+                    var statImg = (jail.state === "Up") ? '<?=$img_path['ena'];?>' : '<?=$img_path['dis'];?>';
+                    row.append($('<td class="lcell">').append($('<img>').attr('src', statImg)));
+                    row.append($('<td class="lcell">').append($('<img>').attr('src', jail.logo)));
+
+                    var tools = $('<td class="lcebld">').html('<table class="area_data_selection_toolbox"><tbody><tr>' +
+                        '<td><a href="<?=$sphere_scriptname_child;?>?jailname=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$img_path['mai'];?>" class="spin oneemhigh"></a></td>' +
+                        '<td><a href="bastille_manager_jconf.php?jailname=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['mod'];?>"></a></td>' +
+                        '<td><a href="bastille_manager_info.php?uuid=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['inf'];?>"></a></td>' +
+                        '</tr></tbody></table>');
+                    row.append(tools);
+
+                    tbody.append(row);
+                });
+                autoRefresh.lastUpdate = Date.now();
+                $("#refresh-status").text('Last update: just now');
+            }
+        },
+        complete: function() { autoRefresh.isUpdating = false; }
+    });
+}
+
+function startAutoRefresh() {
+    if (autoRefresh.enabled) autoRefresh.timerId = setInterval(updateJailTable, autoRefresh.interval);
+}
+
+function stopAutoRefresh() {
+    if (autoRefresh.timerId) clearInterval(autoRefresh.timerId);
 }
 //]]>
 </script>
@@ -438,8 +538,13 @@ $document->render();
 		<tbody>
 <?php
 ?>
-		</tbody>
-	</table>
+       </tbody>
+    </table>
+    <div style="text-align: right; margin-bottom: 10px;">
+        <span id="refresh-status" style="font-style: italic; margin-right: 10px;">Last update: just now</span>
+        <button type="button" id="refresh-now" class="formbtn">Refresh Now</button>
+    </div>
+
 	<table class="area_data_selection">
 		<colgroup>
 			<col style="width:2%">
@@ -533,6 +638,7 @@ $document->render();
 									endif;
 								endif;
 ?>
+							</td>
 							<td>
 								<a href="bastille_manager_jconf.php?jailname=<?=urlencode($sphere_record['jailname']);?>"><img src="<?=$g_img['mod'];?>" title="<?=$gt_record_conf?>" alt="<?=$gt_record_conf?>"/></a>
 							</td>
@@ -562,8 +668,9 @@ $document->render();
 		<input name="autoboot_selected_jail" id="autoboot_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_autoboot;?>"/>
 	</div>
 <?php
-	include 'formend.inc';
+    include 'formend.inc';
 ?>
 </td></tr></tbody></table></form>
 <?php
 include 'fend.inc';
+?>
