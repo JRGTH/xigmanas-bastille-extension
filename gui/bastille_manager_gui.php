@@ -373,6 +373,31 @@ endif;
 $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Manager')];
 include 'fbegin.inc';
 ?>
+<style>
+/* Refresh button style */
+#refresh-now {
+    appearance: none;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: bold;
+    color: #000000;
+    color: var(--txc-input-rw);
+    background-color: #EEEEEE;
+    background-color: var(--bgc-area-data);
+    border-width: 0.0625rem;
+    border-style: solid;
+    border-color: #767676;
+    border-color: var(--boc-button);
+    border-radius: 2px;
+    border-radius: var(--bor);
+    padding: 0.125rem 0.375rem;
+    cursor: pointer;
+}
+#refresh-now:hover {
+    filter: brightness(150%);
+}
+</style>
+
 <script type="text/javascript">
 //<![CDATA[
 $(window).on("load", function() {
@@ -397,11 +422,23 @@ $(window).on("load", function() {
 	disableactionbuttons(true);
 	$("#iform").submit(function() { spinner(); });
 	$(".spin").click(function() { spinner(); });
+	// --- REFRESH INIT ---
+    startAutoRefresh();
+
+    $("#refresh-now").click(function() {
+        updateJailTable();
+    });
+
+    $("#refresh-interval").change(function() {
+        var val = parseInt($(this).val());
+        stopAutoRefresh();
+        if (val > 0) {
+            autoRefresh.interval = val;
+            startAutoRefresh();
+        }
+    });
 });
 
-    startAutoRefresh();
-    $("#refresh-now").click(function() { updateJailTable(); });
-});
 function disableactionbuttons(ab_disable) {
 	$("#start_selected_jail").prop("disabled", ab_disable);
 	$("#stop_selected_jail").prop("disabled", ab_disable);
@@ -431,13 +468,20 @@ var autoRefresh = {
     interval: 30000,
     timerId: null,
     lastUpdate: Date.now(),
-    isUpdating: false
+    isUpdating: false,
+    selectedJails: []
 };
 
 function updateJailTable() {
     if (autoRefresh.isUpdating) return;
     autoRefresh.isUpdating = true;
     $("#refresh-status").text('Updating...');
+
+    // Backup de checkboxes marcados para persistencia
+    autoRefresh.selectedJails = [];
+    $("input[name='<?=$checkbox_member_name;?>[]']:checked").each(function() {
+        autoRefresh.selectedJails.push($(this).val());
+    });
 
     $.ajax({
         url: 'bastille_manager_gui.php?action=refresh_table',
@@ -453,6 +497,7 @@ function updateJailTable() {
                         .attr('name', '<?=$checkbox_member_name;?>[]')
                         .attr('value', jail.jailname)
                         .attr('id', jail.jailname)
+                        .prop('checked', autoRefresh.selectedJails.includes(jail.jailname))
                         .click(function() { controlactionbuttons(this, '<?=$checkbox_member_name;?>[]'); });
                     checkCell.append(cb);
                     row.append(checkCell);
@@ -484,6 +529,7 @@ function updateJailTable() {
                 });
                 autoRefresh.lastUpdate = Date.now();
                 $("#refresh-status").text('Last update: just now');
+                controlactionbuttons(null, '<?=$checkbox_member_name;?>[]');
             }
         },
         complete: function() { autoRefresh.isUpdating = false; }
@@ -491,7 +537,9 @@ function updateJailTable() {
 }
 
 function startAutoRefresh() {
-    if (autoRefresh.enabled) autoRefresh.timerId = setInterval(updateJailTable, autoRefresh.interval);
+    if (autoRefresh.interval > 0) {
+        autoRefresh.timerId = setInterval(updateJailTable, autoRefresh.interval);
+    }
 }
 
 function stopAutoRefresh() {
@@ -540,9 +588,17 @@ $document->render();
 ?>
        </tbody>
     </table>
-    <div style="text-align: right; margin-bottom: 10px;">
-        <span id="refresh-status" style="font-style: italic; margin-right: 10px;">Last update: just now</span>
-        <button type="button" id="refresh-now" class="formbtn">Refresh Now</button>
+
+    <div style="text-align: right;">
+        <span id="refresh-status" style="font-style: italic; margin-right: 15px; color: #666;">Last update: just now</span>
+        <button type="button" id="refresh-now" class="formbtn">Refresh</button>
+        <select id="refresh-interval" class="formfld">
+            <option value="5000">5s</option>
+            <option value="10000">10s</option>
+            <option value="30000" selected>30s</option>
+            <option value="60000">60s</option>
+            <option value="0">Manual</option>
+        </select>
     </div>
 
 	<table class="area_data_selection">
