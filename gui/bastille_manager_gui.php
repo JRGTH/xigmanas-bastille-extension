@@ -380,21 +380,48 @@ include 'fbegin.inc';
     font-family: inherit;
     font-size: inherit;
     font-weight: bold;
-    color: #000000;
     color: var(--txc-input-rw);
-    background-color: #EEEEEE;
     background-color: var(--bgc-area-data);
-    border-width: 0.0625rem;
-    border-style: solid;
-    border-color: #767676;
-    border-color: var(--boc-button);
-    border-radius: 2px;
+    border: 1px solid var(--boc-button);
     border-radius: var(--bor);
     padding: 0.125rem 0.375rem;
     cursor: pointer;
 }
 #refresh-now:hover {
     filter: brightness(150%);
+}
+
+/* --- ESTILOS DE RESIZE SIMPLE --- */
+table.area_data_selection {
+    table-layout: fixed; /* Mantiene la cordura del navegador */
+    /*width: auto; IMPORTANTE: Auto para empezar */
+    border-collapse: collapse;
+}
+
+table.area_data_selection th {
+    position: relative;
+    padding: 5px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* El tirador visible */
+.resizer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 100;
+    user-select: none;
+    touch-action: none;
+}
+
+.resizer:hover, .resizing {
+    background-color: #007bff; /* Azul */
+    opacity: 1;
 }
 </style>
 
@@ -446,6 +473,9 @@ $(window).on("load", function() {
             startAutoRefresh();
         }
     });
+
+    // --- INICIALIZAR EL RESIZE MANUAL ---
+    initSimpleResize();
 });
 
 function disableactionbuttons(ab_disable) {
@@ -554,6 +584,63 @@ function startAutoRefresh() {
 function stopAutoRefresh() {
     if (autoRefresh.timerId) clearInterval(autoRefresh.timerId);
 }
+
+// --- FUNCIÓN DE REDIMENSIONADO ESTABLE (Sin %) ---
+function initSimpleResize() {
+    var $table = $("table.area_data_selection");
+    var $cols = $table.find('colgroup col');
+    var $headers = $table.find('thead th');
+
+    // 2. AÑADIR TIRADORES
+    $headers.each(function(i) {
+        if (i >= $headers.length - 1) return; // Ignorar la última columna
+        var $resizer = $('<div class="resizer"></div>');
+        $(this).append($resizer);
+    });
+
+    // 3. LÓGICA DE ARRASTRE
+    var isResizing = false;
+    var startX = 0;
+    var $currentCol = null;
+    var startWidth = 0;
+
+    $table.on('mousedown', '.resizer', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        stopAutoRefresh();
+
+        // Convertir todas las columnas a píxeles fijos al iniciar el arrastre
+        $cols.each(function() {
+            var w = $(this).width();
+            $(this).css('width', w + 'px');
+        });
+
+        var idx = $(this).parent().index();
+        $currentCol = $cols.eq(idx);
+
+        isResizing = true;
+        startX = e.pageX;
+        startWidth = $currentCol.width();
+        $(this).addClass('resizing');
+
+        $(document).on('mousemove.rsz', function(e) {
+            if (!isResizing) return;
+            var diff = e.pageX - startX;
+            var newW = startWidth + diff;
+
+            if (newW > 30) {
+                $currentCol.css('width', newW + 'px');
+            }
+        });
+
+        $(document).on('mouseup.rsz', function() {
+            if (!isResizing) return;
+            isResizing = false;
+            $('.resizer').removeClass('resizing');
+            $(document).off('mousemove.rsz mouseup.rsz');
+            setTimeout(function() { startAutoRefresh(); }, 500);
+        });
+    });
+}
 //]]>
 </script>
 <?php
@@ -610,22 +697,22 @@ $document->render();
         </select>
     </div>
 
-	<table class="area_data_selection">
+	<table class="area_data_selection" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
 		<colgroup>
 			<col style="width:2%">
-			<col style="width:2%">
+			<col style="width:3%">
+			<col style="width:12%">
+			<col style="width:4%">
+			<col style="width:4%">
+			<col style="width:4%">
+			<col style="width:4%">
+			<col style="width:12%">
+			<col style="width:12%">
+			<col style="width:7%">
+			<col style="width:12%">
+			<col style="width:4%">
+			<col style="width:4%">
 			<col style="width:10%">
-			<col style="width:3%">
-			<col style="width:3%">
-			<col style="width:3%">
-			<col style="width:3%">
-			<col style="width:10%">
-			<col style="width:10%">
-			<col style="width:5%">
-			<col style="width:10%">
-			<col style="width:3%">
-			<col style="width:3%">
-			<col style="width:5%">
 		</colgroup>
 		<thead>
 <?php
