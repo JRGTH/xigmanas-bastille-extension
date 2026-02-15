@@ -39,6 +39,73 @@ require_once 'auth.inc';
 require_once 'guiconfig.inc';
 require_once 'bastille_manager-lib.inc';
 
+function mwexec_parallel($commands) {
+	$processes = [];
+	$results = [];
+
+	foreach ($commands as $key => $command) {
+		$descriptors = [
+			0 => ['pipe', 'r'],  // stdin
+			1 => ['pipe', 'w'],  // stdout
+			2 => ['pipe', 'w']   // stderr
+		];
+
+		$process = proc_open($command, $descriptors, $pipes);
+
+		if (is_resource($process)) {
+
+			stream_set_blocking($pipes[1], false);
+			stream_set_blocking($pipes[2], false);
+
+			$processes[$key] = [
+				'process' => $process,
+				'pipes' => $pipes,
+				'command' => $command
+			];
+		}
+	}
+
+	$timeout = 30;
+	$start_time = time();
+
+	foreach ($processes as $key => $proc) {
+		$elapsed = time() - $start_time;
+		if ($elapsed < $timeout) {
+
+			$stdout = stream_get_contents($proc['pipes'][1]);
+			$stderr = stream_get_contents($proc['pipes'][2]);
+
+			fclose($proc['pipes'][0]);
+			fclose($proc['pipes'][1]);
+			fclose($proc['pipes'][2]);
+
+			$return_code = proc_close($proc['process']);
+
+			$results[$key] = [
+				'return_code' => $return_code,
+				'stdout' => $stdout,
+				'stderr' => $stderr
+			];
+		} else {
+			proc_terminate($proc['process']);
+			proc_close($proc['process']);
+
+			$results[$key] = [
+				'return_code' => -1,
+				'stdout' => '',
+				'stderr' => 'Command timeout'
+			];
+		}
+	}
+
+	return $results;
+}
+
+function mwexec_background($command) {
+	$command = $command . ' > /dev/null 2>&1 &';
+	exec($command);
+}
+
 $sphere_scriptname = basename(__FILE__);
 $sphere_scriptname_child = 'bastille_manager_util.php';
 $sphere_header = 'Location: '.$sphere_scriptname;
@@ -116,74 +183,165 @@ if($_POST):
 
 	if(isset($_POST['start_selected_jail']) && $_POST['start_selected_jail']):
 		$checkbox_member_array = isset($_POST[$checkbox_member_name]) ? $_POST[$checkbox_member_name] : [];
+		$commands = [];
+		$jail_names = [];
+
 		foreach($checkbox_member_array as $checkbox_member_record):
 			if(false !== ($index = array_search_ex($checkbox_member_record, $sphere_array, 'jailname'))):
 				if(!isset($sphere_array[$index]['protected'])):
-					$cmd = ("/usr/local/bin/bastille start {$checkbox_member_record}");
-					$return_val = mwexec($cmd);
-					if($return_val == 0):
-						//$savemsg .= gtext("Jail(s) started successfully.");
-						header($sphere_header);
-					else:
-						$errormsg .= gtext("Failed to start jail(s).");
-					endif;
+					$commands[] = "/usr/local/bin/bastille start {$checkbox_member_record}";
+					$jail_names[] = $checkbox_member_record;
 				endif;
 			endif;
 		endforeach;
+
+		if (!empty($commands)):
+
+			$results = mwexec_parallel($commands);
+
+			$success_count = 0;
+			$fail_count = 0;
+
+			foreach ($results as $result):
+				if ($result['return_code'] == 0):
+					$success_count++;
+				else:
+					$fail_count++;
+				endif;
+			endforeach;
+
+			if (function_exists('invalidate_jail_cache')) {
+				invalidate_jail_cache();
+			}
+
+			if ($fail_count > 0):
+				$errormsg = sprintf(gtext("Started %d jail(s), failed %d jail(s)."), $success_count, $fail_count);
+			else:
+				$savemsg = sprintf(gtext("%d jail(s) started successfully."), $success_count);
+			endif;
+
+			header($sphere_header);
+		endif;
 	endif;
 
 	if(isset($_POST['stop_selected_jail']) && $_POST['stop_selected_jail']):
 		$checkbox_member_array = isset($_POST[$checkbox_member_name]) ? $_POST[$checkbox_member_name] : [];
+		$commands = [];
+
 		foreach($checkbox_member_array as $checkbox_member_record):
 			if(false !== ($index = array_search_ex($checkbox_member_record, $sphere_array, 'jailname'))):
 				if(!isset($sphere_array[$index]['protected'])):
-					$cmd = ("/usr/local/bin/bastille stop {$checkbox_member_record}");
-					$return_val = mwexec($cmd);
-					if($return_val == 0):
-						//$savemsg .= gtext("Jail(s) stopped successfully.");
-						header($sphere_header);
-					else:
-						$errormsg .= gtext("Failed to stop jail(s).");
-					endif;
+					$commands[] = "/usr/local/bin/bastille stop {$checkbox_member_record}";
 				endif;
 			endif;
 		endforeach;
+
+		if (!empty($commands)):
+			$results = mwexec_parallel($commands);
+
+			$success_count = 0;
+			$fail_count = 0;
+
+			foreach ($results as $result):
+				if ($result['return_code'] == 0):
+					$success_count++;
+				else:
+					$fail_count++;
+				endif;
+			endforeach;
+
+			if (function_exists('invalidate_jail_cache')) {
+				invalidate_jail_cache();
+			}
+
+			if ($fail_count > 0):
+				$errormsg = sprintf(gtext("Stopped %d jail(s), failed %d jail(s)."), $success_count, $fail_count);
+			else:
+				$savemsg = sprintf(gtext("%d jail(s) stopped successfully."), $success_count);
+			endif;
+
+			header($sphere_header);
+		endif;
 	endif;
 
 	if(isset($_POST['restart_selected_jail']) && $_POST['restart_selected_jail']):
 		$checkbox_member_array = isset($_POST[$checkbox_member_name]) ? $_POST[$checkbox_member_name] : [];
+		$commands = [];
+
 		foreach($checkbox_member_array as $checkbox_member_record):
 			if(false !== ($index = array_search_ex($checkbox_member_record, $sphere_array, 'jailname'))):
 				if(!isset($sphere_array[$index]['protected'])):
-					$cmd = ("/usr/local/bin/bastille restart {$checkbox_member_record}");
-					$return_val = mwexec($cmd);
-					if($return_val == 0):
-						//$savemsg .= gtext("Jail(s) restarted successfully.");
-						header($sphere_header);
-					else:
-						$errormsg .= gtext("Failed to restart jail(s).");
-					endif;
+					$commands[] = "/usr/local/bin/bastille restart {$checkbox_member_record}";
 				endif;
 			endif;
 		endforeach;
+
+		if (!empty($commands)):
+			$results = mwexec_parallel($commands);
+
+			$success_count = 0;
+			$fail_count = 0;
+
+			foreach ($results as $result):
+				if ($result['return_code'] == 0):
+					$success_count++;
+				else:
+					$fail_count++;
+				endif;
+			endforeach;
+
+			if (function_exists('invalidate_jail_cache')) {
+				invalidate_jail_cache();
+			}
+
+			if ($fail_count > 0):
+				$errormsg = sprintf(gtext("Restarted %d jail(s), failed %d jail(s)."), $success_count, $fail_count);
+			else:
+				$savemsg = sprintf(gtext("%d jail(s) restarted successfully."), $success_count);
+			endif;
+
+			header($sphere_header);
+		endif;
 	endif;
 
-if(isset($_POST['autoboot_selected_jail']) && $_POST['autoboot_selected_jail']):
+	if(isset($_POST['autoboot_selected_jail']) && $_POST['autoboot_selected_jail']):
 		$checkbox_member_array = isset($_POST[$checkbox_member_name]) ? $_POST[$checkbox_member_name] : [];
+		$commands = [];
+
 		foreach($checkbox_member_array as $checkbox_member_record):
 			if(false !== ($index = array_search_ex($checkbox_member_record, $sphere_array, 'jailname'))):
 				if(!isset($sphere_array[$index]['protected'])):
-					$cmd = ("/usr/local/bin/bastille config {$checkbox_member_record} set boot on");
-					$return_val = mwexec($cmd);
-					if($return_val == 0):
-						//$savemsg .= gtext("Jail(s) restarted successfully.");
-						header($sphere_header);
-					else:
-						$errormsg .= gtext("Failed to restart jail(s).");
-					endif;
+					$commands[] = "/usr/local/bin/bastille config {$checkbox_member_record} set boot on";
 				endif;
 			endif;
 		endforeach;
+
+		if (!empty($commands)):
+			$results = mwexec_parallel($commands);
+
+			$success_count = 0;
+			$fail_count = 0;
+
+			foreach ($results as $result):
+				if ($result['return_code'] == 0):
+					$success_count++;
+				else:
+					$fail_count++;
+				endif;
+			endforeach;
+
+			if (function_exists('invalidate_jail_cache')) {
+				invalidate_jail_cache();
+			}
+
+			if ($fail_count > 0):
+				$errormsg = sprintf(gtext("Set autoboot on %d jail(s), failed %d jail(s)."), $success_count, $fail_count);
+			else:
+				$savemsg = sprintf(gtext("Autoboot set on %d jail(s) successfully."), $success_count);
+			endif;
+
+			header($sphere_header);
+		endif;
 	endif;
 endif;
 

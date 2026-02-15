@@ -30,16 +30,18 @@
 	SUCH DAMAGE.
 */
 
+
 require_once 'super_fun.inc';
 require_once 'globals.inc';
 require_once 'array.inc';
 require_once 'system.inc';
 
-// Initialize some variables.
-// TODO: Some infos can be gathered with-
-// internal PHP functions rather than external shell commands.
+// ===== OPTIMIZATION: Cache Configuration =====
+define('JAIL_INFO_CACHE_TIME', 5); // seconds
+define('JAIL_INFO_CACHE_FILE', '/tmp/bastille_jail_info_cache.json');
+// =============================================
 
-//$rootfolder = dirname($config['rc']['postinit']['cmd'][$i]);
+// Initialize some variables.
 $prdname = "bastille";
 $application = "Bastille Manager";
 $restore_name = "restore";
@@ -93,10 +95,6 @@ function is_dir_empty($reldir) {
 function get_version_bastille() {
 	global $tarballversion, $prdname;
 	if (is_file("{$tarballversion}")):
-		// For some reason bastille bin version value isn't double quoted anymore so we can't use the old delimiter.
-		// we will keep the old line for reference.
-
-		//exec("/usr/bin/grep 'BASTILLE_VERSION=' {$tarballversion} | cut -d'\"' -f2", $result);
 		exec("/usr/bin/grep 'BASTILLE_VERSION=' {$tarballversion} | cut -d'=' -f2", $result);
 		return ($result[0] ?? '');
 	else:
@@ -107,7 +105,6 @@ function get_version_bastille() {
 
 // Initial install banner
 function initial_install_banner() {
-	// Never display this if bastille is already bootstraped/activated.
 	global $rootfolder;
 	global $zfs_activated;
 	$is_activated = "";
@@ -149,8 +146,6 @@ function get_state_zfs() {
 function get_all_release_list() {
 	global $rootfolder;
 	global $g;
-	// Don't show Linux base releases under create jail page for now.
-	#exec("/bin/echo; /bin/ls {$rootfolder}/releases 2>/dev/null | /usr/bin/tr -s ' ' '\n'",$relinfo);
 	exec("/bin/echo; /bin/ls {$rootfolder}/releases | grep RELEASE 2>/dev/null | /usr/bin/tr -s ' ' '\n'",$relinfo);
 	array_shift($relinfo);
 	$rellist = [];
@@ -196,133 +191,175 @@ foreach($a_interface as $k_interface => $ifinfo):
 	$l_interfaces[$k_interface] = $k_interface;
 endforeach;
 
-// Get jail infos.
+// ===== CACHE FUNCTIONS =====
+function is_cache_valid() {
+	if (!file_exists(JAIL_INFO_CACHE_FILE)) {
+		return false;
+	}
+	$cache_age = time() - filemtime(JAIL_INFO_CACHE_FILE);
+	return $cache_age < JAIL_INFO_CACHE_TIME;
+}
+
+function get_cached_jail_info() {
+	if (!is_cache_valid()) {
+		return null;
+	}
+	$cache_data = @file_get_contents(JAIL_INFO_CACHE_FILE);
+	if ($cache_data === false) {
+		return null;
+	}
+	return json_decode($cache_data, true);
+}
+
+function save_jail_info_cache($data) {
+	@file_put_contents(JAIL_INFO_CACHE_FILE, json_encode($data));
+}
+
+function invalidate_jail_cache() {
+	@unlink(JAIL_INFO_CACHE_FILE);
+}
+
+// ===== OPTIMIZED: Get jail infos =====
+// Get jail infos - OPTIMIZED VERSION
 function get_jail_infos() {
 	global $img_path;
 	global $image_dir;
 	global $configfile;
 	global $jail_dir;
+
+	// Try cache first
+	$cached = get_cached_jail_info();
+	if ($cached !== null) {
+		return $cached;
+	}
+
 	$result = [];
-	if(is_dir($jail_dir)):
-		$cmd = '/usr/local/bin/bastille list jail 2>&1';
-	else:
-		$cmd = ":";
-	endif;
-	mwexec2($cmd,$rawdata);
-	foreach($rawdata as $line):
-		$a = preg_split('/\t/',$line);
+
+	if (!is_dir($jail_dir)) {
+		return $result;
+	}
+
+	// OPTIMIZATION: Get bastille list ONCE and parse all jails
+	// Format: JID  Name  Boot  Prio  State  Type  IP_Address  Published_Ports  Release  Tags
+	$cmd = '/usr/local/bin/bastille list 2>&1';
+	mwexec2($cmd, $rawdata);
+
+	// Build a lookup table from bastille list output
+	$jail_data_map = [];
+	$header_skipped = false;
+
+	foreach ($rawdata as $line) {
+		// Skip header line
+		if (!$header_skipped) {
+			$header_skipped = true;
+			continue;
+		}
+
+		// Parse fields: JID Name Boot Prio State Type IP Ports Release Tags
+		$fields = preg_split('/\s+/', trim($line), 10);
+
+		if (count($fields) >= 6) {
+			$name = $fields[1];
+			$jail_data_map[$name] = [
+				'jid' => $fields[0],
+				'boot' => $fields[2],
+				'prio' => $fields[3],
+				'state' => $fields[4],
+				'type' => $fields[5],
+				'ip' => $fields[6] ?? '-',
+				'ports' => $fields[7] ?? '-',
+				'release' => $fields[8] ?? '-',
+				'tags' => $fields[9] ?? '-'
+			];
+		}
+	}
+
+	// Now process each jail from bastille list jail (for jail names)
+	$cmd = '/usr/local/bin/bastille list jail 2>&1';
+	mwexec2($cmd, $jail_names);
+
+	foreach ($jail_names as $line) {
+		$a = preg_split('/\t/', $line);
 		$r = [];
 		$name = $a[0];
-		if(preg_match('/(.*)/', $name, $m)):
+
+		if (preg_match('/(.*)/', $name, $m)) {
 			$r['name'] = $m[1];
-		else:
+		} else {
 			$r['name'] = '-';
-		endif;
+		}
+
 		$r['jailname'] = $r['name'];
 		$item = $r['jailname'];
 
-		# Get some jail infos from 'bastille list' then dump data to temporary file.
-		# JID  Name  Boot  Prio  State  Type  IP_Address  Published_Ports  Release  Tags
-		$jail_info = "bastille list | grep -w $item | while read _jid _name _boot _prio _state _type _ip _ports _release _tag; do \
-			echo \$_jid \$_name \$_boot \$_prio \$_state \$_type \$_ip \$_ports \$_release \$_tag > /tmp/jail.$item.state; done";
-		exec("$jail_info");
-		$jid = exec("cat /tmp/jail.$item.state | awk '{print $1}'");
-		$boot = exec("cat /tmp/jail.$item.state | awk '{print $3}'");
-		$prio = exec("cat /tmp/jail.$item.state | awk '{print $4}'");
-		$state = exec("cat /tmp/jail.$item.state | awk '{print $5}'");
-		$type = exec("cat /tmp/jail.$item.state | awk '{print $6}'");
-		$ipvx = exec("cat /tmp/jail.$item.state | awk '{print $7}'");
-		$ports = exec("cat /tmp/jail.$item.state | awk '{print $8}'");
-		$release = exec("cat /tmp/jail.$item.state | awk '{print $9}'");
-		$tags = exec("cat /tmp/jail.$item.state | awk '{print $10}'");
+		// Get data from our lookup table instead of executing bastille list again
+		if (isset($jail_data_map[$item])) {
+			$jail_data = $jail_data_map[$item];
 
-		// Set the jail JID.
-		$r['id'] = $jid;
-		if (!$r['id']):
-			$r['id'] = "-";
-		endif;
+			$r['id'] = $jail_data['jid'];
+			$r['boot'] = $jail_data['boot'];
+			$r['prio'] = $jail_data['prio'];
+			$r['state'] = $jail_data['state'];
+			$r['type'] = $jail_data['type'];
+			$r['ip'] = $jail_data['ip'];
+			$r['ports'] = $jail_data['ports'];
+			$r['rel'] = $jail_data['release'];
+			$r['tags'] = $jail_data['tags'];
+		} else {
+			// Fallback if jail not in bastille list output
+			$r['id'] = '-';
+			$r['boot'] = '-';
+			$r['prio'] = '-';
+			$r['state'] = '-';
+			$r['type'] = '-';
+			$r['ip'] = '-';
+			$r['ports'] = '-';
+			$r['rel'] = '-';
+			$r['tags'] = '-';
+		}
 
-		// Set the jail Boot.
-		$r['boot'] = $boot;
-		if (!$r['boot']):
-			$r['boot'] = "-";
-		endif;
+		// Set defaults for empty values
+		if (!$r['id']) $r['id'] = "-";
+		if (!$r['boot']) $r['boot'] = "-";
+		if (!$r['prio']) $r['prio'] = "-";
+		if (!$r['state']) $r['state'] = "-";
+		if (!$r['type']) $r['type'] = "-";
+		if (!$r['ip']) $r['ip'] = "-";
+		if (!$r['ports']) $r['ports'] = "-";
+		if (!$r['rel']) $r['rel'] = "-";
+		if (!$r['tags']) $r['tags'] = "-";
 
-		// Set the jail Prio.
-		$r['prio'] = $prio;
-		if (!$r['prio']):
-			$r['prio'] = "-";
-		endif;
-
-		// Set the jail State.
-		$r['state'] = $state;
-		if (!$r['state']):
-			$r['state'] = "-";
-		endif;
-
-		// Set the jail Type.
-		$r['type'] = $type;
-		if (!$r['type']):
-			$r['type'] = "-";
-		endif;
-
-		// Set the jail IP Address.
-		$r['ip'] = $ipvx;
-		if (!$r['ip']):
-			$r['ip'] = "-";
-		endif;
-
-		// Set the jail Published Ports.
-		$r['ports'] = $ports;
-		if (!$r['ports']):
-			$r['ports'] = "-";
-		endif;
-
-		// Set the jail Release.
-		$r['rel'] = $release;
-		if (!$r['rel']):
-			$r['rel'] = "-";
-		endif;
-
-		// Set the jail Tags.
-		$r['tags'] = $tags;
-		if (!$r['tags']):
-			$r['tags'] = "-";
-		endif;
-
-		// Display running status icons.
-		if ($state == "Up"):
+		// Display running status icons
+		if ($r['state'] == "Up") {
 			$r['stat'] = $img_path['ena'];
-		else:
+		} else {
 			$r['stat'] = $img_path['dis'];
-		endif;
+		}
 
-		# Cleanup temporary file.
-		$info_tmpfile = "/tmp/jail.$item.state";
-		if(is_file("$info_tmpfile")):
-			unlink("$info_tmpfile");
-		endif;
-
-		// Display custom template icons if available.
+		// Display custom template icons if available
 		$template_icon = "{$jail_dir}/{$item}/plugin_icon.png";
-		if(file_exists($template_icon)):
-			if(!file_exists("{$image_dir}/{$item}_icon.png")):
-				copy("$template_icon", "{$image_dir}/{$item}_icon.png");
-			endif;
+		if (file_exists($template_icon)) {
+			if (!file_exists("{$image_dir}/{$item}_icon.png")) {
+				@copy("$template_icon", "{$image_dir}/{$item}_icon.png");
+			}
 			$r['logo'] = "{$image_dir}/{$item}_icon.png";
-		else:
-			$template_icon = exec("/usr/bin/grep linsysfs {$jail_dir}/{$item}/fstab");
-			if($template_icon):
-				// Display standard Linux icon.
+		} else {
+			$template_icon = exec("/usr/bin/grep linsysfs {$jail_dir}/{$item}/fstab 2>/dev/null");
+			if ($template_icon) {
+				// Display standard Linux icon
 				$r['logo'] = "{$image_dir}/linux_icon.png";
-			else:
-				// Display standard FreeBSD icon.
+			} else {
+				// Display standard FreeBSD icon
 				$r['logo'] = "{$image_dir}/bsd_icon.png";
-			endif;
-		endif;
+			}
+		}
 
 		$result[] = $r;
-	endforeach;
+	}
+
+	// Save to cache
+	save_jail_info_cache($result);
+
 	return $result;
 }
 ?>
