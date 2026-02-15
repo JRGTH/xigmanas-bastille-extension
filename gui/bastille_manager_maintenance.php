@@ -313,9 +313,6 @@ $(document).ready(function(){
 <script src="js/spin.min.js"></script>
 <!-- use: onsubmit="spinner()" within the form tag -->
 <script type="text/javascript">
-<!--
-}
-//-->
 </script>
 <form action="bastille_manager_maintenance.php" method="post" name="iform" id="iform" onsubmit="spinner()">
 	<table width="100%" border="0" cellpadding="0" cellspacing="0">
@@ -385,8 +382,6 @@ $(document).ready(function(){
 	<?php include("formend.inc");?>
 </form>
 <script type="text/javascript">
-<!--
-enable_change(false);
-//-->
+<!--enable_change(false);-->
 </script>
 <?php include("fend.inc");?>
