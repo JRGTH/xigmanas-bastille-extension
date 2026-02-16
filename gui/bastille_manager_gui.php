@@ -60,6 +60,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
     ob_start();
 
     // Fetch fresh data
+    // Note: We rely on the internal caching of get_jail_infos() (5 seconds)
+    // to avoid overloading the system with 'bastille list' commands if multiple requests occur.
     $jls_list = [];
     if (function_exists('get_jail_infos')) {
         $jls_list = get_jail_infos();
@@ -383,9 +385,10 @@ include 'fbegin.inc';
     filter: brightness(150%);
 }
 
-/* --- SIMPLE RESIZE STYLES --- */
+/* --- ESTILOS DE RESIZE SIMPLE --- */
 table.area_data_selection {
-    table-layout: fixed;
+    table-layout: fixed; /* Mantiene la cordura del navegador */
+    /*width: auto; IMPORTANTE: Auto para empezar */
     border-collapse: collapse;
 }
 
@@ -397,7 +400,7 @@ table.area_data_selection th {
     text-overflow: ellipsis;
 }
 
-/* The visible handle */
+/* El tirador visible */
 .resizer {
     position: absolute;
     top: 0;
@@ -448,7 +451,7 @@ $(window).on("load", function() {
         autoRefresh.interval = parseInt(savedInterval);
     }
 	// --- REFRESH INIT ---
-    // Only start if the button is visible (enabled in settings)
+    // Solo iniciar si el botón está visible (habilitado en configuración)
     if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
         $("#refresh-controls").show();
         startAutoRefresh();
@@ -469,6 +472,7 @@ $(window).on("load", function() {
         }
     });
 
+    // --- INICIALIZAR EL RESIZE MANUAL ---
     initSimpleResize();
 });
 
@@ -510,16 +514,15 @@ function updateJailTable() {
     autoRefresh.isUpdating = true;
     $("#refresh-status").text('Updating...');
 
-    // Backup of checked checkboxes for persistence
+    // Backup de checkboxes marcados para persistencia
     autoRefresh.selectedJails = [];
     $("input[name='<?=$checkbox_member_name;?>[]']:checked").each(function() {
         autoRefresh.selectedJails.push($(this).val());
     });
 
-    $.ajax({
-        url: 'bastille_manager_gui.php?action=refresh_table',
-        dataType: 'json',
-        success: function(data) {
+    fetch('bastille_manager_gui.php?action=refresh_table')
+        .then(response => response.json())
+        .then(data => {
             if (data.success) {
                 var tbody = $(".area_data_selection tbody");
                 tbody.empty();
@@ -538,6 +541,10 @@ function updateJailTable() {
                     // 2. Data Columns
                     row.append($('<td class="lcell">').text(jail.id || '-'));
                     row.append($('<td class="lcell">').text(jail.name || '-'));
+
+                    // Description Column
+                    // row.append($('<td class="lcell">').text(jail.description || '-'));
+
                     row.append($('<td class="lcell">').text(jail.boot || '-'));
                     row.append($('<td class="lcell">').text(jail.prio || '-'));
                     row.append($('<td class="lcell">').text(jail.state || '-'));
@@ -563,10 +570,18 @@ function updateJailTable() {
                 autoRefresh.lastUpdate = Date.now();
                 $("#refresh-status").text('Last update: just now');
                 controlactionbuttons(null, '<?=$checkbox_member_name;?>[]');
+
+                // Re-aplicar anchos de columna guardados después de actualizar la tabla
+                applySavedColumnWidths();
             }
-        },
-        complete: function() { autoRefresh.isUpdating = false; }
-    });
+        })
+        .catch(error => {
+            console.error('Error fetching jail data:', error);
+            $("#refresh-status").text('Update failed');
+        })
+        .finally(() => {
+            autoRefresh.isUpdating = false;
+        });
 }
 
 function startAutoRefresh() {
@@ -579,18 +594,23 @@ function stopAutoRefresh() {
     if (autoRefresh.timerId) clearInterval(autoRefresh.timerId);
 }
 
-// --- STABLE REDIMENSIONING FUNCTION (without %) ---
+// --- FUNCIÓN DE REDIMENSIONADO ESTABLE (Sin %) ---
 function initSimpleResize() {
     var $table = $("table.area_data_selection");
     var $cols = $table.find('colgroup col');
     var $headers = $table.find('thead th');
 
+    // 1. Aplicar anchos guardados al inicio
+    applySavedColumnWidths();
+
+    // 2. AÑADIR TIRADORES
     $headers.each(function(i) {
-        if (i >= $headers.length - 1) return; // Ignore the last column
+        if (i >= $headers.length - 1) return; // Ignorar la última columna
         var $resizer = $('<div class="resizer"></div>');
         $(this).append($resizer);
     });
 
+    // 3. LÓGICA DE ARRASTRE
     var isResizing = false;
     var startX = 0;
     var $currentCol = null;
@@ -600,7 +620,7 @@ function initSimpleResize() {
         e.preventDefault(); e.stopPropagation();
         stopAutoRefresh();
 
-        // Convert all columns to fixed pixels when starting to drag
+        // Convertir todas las columnas a píxeles fijos al iniciar el arrastre
         $cols.each(function() {
             var w = $(this).width();
             $(this).css('width', w + 'px');
@@ -631,11 +651,45 @@ function initSimpleResize() {
             isResizing = false;
             $('.resizer').removeClass('resizing');
             $(document).off('mousemove.rsz mouseup.rsz');
+
+            // Guardar anchos al terminar de redimensionar
+            saveColumnWidths();
+
             setTimeout(function() {
-                startAutoRefresh();
+                // Solo reanudar si estaba habilitado
+                if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
+                    startAutoRefresh();
+                }
             }, 500);
         });
     });
+}
+
+function saveColumnWidths() {
+    var widths = {};
+    var $cols = $("table.area_data_selection colgroup col");
+    $cols.each(function(index) {
+        // Guardamos el ancho en píxeles
+        widths[index] = $(this).css('width');
+    });
+    localStorage.setItem('bastille_col_widths', JSON.stringify(widths));
+}
+
+function applySavedColumnWidths() {
+    var saved = localStorage.getItem('bastille_col_widths');
+    if (saved) {
+        try {
+            var widths = JSON.parse(saved);
+            var $cols = $("table.area_data_selection colgroup col");
+            $cols.each(function(index) {
+                if (widths[index]) {
+                    $(this).css('width', widths[index]);
+                }
+            });
+        } catch (e) {
+            console.error("Error parsing saved column widths", e);
+        }
+    }
 }
 //]]>
 </script>
@@ -719,6 +773,7 @@ $document->render();
 				<th class="lhelc"><?=gtext('Select');?></th>
 				<th class="lhell"><?=gtext('JID');?></th>
 				<th class="lhell"><?=gtext('Name');?></th>
+                <!-- <th class="lhell"><?=gtext('Description');?></th> -->
 				<th class="lhell"><?=gtext('Boot');?></th>
 				<th class="lhell"><?=gtext('Prio');?></th>
 				<th class="lhell"><?=gtext('State');?></th>
@@ -756,6 +811,7 @@ $document->render();
 					</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['id']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['name']);?>&nbsp;</td>
+                    <!-- <td class="lcell"><?=htmlspecialchars($sphere_record['description']);?>&nbsp;</td> -->
 					<td class="lcell"><?=htmlspecialchars($sphere_record['boot']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['prio']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['state']);?>&nbsp;</td>

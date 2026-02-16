@@ -318,6 +318,10 @@ function get_jail_infos() {
 			$r['tags'] = '-';
 		}
 
+		// Get description
+		$r['description'] = exec("/usr/local/bin/bastille config {$item} get description");
+		if (!$r['description']) $r['description'] = "-";
+
 		// Set defaults for empty values
 		if (!$r['id']) $r['id'] = "-";
 		if (!$r['boot']) $r['boot'] = "-";
