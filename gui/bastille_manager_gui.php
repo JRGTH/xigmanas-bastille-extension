@@ -476,6 +476,11 @@ $(window).on("load", function() {
 
     // --- INICIALIZAR EL RESIZE MANUAL ---
     initSimpleResize();
+
+    // --- VISIBILIDAD CONTROLES REFRESH ---
+    if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
+        $("#refresh-controls").show();
+    }
 });
 
 function disableactionbuttons(ab_disable) {
@@ -685,7 +690,7 @@ $document->render();
        </tbody>
     </table>
 
-    <div style="text-align: right;">
+    <div id="refresh-controls" style="text-align: right; display: none;">
         <span id="refresh-status" style="font-style: italic; margin-right: 15px; color: #666;">Last update: just now</span>
         <button type="button" id="refresh-now" class="formbtn">Refresh</button>
         <select id="refresh-interval" class="formfld">
