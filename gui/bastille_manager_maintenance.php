@@ -381,6 +381,12 @@ $(document).ready(function(){
 				<input name="update" type="submit" class="formbtn" title="<?=gtext("Apply Bastille Core latest Patches and Fixes");?>" value="<?=gtext("Update");?>" />
 				<input name="restore" type="submit" class="formbtn" title="<?=gtext("Restore a container");?>" value="<?=gtext("Restore");?>" />
 			</div>
+			<table width="100%" border="0" cellpadding="6" cellspacing="0">
+				<?php html_separator();?>
+				<?php html_titleline(gtext("Refresh"));?>
+				<?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the containers tab.'),'',false);?>
+				<?php html_separator();?>
+			</table>
 			<div id="remarks">
 				<?php html_remark("note", gtext("Info"), sprintf(gtext("For general information visit the following link(s):")));?>
 				<div id="enumeration"><ul><li><a href="http://bastillebsd.org/" target="_blank" ><?=gtext("Bastille helps you quickly create and manage FreeBSD Jails.")?></a></li></ul></div>
@@ -390,8 +396,6 @@ $(document).ready(function(){
 				<?php html_titleline(gtext("Uninstall"));?>
 				<?php html_checkbox2('delete_confirm',gtext('Uninstall confirm'),'' ? true : false,gtext('Check to confirm extension uninstall. Note: Jail related content will be preserved by default.'),'',false);?>
 				<?php html_separator();?>
-				<?php html_titleline(gtext("Refresh"));?>
-				<?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the containers tab.'),'',false);?>
 				<?php html_separator();?>
 			</table>
 			<div id="submit1">
