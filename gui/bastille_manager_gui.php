@@ -39,20 +39,25 @@ require_once 'auth.inc';
 require_once 'guiconfig.inc';
 require_once 'bastille_manager-lib.inc';
 
+$img_path = [
+	'add' => 'images/add.png',
+	'mod' => 'images/edit.png',
+	'del' => 'images/delete.png',
+	'loc' => 'images/locked.png',
+	'unl' => 'images/unlocked.png',
+	'mai' => 'images/maintain.png',
+	'inf' => 'images/info.png',
+	'ena' => 'images/status_enabled.png',
+	'dis' => 'images/status_disabled.png',
+	'mup' => 'images/up.png',
+	'mdn' => 'images/down.png'
+];
+
 // --- START AUTO-REFRESH LOGIC ---
 if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
     error_reporting(0);
     ini_set('display_errors', 0);
     ob_start();
-
-    // Force cache invalidation
-    $cache_file = '/tmp/bastille_jail_info_cache.json';
-    if (file_exists($cache_file)) {
-        if (!@unlink($cache_file)) {
-            // Try system level delete if PHP fails (permissions)
-            mwexec("/bin/rm -f " . escapeshellarg($cache_file));
-        }
-    }
 
     // Fetch fresh data
     $jls_list = [];
@@ -155,19 +160,6 @@ $gt_selection_start_confirm = gtext('Do you really want to start selected jail(s
 $gt_selection_stop_confirm = gtext('Do you want to stop the selected jail(s)?');
 $gt_selection_restart_confirm = gtext('Do you want to restart the selected jail(s)?');
 $gt_selection_autoboot_confirm = gtext('Do you want to set auto-boot on selected jail(s)?');
-$img_path = [
-	'add' => 'images/add.png',
-	'mod' => 'images/edit.png',
-	'del' => 'images/delete.png',
-	'loc' => 'images/locked.png',
-	'unl' => 'images/unlocked.png',
-	'mai' => 'images/maintain.png',
-	'inf' => 'images/info.png',
-	'ena' => 'images/status_enabled.png',
-	'dis' => 'images/status_disabled.png',
-	'mup' => 'images/up.png',
-	'mdn' => 'images/down.png'
-];
 
 $jls_list = get_jail_infos();
 $sphere_array = $jls_list;
@@ -391,10 +383,9 @@ include 'fbegin.inc';
     filter: brightness(150%);
 }
 
-/* --- ESTILOS DE RESIZE SIMPLE --- */
+/* --- SIMPLE RESIZE STYLES --- */
 table.area_data_selection {
-    table-layout: fixed; /* Mantiene la cordura del navegador */
-    /*width: auto; IMPORTANTE: Auto para empezar */
+    table-layout: fixed;
     border-collapse: collapse;
 }
 
@@ -406,7 +397,7 @@ table.area_data_selection th {
     text-overflow: ellipsis;
 }
 
-/* El tirador visible */
+/* The visible handle */
 .resizer {
     position: absolute;
     top: 0;
@@ -457,7 +448,11 @@ $(window).on("load", function() {
         autoRefresh.interval = parseInt(savedInterval);
     }
 	// --- REFRESH INIT ---
-    startAutoRefresh();
+    // Only start if the button is visible (enabled in settings)
+    if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
+        $("#refresh-controls").show();
+        startAutoRefresh();
+    }
 
     $("#refresh-now").click(function() {
         updateJailTable();
@@ -474,13 +469,7 @@ $(window).on("load", function() {
         }
     });
 
-    // --- INICIALIZAR EL RESIZE MANUAL ---
     initSimpleResize();
-
-    // --- VISIBILIDAD CONTROLES REFRESH ---
-    if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
-        $("#refresh-controls").show();
-    }
 });
 
 function disableactionbuttons(ab_disable) {
@@ -521,7 +510,7 @@ function updateJailTable() {
     autoRefresh.isUpdating = true;
     $("#refresh-status").text('Updating...');
 
-    // Backup de checkboxes marcados para persistencia
+    // Backup of checked checkboxes for persistence
     autoRefresh.selectedJails = [];
     $("input[name='<?=$checkbox_member_name;?>[]']:checked").each(function() {
         autoRefresh.selectedJails.push($(this).val());
@@ -590,20 +579,18 @@ function stopAutoRefresh() {
     if (autoRefresh.timerId) clearInterval(autoRefresh.timerId);
 }
 
-// --- FUNCIÓN DE REDIMENSIONADO ESTABLE (Sin %) ---
+// --- STABLE REDIMENSIONING FUNCTION (without %) ---
 function initSimpleResize() {
     var $table = $("table.area_data_selection");
     var $cols = $table.find('colgroup col');
     var $headers = $table.find('thead th');
 
-    // 2. AÑADIR TIRADORES
     $headers.each(function(i) {
-        if (i >= $headers.length - 1) return; // Ignorar la última columna
+        if (i >= $headers.length - 1) return; // Ignore the last column
         var $resizer = $('<div class="resizer"></div>');
         $(this).append($resizer);
     });
 
-    // 3. LÓGICA DE ARRASTRE
     var isResizing = false;
     var startX = 0;
     var $currentCol = null;
@@ -613,7 +600,7 @@ function initSimpleResize() {
         e.preventDefault(); e.stopPropagation();
         stopAutoRefresh();
 
-        // Convertir todas las columnas a píxeles fijos al iniciar el arrastre
+        // Convert all columns to fixed pixels when starting to drag
         $cols.each(function() {
             var w = $(this).width();
             $(this).css('width', w + 'px');
@@ -638,11 +625,15 @@ function initSimpleResize() {
         });
 
         $(document).on('mouseup.rsz', function() {
-            if (!isResizing) return;
+            if (!isResizing) {
+                return;
+            }
             isResizing = false;
             $('.resizer').removeClass('resizing');
             $(document).off('mousemove.rsz mouseup.rsz');
-            setTimeout(function() { startAutoRefresh(); }, 500);
+            setTimeout(function() {
+                startAutoRefresh();
+            }, 500);
         });
     });
 }
