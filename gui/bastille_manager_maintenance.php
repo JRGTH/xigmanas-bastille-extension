@@ -306,6 +306,23 @@ $(document).ready(function(){
 		$('#getinfo_bastille').html(data.bastille);
 		$('#getinfo_ext').html(data.ext);
 	});
+
+    // --- LOGICA DEL CHECKBOX REFRESH (LocalStorage) ---
+    var $chk = $("#show_refresh_button");
+
+    // 1. Leer estado inicial desde LocalStorage
+    var savedState = localStorage.getItem('bastille_show_refresh_button');
+    if (savedState === 'true') {
+        $chk.prop('checked', true);
+    } else {
+        $chk.prop('checked', false); // Por defecto deshabilitado
+    }
+
+    // 2. Guardar cambios al hacer click
+    $chk.change(function() {
+        var isChecked = $(this).is(':checked');
+        localStorage.setItem('bastille_show_refresh_button', isChecked);
+    });
 });
 //]]>
 </script>
@@ -372,6 +389,9 @@ $(document).ready(function(){
 				<?php html_separator();?>
 				<?php html_titleline(gtext("Uninstall"));?>
 				<?php html_checkbox2('delete_confirm',gtext('Uninstall confirm'),'' ? true : false,gtext('Check to confirm extension uninstall. Note: Jail related content will be preserved by default.'),'',false);?>
+				<?php html_separator();?>
+				<?php html_titleline(gtext("Refresh"));?>
+				<?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the containers tab.'),'',false);?>
 				<?php html_separator();?>
 			</table>
 			<div id="submit1">
