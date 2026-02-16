@@ -60,8 +60,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
     ob_start();
 
     // Fetch fresh data
-    // Note: We rely on the internal caching of get_jail_infos() (5 seconds)
-    // to avoid overloading the system with 'bastille list' commands if multiple requests occur.
     $jls_list = [];
     if (function_exists('get_jail_infos')) {
         $jls_list = get_jail_infos();
@@ -450,8 +448,7 @@ $(window).on("load", function() {
         $("#refresh-interval").val(savedInterval);
         autoRefresh.interval = parseInt(savedInterval);
     }
-	// --- REFRESH INIT ---
-    // Solo iniciar si el botón está visible (habilitado en configuración)
+	// --- REFRESH INIT
     if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
         $("#refresh-controls").show();
         startAutoRefresh();
@@ -472,7 +469,7 @@ $(window).on("load", function() {
         }
     });
 
-    // --- INICIALIZAR EL RESIZE MANUAL ---
+    // --- INITIALIZE MANUAL RESIZE ---
     initSimpleResize();
 });
 
@@ -541,10 +538,8 @@ function updateJailTable() {
                     // 2. Data Columns
                     row.append($('<td class="lcell">').text(jail.id || '-'));
                     row.append($('<td class="lcell">').text(jail.name || '-'));
-
                     // Description Column
                     // row.append($('<td class="lcell">').text(jail.description || '-'));
-
                     row.append($('<td class="lcell">').text(jail.boot || '-'));
                     row.append($('<td class="lcell">').text(jail.prio || '-'));
                     row.append($('<td class="lcell">').text(jail.state || '-'));
@@ -571,7 +566,7 @@ function updateJailTable() {
                 $("#refresh-status").text('Last update: just now');
                 controlactionbuttons(null, '<?=$checkbox_member_name;?>[]');
 
-                // Re-aplicar anchos de columna guardados después de actualizar la tabla
+                // Reapply saved column widths after updating the table
                 applySavedColumnWidths();
             }
         })
@@ -594,23 +589,23 @@ function stopAutoRefresh() {
     if (autoRefresh.timerId) clearInterval(autoRefresh.timerId);
 }
 
-// --- FUNCIÓN DE REDIMENSIONADO ESTABLE (Sin %) ---
+// --- STABLE REDIMENSIONING FUNCTION (without %) ---
 function initSimpleResize() {
     var $table = $("table.area_data_selection");
     var $cols = $table.find('colgroup col');
     var $headers = $table.find('thead th');
 
-    // 1. Aplicar anchos guardados al inicio
+    // 1. Apply saved widths at the beginning
     applySavedColumnWidths();
 
-    // 2. AÑADIR TIRADORES
+    // 2. ADD HANDLES
     $headers.each(function(i) {
-        if (i >= $headers.length - 1) return; // Ignorar la última columna
+        if (i >= $headers.length - 1) return; // Ignore the last column
         var $resizer = $('<div class="resizer"></div>');
         $(this).append($resizer);
     });
 
-    // 3. LÓGICA DE ARRASTRE
+    // 3. DRAG LOGIC
     var isResizing = false;
     var startX = 0;
     var $currentCol = null;
@@ -620,7 +615,7 @@ function initSimpleResize() {
         e.preventDefault(); e.stopPropagation();
         stopAutoRefresh();
 
-        // Convertir todas las columnas a píxeles fijos al iniciar el arrastre
+        // Convert all columns to fixed pixels when starting to drag
         $cols.each(function() {
             var w = $(this).width();
             $(this).css('width', w + 'px');
@@ -652,11 +647,11 @@ function initSimpleResize() {
             $('.resizer').removeClass('resizing');
             $(document).off('mousemove.rsz mouseup.rsz');
 
-            // Guardar anchos al terminar de redimensionar
+            // Save widths after resizing
             saveColumnWidths();
 
             setTimeout(function() {
-                // Solo reanudar si estaba habilitado
+                // Only resume if enabled
                 if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
                     startAutoRefresh();
                 }
@@ -669,7 +664,7 @@ function saveColumnWidths() {
     var widths = {};
     var $cols = $("table.area_data_selection colgroup col");
     $cols.each(function(index) {
-        // Guardamos el ancho en píxeles
+        // We save the width in pixels.
         widths[index] = $(this).css('width');
     });
     localStorage.setItem('bastille_col_widths', JSON.stringify(widths));

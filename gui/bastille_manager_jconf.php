@@ -87,7 +87,7 @@ $pconfig['enforce_statfs'] = exec("/usr/bin/grep '.*enforce_statfs.*=' $jail_con
 $pconfig['osrelease'] = exec("/usr/local/bin/bastille config {$item} get osrelease | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['vnet_interface'] = exec("/usr/bin/grep '.*vnet.interface.*=' $jail_config | cut -d '=' -f2 | tr -d ' ;'");
 $pconfig['boot_prio'] = exec("/usr/local/bin/bastille config {$item} get priority");
-$pconfig['description'] = exec("/usr/local/bin/bastille config {$item} get description");
+// $pconfig['description'] = exec("/usr/local/bin/bastille config {$item} get description");
 
 // Set the jail config default parameters.
 $jail_name_def = $pconfig['jname'];
@@ -101,7 +101,7 @@ $jail_enforce_statfs_def = $pconfig['enforce_statfs'];
 $jail_osrelease_def = $pconfig['osrelease'];
 $jail_vnet_interface_def = $pconfig['vnet_interface'];
 $jail_boot_prio_def = $pconfig['boot_prio'];
-$jail_description_def = $pconfig['description'];
+// $jail_description_def = $pconfig['description'];
 
 // Check if is a Linux jail.
 $is_linux_jail = exec("/usr/bin/grep linsysfs {$jail_dir}/{$jail_name_def}/fstab");
@@ -515,7 +515,7 @@ endif;
 					html_titleline2(gtext("Misc Configuration"));
 					html_checkbox2('autostart',gtext('Autoboot'),!empty($pconfig['autostart']) ? true : false,gtext('Autoboot this jail after system reboot.'),'',false);
 					html_inputbox("boot_prio", gtext("Priority"), $pconfig['boot_prio'], gtext("Set the priority value of the jail. Affects the boot order behaviour."), false, 20);
-					html_inputbox("description", gtext("Description"), $pconfig['description'], gtext("Set a description for the jail."), false, 40);
+					// html_inputbox("description", gtext("Description"), $pconfig['description'], gtext("Set a description for the jail."), false, 40);
 					//html_checkbox2('force_edit',gtext('Force edit'),!empty($pconfig['force_edit']) ? true : false,gtext('Automatically stop and start this jail if is already running.'),'',false);
 					?>
 				</table>
