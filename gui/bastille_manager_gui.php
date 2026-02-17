@@ -366,7 +366,34 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Manager')];
 include 'fbegin.inc';
 ?>
 <style>
-/* Refresh button style */
+
+#refresh-spinner {
+    display: inline-block;
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: 2px solid #ccc;
+    border-top-color: #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+    right: 115px;
+    margin-top: 2px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.area_data_selection tbody td img {
+    vertical-align: middle;
+}
+
+.lcelc {
+    text-align: center;
+    vertical-align: middle;
+}
+
 #refresh-now {
     appearance: none;
     font-family: inherit;
@@ -447,8 +474,7 @@ $(window).on("load", function() {
         $("#refresh-interval").val(savedInterval);
         autoRefresh.interval = parseInt(savedInterval);
     }
-	// --- REFRESH INIT ---
-    // Only start if the button is visible (enabled in settings)
+	// --- REFRESH INIT
     if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
         $("#refresh-controls").show();
         startAutoRefresh();
@@ -470,6 +496,10 @@ $(window).on("load", function() {
     });
 
     initSimpleResize();
+
+    $(document).on('click', "input[name='<?=$checkbox_member_name;?>[]']", function() {
+        controlactionbuttons(this, '<?=$checkbox_member_name;?>[]');
+    });
 });
 
 function disableactionbuttons(ab_disable) {
@@ -480,19 +510,10 @@ function disableactionbuttons(ab_disable) {
 }
 
 function controlactionbuttons(ego, triggerbyname) {
-	var a_trigger = document.getElementsByName(triggerbyname);
-	var n_trigger = a_trigger.length;
-	var ab_disable = true;
-	var i = 0;
-	for (; i < n_trigger; i++) {
-		if (a_trigger[i].type == 'checkbox') {
-			if (a_trigger[i].checked) {
-				ab_disable = false;
-				break;
-			}
-		}
-	}
-	disableactionbuttons(ab_disable);
+    // Use jQuery selector to count checked checkboxes directly
+    var $checkedCheckboxes = $("input[name='" + triggerbyname + "']:checked");
+    var ab_disable = ($checkedCheckboxes.length === 0); // If no checkboxes are checked, disable buttons
+    disableactionbuttons(ab_disable);
 }
 
 // --- AUTO-REFRESH JS ---
@@ -508,7 +529,9 @@ var autoRefresh = {
 function updateJailTable() {
     if (autoRefresh.isUpdating) return;
     autoRefresh.isUpdating = true;
-    $("#refresh-status").text('Updating...');
+
+    // Activar spinner
+    $("#refresh-spinner").show();
 
     // Backup of checked checkboxes for persistence
     autoRefresh.selectedJails = [];
@@ -516,10 +539,9 @@ function updateJailTable() {
         autoRefresh.selectedJails.push($(this).val());
     });
 
-    $.ajax({
-        url: 'bastille_manager_gui.php?action=refresh_table',
-        dataType: 'json',
-        success: function(data) {
+    fetch('bastille_manager_gui.php?action=refresh_table')
+        .then(response => response.json())
+        .then(data => {
             if (data.success) {
                 var tbody = $(".area_data_selection tbody");
                 tbody.empty();
@@ -530,14 +552,16 @@ function updateJailTable() {
                         .attr('name', '<?=$checkbox_member_name;?>[]')
                         .attr('value', jail.jailname)
                         .attr('id', jail.jailname)
-                        .prop('checked', autoRefresh.selectedJails.includes(jail.jailname))
-                        .click(function() { controlactionbuttons(this, '<?=$checkbox_member_name;?>[]'); });
+                        .prop('checked', autoRefresh.selectedJails.includes(jail.jailname));
+
                     checkCell.append(cb);
                     row.append(checkCell);
 
                     // 2. Data Columns
                     row.append($('<td class="lcell">').text(jail.id || '-'));
                     row.append($('<td class="lcell">').text(jail.name || '-'));
+                    // Description Column
+                    // row.append($('<td class="lcell">').text(jail.description || '-'));
                     row.append($('<td class="lcell">').text(jail.boot || '-'));
                     row.append($('<td class="lcell">').text(jail.prio || '-'));
                     row.append($('<td class="lcell">').text(jail.state || '-'));
@@ -561,12 +585,21 @@ function updateJailTable() {
                     tbody.append(row);
                 });
                 autoRefresh.lastUpdate = Date.now();
-                $("#refresh-status").text('Last update: just now');
+
+                // Restore button state
                 controlactionbuttons(null, '<?=$checkbox_member_name;?>[]');
+
+                // Reapply saved column widths after updating the table
+                applySavedColumnWidths();
             }
-        },
-        complete: function() { autoRefresh.isUpdating = false; }
-    });
+        })
+        .catch(error => {
+            console.error('Error fetching jail data: ', error);
+        })
+        .finally(() => {
+            autoRefresh.isUpdating = false;
+            $("#refresh-spinner").hide();
+        });
 }
 
 function startAutoRefresh() {
@@ -585,12 +618,17 @@ function initSimpleResize() {
     var $cols = $table.find('colgroup col');
     var $headers = $table.find('thead th');
 
+    // 1. Apply saved widths at the beginning
+    applySavedColumnWidths();
+
+    // 2. ADD HANDLES
     $headers.each(function(i) {
         if (i >= $headers.length - 1) return; // Ignore the last column
         var $resizer = $('<div class="resizer"></div>');
         $(this).append($resizer);
     });
 
+    // 3. DRAG LOGIC
     var isResizing = false;
     var startX = 0;
     var $currentCol = null;
@@ -631,11 +669,45 @@ function initSimpleResize() {
             isResizing = false;
             $('.resizer').removeClass('resizing');
             $(document).off('mousemove.rsz mouseup.rsz');
+
+            // Save widths after resizing
+            saveColumnWidths();
+
             setTimeout(function() {
-                startAutoRefresh();
+                // Only resume if enabled
+                if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
+                    startAutoRefresh();
+                }
             }, 500);
         });
     });
+}
+
+function saveColumnWidths() {
+    var widths = {};
+    var $cols = $("table.area_data_selection colgroup col");
+    $cols.each(function(index) {
+        // We save the width in pixels.
+        widths[index] = $(this).css('width');
+    });
+    localStorage.setItem('bastille_col_widths', JSON.stringify(widths));
+}
+
+function applySavedColumnWidths() {
+    var saved = localStorage.getItem('bastille_col_widths');
+    if (saved) {
+        try {
+            var widths = JSON.parse(saved);
+            var $cols = $("table.area_data_selection colgroup col");
+            $cols.each(function(index) {
+                if (widths[index]) {
+                    $(this).css('width', widths[index]);
+                }
+            });
+        } catch (e) {
+            console.error("Error parsing saved column widths", e);
+        }
+    }
 }
 //]]>
 </script>
@@ -681,8 +753,8 @@ $document->render();
        </tbody>
     </table>
 
-    <div id="refresh-controls" style="text-align: right; display: none;">
-        <span id="refresh-status" style="font-style: italic; margin-right: 15px; color: #666;">Last update: just now</span>
+    <div id="refresh-controls" style="text-align: right; display: none; position: relative;">
+        <span id="refresh-spinner" style="display: none;"></span>
         <button type="button" id="refresh-now" class="formbtn">Refresh</button>
         <select id="refresh-interval" class="formfld">
             <option value="5000">5s</option>
@@ -697,7 +769,8 @@ $document->render();
 		<colgroup>
 			<col style="width:2%">
 			<col style="width:3%">
-			<col style="width:12%">
+			<col style="width:10%">
+            <!-- <col style="width:10%"> Description -->
 			<col style="width:4%">
 			<col style="width:4%">
 			<col style="width:4%">
@@ -705,7 +778,7 @@ $document->render();
 			<col style="width:12%">
 			<col style="width:12%">
 			<col style="width:7%">
-			<col style="width:12%">
+			<col style="width:10%">
 			<col style="width:4%">
 			<col style="width:4%">
 			<col style="width:10%">
@@ -719,6 +792,7 @@ $document->render();
 				<th class="lhelc"><?=gtext('Select');?></th>
 				<th class="lhell"><?=gtext('JID');?></th>
 				<th class="lhell"><?=gtext('Name');?></th>
+                <!-- <th class="lhell"><?=gtext('Description');?></th> -->
 				<th class="lhell"><?=gtext('Boot');?></th>
 				<th class="lhell"><?=gtext('Prio');?></th>
 				<th class="lhell"><?=gtext('State');?></th>
@@ -756,6 +830,7 @@ $document->render();
 					</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['id']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['name']);?>&nbsp;</td>
+                    <!-- <td class="lcell"><?=htmlspecialchars($sphere_record['description']);?>&nbsp;</td> -->
 					<td class="lcell"><?=htmlspecialchars($sphere_record['boot']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['prio']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['state']);?>&nbsp;</td>
