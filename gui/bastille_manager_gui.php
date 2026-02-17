@@ -366,7 +366,34 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Manager')];
 include 'fbegin.inc';
 ?>
 <style>
-/* Refresh button style */
+
+#refresh-spinner {
+    display: inline-block;
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: 2px solid #ccc;
+    border-top-color: #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+    right: 115px;
+    margin-top: 2px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.area_data_selection tbody td img {
+    vertical-align: middle;
+}
+
+.lcelc {
+    text-align: center;
+    vertical-align: middle;
+}
+
 #refresh-now {
     appearance: none;
     font-family: inherit;
@@ -383,10 +410,9 @@ include 'fbegin.inc';
     filter: brightness(150%);
 }
 
-/* --- ESTILOS DE RESIZE SIMPLE --- */
+/* --- SIMPLE RESIZE STYLES --- */
 table.area_data_selection {
-    table-layout: fixed; /* Mantiene la cordura del navegador */
-    /*width: auto; IMPORTANTE: Auto para empezar */
+    table-layout: fixed;
     border-collapse: collapse;
 }
 
@@ -398,7 +424,7 @@ table.area_data_selection th {
     text-overflow: ellipsis;
 }
 
-/* El tirador visible */
+/* The visible handle */
 .resizer {
     position: absolute;
     top: 0;
@@ -469,8 +495,11 @@ $(window).on("load", function() {
         }
     });
 
-    // --- INITIALIZE MANUAL RESIZE ---
     initSimpleResize();
+
+    $(document).on('click', "input[name='<?=$checkbox_member_name;?>[]']", function() {
+        controlactionbuttons(this, '<?=$checkbox_member_name;?>[]');
+    });
 });
 
 function disableactionbuttons(ab_disable) {
@@ -481,19 +510,10 @@ function disableactionbuttons(ab_disable) {
 }
 
 function controlactionbuttons(ego, triggerbyname) {
-	var a_trigger = document.getElementsByName(triggerbyname);
-	var n_trigger = a_trigger.length;
-	var ab_disable = true;
-	var i = 0;
-	for (; i < n_trigger; i++) {
-		if (a_trigger[i].type == 'checkbox') {
-			if (a_trigger[i].checked) {
-				ab_disable = false;
-				break;
-			}
-		}
-	}
-	disableactionbuttons(ab_disable);
+    // Use jQuery selector to count checked checkboxes directly
+    var $checkedCheckboxes = $("input[name='" + triggerbyname + "']:checked");
+    var ab_disable = ($checkedCheckboxes.length === 0); // If no checkboxes are checked, disable buttons
+    disableactionbuttons(ab_disable);
 }
 
 // --- AUTO-REFRESH JS ---
@@ -509,9 +529,11 @@ var autoRefresh = {
 function updateJailTable() {
     if (autoRefresh.isUpdating) return;
     autoRefresh.isUpdating = true;
-    $("#refresh-status").text('Updating...');
 
-    // Backup de checkboxes marcados para persistencia
+    // Activar spinner
+    $("#refresh-spinner").show();
+
+    // Backup of checked checkboxes for persistence
     autoRefresh.selectedJails = [];
     $("input[name='<?=$checkbox_member_name;?>[]']:checked").each(function() {
         autoRefresh.selectedJails.push($(this).val());
@@ -530,8 +552,8 @@ function updateJailTable() {
                         .attr('name', '<?=$checkbox_member_name;?>[]')
                         .attr('value', jail.jailname)
                         .attr('id', jail.jailname)
-                        .prop('checked', autoRefresh.selectedJails.includes(jail.jailname))
-                        .click(function() { controlactionbuttons(this, '<?=$checkbox_member_name;?>[]'); });
+                        .prop('checked', autoRefresh.selectedJails.includes(jail.jailname));
+
                     checkCell.append(cb);
                     row.append(checkCell);
 
@@ -563,7 +585,8 @@ function updateJailTable() {
                     tbody.append(row);
                 });
                 autoRefresh.lastUpdate = Date.now();
-                $("#refresh-status").text('Last update: just now');
+
+                // Restore button state
                 controlactionbuttons(null, '<?=$checkbox_member_name;?>[]');
 
                 // Reapply saved column widths after updating the table
@@ -571,11 +594,11 @@ function updateJailTable() {
             }
         })
         .catch(error => {
-            console.error('Error fetching jail data:', error);
-            $("#refresh-status").text('Update failed');
+            console.error('Error fetching jail data: ', error);
         })
         .finally(() => {
             autoRefresh.isUpdating = false;
+            $("#refresh-spinner").hide();
         });
 }
 
@@ -730,8 +753,8 @@ $document->render();
        </tbody>
     </table>
 
-    <div id="refresh-controls" style="text-align: right; display: none;">
-        <span id="refresh-status" style="font-style: italic; margin-right: 15px; color: #666;">Last update: just now</span>
+    <div id="refresh-controls" style="text-align: right; display: none; position: relative;">
+        <span id="refresh-spinner" style="display: none;"></span>
         <button type="button" id="refresh-now" class="formbtn">Refresh</button>
         <select id="refresh-interval" class="formfld">
             <option value="5000">5s</option>
@@ -746,7 +769,8 @@ $document->render();
 		<colgroup>
 			<col style="width:2%">
 			<col style="width:3%">
-			<col style="width:12%">
+			<col style="width:10%">
+            <!-- <col style="width:10%"> Description -->
 			<col style="width:4%">
 			<col style="width:4%">
 			<col style="width:4%">
@@ -754,7 +778,7 @@ $document->render();
 			<col style="width:12%">
 			<col style="width:12%">
 			<col style="width:7%">
-			<col style="width:12%">
+			<col style="width:10%">
 			<col style="width:4%">
 			<col style="width:4%">
 			<col style="width:10%">
