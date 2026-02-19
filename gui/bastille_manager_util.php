@@ -102,7 +102,7 @@ if($_POST):
 					$item = $container['jailname'];
 					$_SESSION['item'] = $item;
 					if ($_POST['advanced']):
-						header('Location: bastille_manager_editor.php');
+						header("Location: bastille_manager_edit.php?jailname={$item}");
 						exit;
 					else:
 						$input_errors[] = gtext("Failed to open editor, confirmation is required.");

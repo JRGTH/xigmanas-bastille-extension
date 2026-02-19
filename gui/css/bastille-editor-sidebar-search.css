@@ -1,0 +1,54 @@
+.ide-main-header-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.layout-toggles {
+    display: flex;
+    gap: 4px;
+}
+
+.layout-btn {
+    padding: 4px;
+    border-radius: 4px;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.layout-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #007acc;
+}
+
+.separator {
+    width: 1px;
+    height: 20px;
+    background: #ccc;
+    margin: 0 4px;
+}
+
+.ide-save-btn {
+    background: #007acc;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.ide-save-btn:hover {
+    background: #005a9e;
+}
+
+.ide-save-btn[disabled] {
+    background: #ccc;
+    cursor: not-allowed;
+}

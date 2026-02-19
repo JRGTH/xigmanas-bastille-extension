@@ -2,3 +2,8 @@
 @import url('bastille-header-refresh.css');
 @import url('bastille-table.css');
 @import url('bastille-web-terminal-modal.css');
+@import url('bastille-editor.css');
+@import url('bastille-editor-quicksearch.css');
+@import url('bastille-editor-quicksearch-badges.css');
+@import url('bastille-editor-quicksearch-results.css');
+@import url('bastille-editor-sidebar-search.css');

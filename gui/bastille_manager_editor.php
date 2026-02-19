@@ -105,7 +105,7 @@ $(window).on("load", function() {
 });
 //]]>
 </script>
-<table id="area_data"><tbody><tr><td id="area_data_frame"><form action="bastille_manager_editor.php" method="post" name="iform" id="iform">
+<table id="area_data"><tbody><tr><td id="area_data_frame"><form action="bastille_manager_edit.php" method="post" name="iform" id="iform">
 <?php
 	if(!empty($savemsg)):
 		print_info_box($savemsg);
