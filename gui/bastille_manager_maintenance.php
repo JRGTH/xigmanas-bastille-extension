@@ -397,7 +397,7 @@ $(document).ready(function(){
                 <?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the Containers tab.'),'',false);?>
                 <?php html_separator();?>
                 <?php html_titleline(gtext("Web Console"));?>
-                <?php html_checkbox2('show_console_button',gtext('Show console button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail file, to open the ttyd in a modal window. (requires ttyd installed).'),'',false);?>
+                <?php html_checkbox2('show_console_button',gtext('Show console button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail row, to open the ttyd in a modal window. (requires ttyd installed).'),'',false);?>
                 <?php html_separator();?>
 			</table>
 			<div id="remarks">
