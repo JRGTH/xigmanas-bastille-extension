@@ -442,71 +442,6 @@ table.area_data_selection th {
     opacity: 1;
 }
 
-/* --- MODAL DE LOGS --- */
-#log-modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-}
-
-#log-content {
-    background-color: #fefefe;
-    margin: 10% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 800px;
-    border-radius: 5px;
-    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
-}
-
-#log-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 10px;
-}
-
-#log-title {
-    font-weight: bold;
-    font-size: 1.2em;
-}
-
-#log-close {
-    color: #aaa;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-#log-close:hover {
-    color: black;
-}
-
-#log-terminal {
-    background-color: #1e1e1e;
-    color: #00ff00;
-    font-family: 'Courier New', Courier, monospace;
-    padding: 10px;
-    height: 300px;
-    overflow-y: auto;
-    border-radius: 3px;
-    font-size: 0.9em;
-    white-space: pre-wrap;
-}
-
-.log-line { margin: 2px 0; }
-.log-error { color: #ff4444; }
-.log-success { color: #00ff00; font-weight: bold; }
-.log-info { color: #44aaff; }
-
 /* --- MODAL DE CONSOLA --- */
 #console-modal {
     display: none;
@@ -651,27 +586,6 @@ $(window).on("load", function() {
     $(document).on('click', "input[name='<?=$checkbox_member_name;?>[]']", function() {
         controlactionbuttons(this, '<?=$checkbox_member_name;?>[]');
     });
-    // Close log modal
-    $("#log-close").click(function() {
-        // Close stream if active
-        if (currentEvtSource) {
-            currentEvtSource.close();
-            currentEvtSource = null;
-        }
-
-        $("#log-modal").hide();
-
-        // Resume auto-refresh if enabled
-        if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
-            startAutoRefresh();
-        }
-
-        // Trigger immediate update with a small delay to allow browser to breathe
-        setTimeout(function() {
-            updateJailTable();
-        }, 100);
-    });
-
     // Close console modal
     $("#console-close").click(function() {
         $("#console-modal").hide();
@@ -685,7 +599,6 @@ $(window).on("load", function() {
         if (jailname) {
             // Close modal first
             $("#console-close").click();
-
             // Open new tab with direct console URL
             // We use the same backend script, which will launch a NEW ttyd instance
             window.open('bastille_manager_console.php?jailname=' + encodeURIComponent(jailname), '_blank');
@@ -702,9 +615,6 @@ $(window).on("load", function() {
         if (e.key === "Escape") {
             if ($("#console-modal").is(":visible")) {
                 $("#console-close").click();
-            }
-            if ($("#log-modal").is(":visible")) {
-                $("#log-close").click();
             }
         }
     });
@@ -1178,17 +1088,6 @@ $document->render();
 		<input name="restart_selected_jail" id="restart_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_restart;?>"/>
 		<input name="autoboot_selected_jail" id="autoboot_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_autoboot;?>"/>
 	</div>
-
-    <!-- LOG MODAL -->
-    <div id="log-modal">
-        <div id="log-content">
-            <div id="log-header">
-                <span id="log-title">Action Log</span>
-                <span id="log-close">&times;</span>
-            </div>
-            <div id="log-terminal"></div>
-        </div>
-    </div>
 
     <!-- CONSOLE MODAL -->
     <div id="console-modal">
