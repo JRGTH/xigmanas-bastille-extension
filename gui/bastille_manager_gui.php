@@ -441,10 +441,156 @@ table.area_data_selection th {
     background-color: #007bff; /* Azul */
     opacity: 1;
 }
+
+/* --- MODAL DE LOGS --- */
+#log-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+#log-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 800px;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+}
+
+#log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+}
+
+#log-title {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+#log-close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#log-close:hover {
+    color: black;
+}
+
+#log-terminal {
+    background-color: #1e1e1e;
+    color: #00ff00;
+    font-family: 'Courier New', Courier, monospace;
+    padding: 10px;
+    height: 300px;
+    overflow-y: auto;
+    border-radius: 3px;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+}
+
+.log-line { margin: 2px 0; }
+.log-error { color: #ff4444; }
+.log-success { color: #00ff00; font-weight: bold; }
+.log-info { color: #44aaff; }
+
+/* --- MODAL DE CONSOLA --- */
+#console-modal {
+    display: none;
+    position: fixed;
+    z-index: 1100; /* Encima del log modal */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+}
+
+#console-content {
+    background-color: #000;
+    margin: 2% auto;
+    width: 90%;
+    height: 90%;
+    border: 1px solid #444;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease; /* For fullscreen transition */
+}
+
+#console-content.fullscreen {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+}
+
+#console-header {
+    background-color: var(--bgc-tabs); /* Native header color */
+    color: var(--txc-topic);
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #555;
+}
+
+#console-iframe-container {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    background: #000;
+}
+
+#console-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.console-btn {
+    background: #555;
+    border: 1px solid #777;
+    color: white;
+    padding: 5px 10px;
+    cursor: pointer;
+    margin-right: 10px;
+    font-size: 12px;
+    text-decoration: none;
+}
+.console-btn:hover { background: #666; }
+
+/* SVG Icon style, console */
+.icon-svg {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    fill: currentColor;
+}
+.icon-disabled {
+    fill: #ccc;
+    cursor: not-allowed;
+}
 </style>
 
 <script type="text/javascript">
 //<![CDATA[
+var currentEvtSource = null; // Global variable to track current SSE connection
+var refreshAbortController = null; // Controller to abort fetch requests
+
 $(window).on("load", function() {
 	// Init action buttons
 	$("#start_selected_jail").click(function () {
@@ -461,12 +607,12 @@ $(window).on("load", function() {
 	});
 	$("#autoboot_selected_jail").click(function () {
         stopAutoRefresh();
-		return confirm('<?=$gt_selection_autoboot_confirm;?>');
-	});
-	// Disable action buttons.
-	disableactionbuttons(true);
-	$("#iform").submit(function() { spinner(); });
-	$(".spin").click(function() { spinner(); });
+    	return confirm('<?=$gt_selection_autoboot_confirm;?>');
+    });
+    // Disable action buttons.
+    disableactionbuttons(true);
+    $("#iform").submit(function() { spinner(); });
+    $(".spin").click(function() { spinner(); });
 
 	// Attempt to load the previously saved interval
 	var savedInterval = localStorage.getItem('bastille_refresh_interval');
@@ -478,6 +624,11 @@ $(window).on("load", function() {
     if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
         $("#refresh-controls").show();
         startAutoRefresh();
+    }
+
+    // Force update if console button is enabled to show it immediately
+    if (localStorage.getItem('bastille_show_console_button') === 'true') {
+        updateJailTable();
     }
 
     $("#refresh-now").click(function() {
@@ -500,6 +651,63 @@ $(window).on("load", function() {
     $(document).on('click', "input[name='<?=$checkbox_member_name;?>[]']", function() {
         controlactionbuttons(this, '<?=$checkbox_member_name;?>[]');
     });
+    // Close log modal
+    $("#log-close").click(function() {
+        // Close stream if active
+        if (currentEvtSource) {
+            currentEvtSource.close();
+            currentEvtSource = null;
+        }
+
+        $("#log-modal").hide();
+
+        // Resume auto-refresh if enabled
+        if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
+            startAutoRefresh();
+        }
+
+        // Trigger immediate update with a small delay to allow browser to breathe
+        setTimeout(function() {
+            updateJailTable();
+        }, 100);
+    });
+
+    // Close console modal
+    $("#console-close").click(function() {
+        $("#console-modal").hide();
+        $("#console-iframe-container").empty(); // Destroy iframe completely
+    });
+
+    // Pop-out console button
+    $("#console-popout").click(function(e) {
+        e.preventDefault();
+        var jailname = $(this).data('jail');
+        if (jailname) {
+            // Close modal first
+            $("#console-close").click();
+
+            // Open new tab with direct console URL
+            // We use the same backend script, which will launch a NEW ttyd instance
+            window.open('bastille_manager_console.php?jailname=' + encodeURIComponent(jailname), '_blank');
+        }
+    });
+
+    //TODO Fullscreen console button
+    $("#console-fullscreen").click(function() {
+        $("#console-content").toggleClass('fullscreen');
+    });
+
+    // Todo Close modals with Escape key
+    $(document).keyup(function(e) {
+        if (e.key === "Escape") {
+            if ($("#console-modal").is(":visible")) {
+                $("#console-close").click();
+            }
+            if ($("#log-modal").is(":visible")) {
+                $("#log-close").click();
+            }
+        }
+    });
 });
 
 function disableactionbuttons(ab_disable) {
@@ -514,6 +722,53 @@ function controlactionbuttons(ego, triggerbyname) {
     var $checkedCheckboxes = $("input[name='" + triggerbyname + "']:checked");
     var ab_disable = ($checkedCheckboxes.length === 0); // If no checkboxes are checked, disable buttons
     disableactionbuttons(ab_disable);
+}
+
+// --- CONSOLE LOGIC ---
+function openConsole(jailname) {
+    // Store jailname in the popout button data
+    $("#console-popout").data('jail', jailname);
+
+    // Show loading or something?
+    fetch('bastille_manager_console.php?jailname=' + encodeURIComponent(jailname) + '&format=json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.text(); // Get raw text to debug
+        })
+        .then(text => {
+            try {
+                const data = JSON.parse(text);
+                if (data.success) {
+                    $("#console-title").text("Console: " + jailname);
+
+                    // Create iframe dynamically
+                    var $container = $("#console-iframe-container");
+                    $container.empty();
+                    var $iframe = $('<iframe>', {
+                        id: 'console-iframe',
+                        src: data.url,
+                        frameborder: 0
+                    });
+                    $container.append($iframe);
+
+                    $("#console-modal").show();
+
+                    // Try to focus iframe to capture keyboard
+                    setTimeout(function() { $iframe.focus(); }, 500);
+                } else {
+                    alert("Error launching console: " + data.message);
+                }
+            } catch (e) {
+                console.error("Failed to parse JSON:", text);
+                alert("Received invalid response from server. Check server logs for details.");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Failed to connect to console backend.");
+        });
 }
 
 // --- AUTO-REFRESH JS ---
@@ -533,15 +788,28 @@ function updateJailTable() {
     // Activar spinner
     $("#refresh-spinner").show();
 
+    // Abort previous request if any
+    if (refreshAbortController) {
+        refreshAbortController.abort();
+    }
+    refreshAbortController = new AbortController();
+    const signal = refreshAbortController.signal;
+
     // Backup of checked checkboxes for persistence
     autoRefresh.selectedJails = [];
     $("input[name='<?=$checkbox_member_name;?>[]']:checked").each(function() {
         autoRefresh.selectedJails.push($(this).val());
     });
 
-    fetch('bastille_manager_gui.php?action=refresh_table')
+    // Timeout for fetch (10 seconds)
+    const fetchTimeout = setTimeout(() => {
+        if (refreshAbortController) refreshAbortController.abort();
+    }, 10000);
+
+    fetch('bastille_manager_gui.php?action=refresh_table', { signal })
         .then(response => response.json())
         .then(data => {
+            clearTimeout(fetchTimeout);
             if (data.success) {
                 var tbody = $(".area_data_selection tbody");
                 tbody.empty();
@@ -580,6 +848,21 @@ function updateJailTable() {
                         '<td><a href="bastille_manager_jconf.php?jailname=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['mod'];?>"></a></td>' +
                         '<td><a href="bastille_manager_info.php?uuid=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['inf'];?>"></a></td>' +
                         '</tr></tbody></table>');
+
+                    // Console Button Logic (Controlled by LocalStorage)
+                    if (localStorage.getItem('bastille_show_console_button') === 'true') {
+                        var consoleBtn = '';
+                        if (jail.state === "Up") {
+                            // Changed to call openConsole() instead of direct link
+                            consoleBtn = '<a href="#" onclick="openConsole(\'' + jail.jailname + '\'); return false;" title="Console">' +
+                            '<svg class="icon-svg" viewBox="0 0 24 24"><path d="M20,19V7H4V19H20M20,3A2,2 0 0,1 22,5V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V5C2,3.89 2.9,3 4,3H20M13,17V15H18V17H13M9.58,13L5.57,9H8.4L11.7,12.3C12.09,12.69 12.09,13.33 11.7,13.72L8.42,17H5.59L9.58,13Z" /></svg>' +
+                            '</a>';
+                        } else {
+                            consoleBtn = '<svg class="icon-svg icon-disabled" viewBox="0 0 24 24"><path d="M20,19V7H4V19H20M20,3A2,2 0 0,1 22,5V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V5C2,3.89 2.9,3 4,3H20M13,17V15H18V17H13M9.58,13L5.57,9H8.4L11.7,12.3C12.09,12.69 12.09,13.33 11.7,13.72L8.42,17H5.59L9.58,13Z" /></svg>';
+                        }
+                        tools.find('tr').append($('<td>').html(consoleBtn));
+                    }
+
                     row.append(tools);
 
                     tbody.append(row);
@@ -594,10 +877,15 @@ function updateJailTable() {
             }
         })
         .catch(error => {
-            console.error('Error fetching jail data: ', error);
+            if (error.name === 'AbortError') {
+                console.log('Fetch aborted');
+            } else {
+                console.error('Error fetching jail data:', error);
+            }
         })
         .finally(() => {
             autoRefresh.isUpdating = false;
+            refreshAbortController = null;
             $("#refresh-spinner").hide();
         });
 }
@@ -890,6 +1178,35 @@ $document->render();
 		<input name="restart_selected_jail" id="restart_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_restart;?>"/>
 		<input name="autoboot_selected_jail" id="autoboot_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_autoboot;?>"/>
 	</div>
+
+    <!-- LOG MODAL -->
+    <div id="log-modal">
+        <div id="log-content">
+            <div id="log-header">
+                <span id="log-title">Action Log</span>
+                <span id="log-close">&times;</span>
+            </div>
+            <div id="log-terminal"></div>
+        </div>
+    </div>
+
+    <!-- CONSOLE MODAL -->
+    <div id="console-modal">
+        <div id="console-content">
+            <div id="console-header">
+                <span id="console-title">Console</span>
+                <div>
+                    <a href="#" id="console-fullscreen" class="console-btn">Fullscreen</a>
+                    <a href="#" id="console-popout" class="console-btn">Open in New Tab</a>
+                    <span id="console-close" style="cursor:pointer; font-weight:bold; font-size:1.2em;">&times;</span>
+                </div>
+            </div>
+            <div id="console-iframe-container">
+                <iframe id="console-iframe" src="about:blank"></iframe>
+            </div>
+        </div>
+    </div>
+
 <?php
     include 'formend.inc';
 ?>
