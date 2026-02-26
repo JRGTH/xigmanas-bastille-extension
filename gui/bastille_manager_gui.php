@@ -365,86 +365,12 @@ endif;
 $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Manager')];
 include 'fbegin.inc';
 ?>
-<style>
-
-#refresh-spinner {
-    display: inline-block;
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    border: 2px solid #ccc;
-    border-top-color: #007bff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: 5px;
-    right: 115px;
-    margin-top: 2px;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.area_data_selection tbody td img {
-    vertical-align: middle;
-}
-
-.lcelc {
-    text-align: center;
-    vertical-align: middle;
-}
-
-#refresh-now {
-    appearance: none;
-    font-family: inherit;
-    font-size: inherit;
-    font-weight: bold;
-    color: var(--txc-input-rw);
-    background-color: var(--bgc-area-data);
-    border: 1px solid var(--boc-button);
-    border-radius: var(--bor);
-    padding: 0.125rem 0.375rem;
-    cursor: pointer;
-}
-#refresh-now:hover {
-    filter: brightness(150%);
-}
-
-/* --- SIMPLE RESIZE STYLES --- */
-table.area_data_selection {
-    table-layout: fixed;
-    border-collapse: collapse;
-}
-
-table.area_data_selection th {
-    position: relative;
-    padding: 5px 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* The visible handle */
-.resizer {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 6px;
-    height: 100%;
-    cursor: col-resize;
-    z-index: 100;
-    user-select: none;
-    touch-action: none;
-}
-
-.resizer:hover, .resizing {
-    background-color: #007bff; /* Azul */
-    opacity: 1;
-}
-</style>
-
+<link rel="stylesheet" type="text/css" href="ext/bastille/css/styles.css?v=<?=time();?>">
 <script type="text/javascript">
 //<![CDATA[
+var currentEvtSource = null; // Global variable to track current SSE connection
+var refreshAbortController = null; // Controller to abort fetch requests
+
 $(window).on("load", function() {
 	// Init action buttons
 	$("#start_selected_jail").click(function () {
@@ -461,12 +387,12 @@ $(window).on("load", function() {
 	});
 	$("#autoboot_selected_jail").click(function () {
         stopAutoRefresh();
-		return confirm('<?=$gt_selection_autoboot_confirm;?>');
-	});
-	// Disable action buttons.
-	disableactionbuttons(true);
-	$("#iform").submit(function() { spinner(); });
-	$(".spin").click(function() { spinner(); });
+    	return confirm('<?=$gt_selection_autoboot_confirm;?>');
+    });
+    // Disable action buttons.
+    disableactionbuttons(true);
+    $("#iform").submit(function() { spinner(); });
+    $(".spin").click(function() { spinner(); });
 
 	// Attempt to load the previously saved interval
 	var savedInterval = localStorage.getItem('bastille_refresh_interval');
@@ -478,6 +404,11 @@ $(window).on("load", function() {
     if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
         $("#refresh-controls").show();
         startAutoRefresh();
+    }
+
+    // Force update if web-terminal button is enabled to show it immediately
+    if (localStorage.getItem('bastille_show_web_terminal_button') === 'true') {
+        updateJailTable();
     }
 
     $("#refresh-now").click(function() {
@@ -500,6 +431,30 @@ $(window).on("load", function() {
     $(document).on('click', "input[name='<?=$checkbox_member_name;?>[]']", function() {
         controlactionbuttons(this, '<?=$checkbox_member_name;?>[]');
     });
+    // Close web-terminal modal
+    $("#web-terminal-close").click(function() {
+        $("#web-terminal-modal").hide();
+        $("#web-terminal-iframe-container").empty(); // Destroy iframe completely
+    });
+
+    // Pop-out web-terminal button
+    $("#web-terminal-popout").click(function(e) {
+        e.preventDefault();
+        var jailname = $(this).data('jail');
+        if (jailname) {
+            // Close modal first
+            $("#web-terminal-close").click();
+            // Open new tab with direct web-terminal URL
+            // We use the same backend script, which will launch a NEW ttyd instance
+            window.open('bastille_manager_web_terminal.php?jailname=' + encodeURIComponent(jailname), '_blank');
+        }
+    });
+
+    //TODO Fullscreen web-terminal button
+    $("#web-terminal-fullscreen").click(function() {
+        $("#web-terminal-content").toggleClass('fullscreen');
+    });
+
 });
 
 function disableactionbuttons(ab_disable) {
@@ -514,6 +469,60 @@ function controlactionbuttons(ego, triggerbyname) {
     var $checkedCheckboxes = $("input[name='" + triggerbyname + "']:checked");
     var ab_disable = ($checkedCheckboxes.length === 0); // If no checkboxes are checked, disable buttons
     disableactionbuttons(ab_disable);
+}
+
+// --- WebTerminal LOGIC ---
+function openWebTerminal(jailname) {
+    // Store jailname in the popout button data
+    $("#web-terminal-popout").data('jail', jailname);
+
+    // Show loading or something?
+    fetch('bastille_manager_web_terminal.php?jailname=' + encodeURIComponent(jailname) + '&format=json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.text(); // Get raw text to debug
+        })
+        .then(text => {
+            try {
+                const data = JSON.parse(text);
+                if (data.success) {
+                    $("#web-terminal-title").text(jailname);
+
+                    // Create iframe dynamically
+                    var $container = $("#web-terminal-iframe-container");
+                    $container.empty();
+                    var $iframe = $('<iframe>', {
+                        id: 'web-terminal-iframe',
+                        src: data.url,
+                        frameborder: 0
+                    });
+
+                    setupTerminalFocus($iframe);
+
+                    $container.append($iframe);
+                    $("#web-terminal-modal").show();
+
+                } else {
+                    alert("Error launching web-terminal: " + data.message);
+                }
+            } catch (e) {
+                console.error("Failed to parse JSON:", text);
+                alert("Received invalid response from server. Check server logs for details.");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Failed to connect to web-terminal backend.");
+        });
+}
+
+function setupTerminalFocus(iframe) {
+    $(iframe).on('load', function() {
+        this.contentWindow.focus();
+        $(this).focus();
+    });
 }
 
 // --- AUTO-REFRESH JS ---
@@ -533,15 +542,28 @@ function updateJailTable() {
     // Activar spinner
     $("#refresh-spinner").show();
 
+    // Abort previous request if any
+    if (refreshAbortController) {
+        refreshAbortController.abort();
+    }
+    refreshAbortController = new AbortController();
+    const signal = refreshAbortController.signal;
+
     // Backup of checked checkboxes for persistence
     autoRefresh.selectedJails = [];
     $("input[name='<?=$checkbox_member_name;?>[]']:checked").each(function() {
         autoRefresh.selectedJails.push($(this).val());
     });
 
-    fetch('bastille_manager_gui.php?action=refresh_table')
+    // Timeout for fetch (10 seconds)
+    const fetchTimeout = setTimeout(() => {
+        if (refreshAbortController) refreshAbortController.abort();
+    }, 10000);
+
+    fetch('bastille_manager_gui.php?action=refresh_table', { signal })
         .then(response => response.json())
         .then(data => {
+            clearTimeout(fetchTimeout);
             if (data.success) {
                 var tbody = $(".area_data_selection tbody");
                 tbody.empty();
@@ -580,6 +602,21 @@ function updateJailTable() {
                         '<td><a href="bastille_manager_jconf.php?jailname=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['mod'];?>"></a></td>' +
                         '<td><a href="bastille_manager_info.php?uuid=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['inf'];?>"></a></td>' +
                         '</tr></tbody></table>');
+
+                    // WebTerminal Button Logic (Controlled by LocalStorage)
+                    if (localStorage.getItem('bastille_show_web_terminal_button') === 'true') {
+                        var webTerminalBtn = '';
+                        if (jail.state === "Up") {
+                            // Changed to call openWebTerminal() instead of direct link
+                            webTerminalBtn = '<a href="#" onclick="openWebTerminal(\'' + jail.jailname + '\'); return false;" title="Web terminal">' +
+                                                 '<img src="ext/bastille/images/web-terminal.svg" class="web-terminal-icon" alt="Web Terminal" />' +
+                                                 '</a>';
+                        } else {
+                            webTerminalBtn = '<img src="ext/bastille/images/web-terminal.svg" class="web-terminal-icon web-terminal-icon-disabled" alt="web-terminal" title="Jail is down" />';
+                        }
+                        tools.find('tr').append($('<td>').html(webTerminalBtn));
+                    }
+
                     row.append(tools);
 
                     tbody.append(row);
@@ -594,10 +631,15 @@ function updateJailTable() {
             }
         })
         .catch(error => {
-            console.error('Error fetching jail data: ', error);
+            if (error.name === 'AbortError') {
+                console.log('Fetch aborted');
+            } else {
+                console.error('Error fetching jail data:', error);
+            }
         })
         .finally(() => {
             autoRefresh.isUpdating = false;
+            refreshAbortController = null;
             $("#refresh-spinner").hide();
         });
 }
@@ -890,6 +932,27 @@ $document->render();
 		<input name="restart_selected_jail" id="restart_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_restart;?>"/>
 		<input name="autoboot_selected_jail" id="autoboot_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_autoboot;?>"/>
 	</div>
+
+    <div id="web-terminal-modal">
+        <div id="web-terminal-content">
+            <div id="web-terminal-header">
+                <span id="web-terminal-title"></span>
+                <img src="ext/bastille/images/info-ssl.svg" class="icon-svg ssl-help-icon"
+                         title="SSL Troubleshooting: If this window does not open, use the button on the right to open it in a new tab." />
+                <div id="web-terminal-right-buttons">
+                    <a href="#" id="web-terminal-fullscreen" class="web-terminal-btn-fullscreen" title="Fullscreen">
+                        <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" />
+                     </a>
+                    <a href="#" id="web-terminal-popout" class="web-terminal-btn-open-tab">Open in New Tab</a>
+                    <span id="web-terminal-close" style="cursor:pointer; font-weight:bold; font-size:1.3em;">&times;</span>
+                </div>
+            </div>
+            <div id="web-terminal-iframe-container">
+                <iframe id="web-terminal-iframe" src="about:blank"></iframe>
+            </div>
+        </div>
+    </div>
+
 <?php
     include 'formend.inc';
 ?>
