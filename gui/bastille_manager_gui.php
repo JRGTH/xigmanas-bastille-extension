@@ -506,12 +506,15 @@ function openWebTerminal(jailname) {
                         src: data.url,
                         frameborder: 0
                     });
+
+                    $iframe.on('load', function() {
+                        this.contentWindow.focus();
+                        $(this).focus();
+                    });
+
                     $container.append($iframe);
                     $("#web-terminal-modal").show();
-                    // Try to focus iframe to capture keyboard
-                    setTimeout(function() {
-                        $iframe.focus();
-                    }, 500);
+
                 } else {
                     alert("Error launching web-terminal: " + data.message);
                 }
@@ -938,6 +941,8 @@ $document->render();
         <div id="web-terminal-content">
             <div id="web-terminal-header">
                 <span id="web-terminal-title"></span>
+                <img src="ext/bastille/images/info-ssl.svg" class="icon-svg ssl-help-icon"
+                         title="SSL Troubleshooting: If this window does not open, use the button on the right to open it in a new tab." />
                 <div id="web-terminal-right-buttons">
                     <a href="#" id="web-terminal-fullscreen" class="web-terminal-btn-fullscreen" title="Fullscreen">
                         <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" />

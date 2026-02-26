@@ -104,3 +104,17 @@
     filter: brightness(2.0);
     transform: scale(1.1);
 }
+
+.ssl-help-icon {
+    margin-right: auto;
+    margin-left: 5px;
+    cursor: help;
+    color: #aaa;
+    font-size: 1.5em;
+}
+
+.ssl-help-icon:hover {
+    filter: brightness(2.0); /* Lo ilumina al doble de su brillo original */
+    transform: scale(1.1);    /* Un pelín más grande para dar feedback */
+    cursor: help;             /* Cambia el cursor a una interrogación */
+}

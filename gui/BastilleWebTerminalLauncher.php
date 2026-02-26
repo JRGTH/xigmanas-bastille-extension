@@ -65,23 +65,32 @@ class BastilleWebTerminalLauncher {
         exec("pkill -f 'ttyd .* console {$this->jailName}' > /dev/null 2>&1");
 
         /**
-         * Mozilla firefox ? fixme
+         * Mozilla firefox ssl
          */
         $sslArgs = "";
         if ($this->protocol === 'https://') {
             $sslArgs = sprintf("--ssl --ssl-cert %s --ssl-key %s", self::SSL_CERT, self::SSL_KEY);
         }
 
-        /**
-         * Command execution:
-         * - nohup: keeps the process running after PHP exits.
-         * - --check-origin=false: allows the iframe to connect from the WebGUI domain.
-         * - -W: enables write access (writable terminal).
+        $terminalOptions = "-t cursorBlink=true -t cursorStyle=bar";
+
+         /**
+         * Command execution details:
+         * --------------------------
+         * - nohup: Detaches the process from the parent PHP thread so it keeps running.
+         * - --ssl: Integrated with XigmaNAS certs to prevent Mixed Content issues.
+         * - -t (terminal-options): Configures the xterm.js frontend (blinking bar cursor).
+         * - --check-origin=false: Necessary for cross-port WebSocket communication within the iframe.
+         * - -p %d: Dynamic port assignment to allow multiple concurrent jail consoles.
+         * - -W: Enables write access; otherwise, the terminal would be read-only.
+         * - bastille console: The target binary that enters the specific jail's shell.
+         * - > /dev/null 2>&1 &: Completely silences output and pushes the process to the background.
          */
         $cmd = sprintf(
-            "nohup %s %s --check-origin=false -p %d -W %s console %s > /dev/null 2>&1 &",
+            "nohup %s %s %s --check-origin=false -p %d -W %s console %s > /dev/null 2>&1 &",
             self::TTYD_BIN,
             $sslArgs,
+            $terminalOptions,
             $this->port,
             self::BASTILLE_BIN,
             escapeshellarg($this->jailName)
