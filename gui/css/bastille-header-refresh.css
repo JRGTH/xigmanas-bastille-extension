@@ -1,37 +1,9 @@
 /* bastille_manager.css
    Estilo NATIVO (Minimalista)
 */
-
-#refresh-controls {
-    /* Fondo transparente y sin bordes para integrarse con el tema */
-    background: transparent;
-    border: none;
-    padding: 10px 0;
-    margin-bottom: 5px;
-
-    /* Alineación a la derecha */
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 15px;
-
-    /* Fuente estándar del sistema */
-    font-size: 13px;
-    color: inherit;
-}
-
-#refresh-status {
-    /* Color de texto por defecto del tema (negro/gris) */
-    color: inherit;
-    margin-right: 5px;
-
-    /* Coloca el texto a la izquierda de los botones */
-    order: -1;
-}
-
-/* Pequeño spinner azul discreto solo cuando actualiza */
-#refresh-status.updating .refresh-spinner {
+#refresh-spinner {
     display: inline-block;
+    position: absolute;
     width: 10px;
     height: 10px;
     border: 2px solid #ccc;
@@ -39,20 +11,35 @@
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-right: 5px;
+    right: 115px;
+    margin-top: 2px;
 }
 
-/* Animación del spinner */
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 
-/* Asegurar que los iconos de la tabla estén centrados verticalmente */
 .area_data_selection tbody td img {
     vertical-align: middle;
 }
 
-/* Centrado perfecto para los checkboxes */
 .lcelc {
     text-align: center;
     vertical-align: middle;
+}
+
+#refresh-now {
+    appearance: none;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: bold;
+    color: var(--txc-input-rw);
+    background-color: var(--bgc-area-data);
+    border: 1px solid var(--boc-button);
+    border-radius: var(--bor);
+    padding: 0.125rem 0.375rem;
+    cursor: pointer;
+}
+#refresh-now:hover {
+    filter: brightness(150%);
 }
