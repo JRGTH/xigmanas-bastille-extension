@@ -30,7 +30,7 @@
 }
 
 #web-terminal-header {
-    background-color: var(--bgc-tabs); /* Native header color */
+    background-color: var(--bgc-tabs); /* changeme */
     color: var(--txc-topic);
     padding: 10px;
     display: flex;

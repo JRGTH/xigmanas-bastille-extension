@@ -30,22 +30,19 @@ table.area_data_selection th {
     opacity: 1;
 }
 
-/* Estilo base para el icono */
 .web-terminal-icon {
     width: 16px;
     height: 16px;
     vertical-align: middle;
-    filter: brightness(0.8); /* Esto convierte el gris claro en gris oscuro */
-    transition: all 0.2s ease-in-out; /* Animación suave si haces hover */
+    filter: brightness(0.8);
+    transition: all 0.2s ease-in-out;
 }
 
-/* El truco para el estado deshabilitado */
 .web-terminal-icon-disabled {
-   opacity: 0.4;                /* Lo hace semi-transparente */
-   cursor: not-allowed;         /* Muestra el cursor de "prohibido" */
+   opacity: 0.4;
+   cursor: not-allowed;
 }
 
-/* Opcional: Que destaque al pasar el ratón si está activo */
 a:hover .web-terminal-icon {
    transform: scale(1.1);
 }
