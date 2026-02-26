@@ -365,162 +365,7 @@ endif;
 $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Manager')];
 include 'fbegin.inc';
 ?>
-<style>
-
-#refresh-spinner {
-    display: inline-block;
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    border: 2px solid #ccc;
-    border-top-color: #007bff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: 5px;
-    right: 115px;
-    margin-top: 2px;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.area_data_selection tbody td img {
-    vertical-align: middle;
-}
-
-.lcelc {
-    text-align: center;
-    vertical-align: middle;
-}
-
-#refresh-now {
-    appearance: none;
-    font-family: inherit;
-    font-size: inherit;
-    font-weight: bold;
-    color: var(--txc-input-rw);
-    background-color: var(--bgc-area-data);
-    border: 1px solid var(--boc-button);
-    border-radius: var(--bor);
-    padding: 0.125rem 0.375rem;
-    cursor: pointer;
-}
-#refresh-now:hover {
-    filter: brightness(150%);
-}
-
-/* --- SIMPLE RESIZE STYLES --- */
-table.area_data_selection {
-    table-layout: fixed;
-    border-collapse: collapse;
-}
-
-table.area_data_selection th {
-    position: relative;
-    padding: 5px 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* The visible handle */
-.resizer {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 6px;
-    height: 100%;
-    cursor: col-resize;
-    z-index: 100;
-    user-select: none;
-    touch-action: none;
-}
-
-.resizer:hover, .resizing {
-    background-color: #007bff; /* Azul */
-    opacity: 1;
-}
-
-/* --- MODAL DE CONSOLA --- */
-#console-modal {
-    display: none;
-    position: fixed;
-    z-index: 1100; /* Encima del log modal */
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.8);
-}
-
-#console-content {
-    background-color: #000;
-    margin: 2% auto;
-    width: 90%;
-    height: 90%;
-    border: 1px solid #444;
-    border-radius: 5px;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.3s ease; /* For fullscreen transition */
-}
-
-#console-content.fullscreen {
-    margin: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-}
-
-#console-header {
-    background-color: var(--bgc-tabs); /* Native header color */
-    color: var(--txc-topic);
-    padding: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #555;
-}
-
-#console-iframe-container {
-    flex-grow: 1;
-    width: 100%;
-    height: 100%;
-    background: #000;
-}
-
-#console-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-}
-
-.console-btn {
-    background: #555;
-    border: 1px solid #777;
-    color: white;
-    padding: 5px 10px;
-    cursor: pointer;
-    margin-right: 10px;
-    font-size: 12px;
-    text-decoration: none;
-}
-.console-btn:hover { background: #666; }
-
-/* SVG Icon style, console */
-.icon-svg {
-    width: 16px;
-    height: 16px;
-    vertical-align: middle;
-    fill: currentColor;
-}
-.icon-disabled {
-    fill: #ccc;
-    cursor: not-allowed;
-}
-</style>
-
+<link rel="stylesheet" type="text/css" href="ext/bastille/css/styles.css?v=<?=time();?>">
 <script type="text/javascript">
 //<![CDATA[
 var currentEvtSource = null; // Global variable to track current SSE connection
@@ -561,8 +406,8 @@ $(window).on("load", function() {
         startAutoRefresh();
     }
 
-    // Force update if console button is enabled to show it immediately
-    if (localStorage.getItem('bastille_show_console_button') === 'true') {
+    // Force update if web-terminal button is enabled to show it immediately
+    if (localStorage.getItem('bastille_show_web_terminal_button') === 'true') {
         updateJailTable();
     }
 
@@ -586,35 +431,35 @@ $(window).on("load", function() {
     $(document).on('click', "input[name='<?=$checkbox_member_name;?>[]']", function() {
         controlactionbuttons(this, '<?=$checkbox_member_name;?>[]');
     });
-    // Close console modal
-    $("#console-close").click(function() {
-        $("#console-modal").hide();
-        $("#console-iframe-container").empty(); // Destroy iframe completely
+    // Close web-terminal modal
+    $("#web-terminal-close").click(function() {
+        $("#web-terminal-modal").hide();
+        $("#web-terminal-iframe-container").empty(); // Destroy iframe completely
     });
 
-    // Pop-out console button
-    $("#console-popout").click(function(e) {
+    // Pop-out web-terminal button
+    $("#web-terminal-popout").click(function(e) {
         e.preventDefault();
         var jailname = $(this).data('jail');
         if (jailname) {
             // Close modal first
-            $("#console-close").click();
-            // Open new tab with direct console URL
+            $("#web-terminal-close").click();
+            // Open new tab with direct web-terminal URL
             // We use the same backend script, which will launch a NEW ttyd instance
-            window.open('bastille_manager_console.php?jailname=' + encodeURIComponent(jailname), '_blank');
+            window.open('bastille_manager_web_terminal.php?jailname=' + encodeURIComponent(jailname), '_blank');
         }
     });
 
-    //TODO Fullscreen console button
-    $("#console-fullscreen").click(function() {
-        $("#console-content").toggleClass('fullscreen');
+    //TODO Fullscreen web-terminal button
+    $("#web-terminal-fullscreen").click(function() {
+        $("#web-terminal-content").toggleClass('fullscreen');
     });
 
     // Todo Close modals with Escape key
     $(document).keyup(function(e) {
         if (e.key === "Escape") {
-            if ($("#console-modal").is(":visible")) {
-                $("#console-close").click();
+            if ($("#web-terminal-modal").is(":visible")) {
+                $("#web-terminal-close").click();
             }
         }
     });
@@ -634,13 +479,13 @@ function controlactionbuttons(ego, triggerbyname) {
     disableactionbuttons(ab_disable);
 }
 
-// --- CONSOLE LOGIC ---
-function openConsole(jailname) {
+// --- WebTerminal LOGIC ---
+function openWebTerminal(jailname) {
     // Store jailname in the popout button data
-    $("#console-popout").data('jail', jailname);
+    $("#web-terminal-popout").data('jail', jailname);
 
     // Show loading or something?
-    fetch('bastille_manager_console.php?jailname=' + encodeURIComponent(jailname) + '&format=json')
+    fetch('bastille_manager_web_terminal.php?jailname=' + encodeURIComponent(jailname) + '&format=json')
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -651,24 +496,24 @@ function openConsole(jailname) {
             try {
                 const data = JSON.parse(text);
                 if (data.success) {
-                    $("#console-title").text("Console: " + jailname);
+                    $("#web-terminal-title").text(jailname);
 
                     // Create iframe dynamically
-                    var $container = $("#console-iframe-container");
+                    var $container = $("#web-terminal-iframe-container");
                     $container.empty();
                     var $iframe = $('<iframe>', {
-                        id: 'console-iframe',
+                        id: 'web-terminal-iframe',
                         src: data.url,
                         frameborder: 0
                     });
                     $container.append($iframe);
-
-                    $("#console-modal").show();
-
+                    $("#web-terminal-modal").show();
                     // Try to focus iframe to capture keyboard
-                    setTimeout(function() { $iframe.focus(); }, 500);
+                    setTimeout(function() {
+                        $iframe.focus();
+                    }, 500);
                 } else {
-                    alert("Error launching console: " + data.message);
+                    alert("Error launching web-terminal: " + data.message);
                 }
             } catch (e) {
                 console.error("Failed to parse JSON:", text);
@@ -677,7 +522,7 @@ function openConsole(jailname) {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert("Failed to connect to console backend.");
+            alert("Failed to connect to web-terminal backend.");
         });
 }
 
@@ -759,18 +604,18 @@ function updateJailTable() {
                         '<td><a href="bastille_manager_info.php?uuid=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['inf'];?>"></a></td>' +
                         '</tr></tbody></table>');
 
-                    // Console Button Logic (Controlled by LocalStorage)
-                    if (localStorage.getItem('bastille_show_console_button') === 'true') {
-                        var consoleBtn = '';
+                    // WebTerminal Button Logic (Controlled by LocalStorage)
+                    if (localStorage.getItem('bastille_show_web_terminal_button') === 'true') {
+                        var webTerminalBtn = '';
                         if (jail.state === "Up") {
-                            // Changed to call openConsole() instead of direct link
-                            consoleBtn = '<a href="#" onclick="openConsole(\'' + jail.jailname + '\'); return false;" title="Console">' +
-                            '<svg class="icon-svg" viewBox="0 0 24 24"><path d="M20,19V7H4V19H20M20,3A2,2 0 0,1 22,5V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V5C2,3.89 2.9,3 4,3H20M13,17V15H18V17H13M9.58,13L5.57,9H8.4L11.7,12.3C12.09,12.69 12.09,13.33 11.7,13.72L8.42,17H5.59L9.58,13Z" /></svg>' +
-                            '</a>';
+                            // Changed to call openWebTerminal() instead of direct link
+                            webTerminalBtn = '<a href="#" onclick="openWebTerminal(\'' + jail.jailname + '\'); return false;" title="Web terminal">' +
+                                                 '<img src="ext/bastille/images/web-terminal.svg" class="web-terminal-icon" alt="Web Terminal" />' +
+                                                 '</a>';
                         } else {
-                            consoleBtn = '<svg class="icon-svg icon-disabled" viewBox="0 0 24 24"><path d="M20,19V7H4V19H20M20,3A2,2 0 0,1 22,5V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V5C2,3.89 2.9,3 4,3H20M13,17V15H18V17H13M9.58,13L5.57,9H8.4L11.7,12.3C12.09,12.69 12.09,13.33 11.7,13.72L8.42,17H5.59L9.58,13Z" /></svg>';
+                            webTerminalBtn = '<img src="ext/bastille/images/web-terminal.svg" class="web-terminal-icon web-terminal-icon-disabled" alt="web-terminal" title="Jail is down" />';
                         }
-                        tools.find('tr').append($('<td>').html(consoleBtn));
+                        tools.find('tr').append($('<td>').html(webTerminalBtn));
                     }
 
                     row.append(tools);
@@ -1089,19 +934,20 @@ $document->render();
 		<input name="autoboot_selected_jail" id="autoboot_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_autoboot;?>"/>
 	</div>
 
-    <!-- CONSOLE MODAL -->
-    <div id="console-modal">
-        <div id="console-content">
-            <div id="console-header">
-                <span id="console-title">Console</span>
-                <div>
-                    <a href="#" id="console-fullscreen" class="console-btn">Fullscreen</a>
-                    <a href="#" id="console-popout" class="console-btn">Open in New Tab</a>
-                    <span id="console-close" style="cursor:pointer; font-weight:bold; font-size:1.2em;">&times;</span>
+    <div id="web-terminal-modal">
+        <div id="web-terminal-content">
+            <div id="web-terminal-header">
+                <span id="web-terminal-title"></span>
+                <div id="web-terminal-right-buttons">
+                    <a href="#" id="web-terminal-fullscreen" class="web-terminal-btn-fullscreen" title="Fullscreen">
+                        <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" />
+                     </a>
+                    <a href="#" id="web-terminal-popout" class="web-terminal-btn-open-tab">Open in New Tab</a>
+                    <span id="web-terminal-close" style="cursor:pointer; font-weight:bold; font-size:1.3em;">&times;</span>
                 </div>
             </div>
-            <div id="console-iframe-container">
-                <iframe id="console-iframe" src="about:blank"></iframe>
+            <div id="web-terminal-iframe-container">
+                <iframe id="web-terminal-iframe" src="about:blank"></iframe>
             </div>
         </div>
     </div>

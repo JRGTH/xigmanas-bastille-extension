@@ -637,7 +637,7 @@ gui_start()
 			ln -fhs ${CWDIR}/gui/ext/bastille ${WWWPATH}/ext/ || error_notify "Error: A problem has occurred while copying extension gui files."
 			ln -fhs ${CWDIR}/gui/images ${WWWPATH}/ext/bastille/ || error_notify "Error: A problem has occurred while copying extension gui files."
 			ln -fhs ${CWDIR}/gui/bastille_manager_*.php ${WWWPATH}/ || error_notify "Error: A problem has occurred while linking extension gui files."
-			ln -fhs ${CWDIR}/gui/BastilleConsole*.php ${WWWPATH}/ || error_notify "Error linking POO Classes."
+			ln -fhs ${CWDIR}/gui/BastilleWebTerminal*.php ${WWWPATH}/ || error_notify "Error linking POO Classes."
 			ln -fhs ${CWDIR}/gui/css ${WWWPATH}/ext/bastille/ || error_notify "Error: A problem has occurred while copying extension css files."
 		fi
 	fi
@@ -656,7 +656,7 @@ gui_enable()
 		ln -fhs ${CWDIR}/gui/ext/bastille ${WWWPATH}/ext/ || error_notify "Error: A problem has occurred while copying extension gui files."
 		ln -fhs ${CWDIR}/gui/images ${WWWPATH}/ext/bastille/ || error_notify "Error: A problem has occurred while copying extension gui files."
 		ln -fhs ${CWDIR}/gui/bastille_manager_*.php ${WWWPATH}/ || error_notify "Error: A problem has occurred while copying extension gui files."
-    ln -fhs ${CWDIR}/gui/BastilleConsole*.php ${WWWPATH}/ || error_notify "Error linking POO Classes."
+    ln -fhs ${CWDIR}/gui/BastilleWebTerminal*.php ${WWWPATH}/ || error_notify "Error linking POO Classes."
     ln -fhs ${CWDIR}/gui/css ${WWWPATH}/ext/bastille/ || error_notify "Error: A problem has occurred while copying extension css files."
 		exit 0
 	else
