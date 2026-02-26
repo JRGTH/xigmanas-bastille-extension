@@ -321,8 +321,8 @@ $(document).ready(function(){
     });
 
     // --- LOGICA DEL CHECKBOX CONSOLE (LocalStorage) ---
-    var $chkConsole = $("#show_console_button");
-    var savedStateConsole = localStorage.getItem('bastille_show_console_button');
+    var $chkConsole = $("#show_web_terminal_button");
+    var savedStateConsole = localStorage.getItem('bastille_show_web_terminal_button');
     // Default to true if not set, or false? Let's default to false for safety/cleanliness if ttyd not installed
     if (savedStateConsole === 'true') {
         $chkConsole.prop('checked', true);
@@ -331,7 +331,7 @@ $(document).ready(function(){
     }
     $chkConsole.change(function() {
         var isChecked = $(this).is(':checked');
-        localStorage.setItem('bastille_show_console_button', isChecked);
+        localStorage.setItem('bastille_show_web_terminal_button', isChecked);
     });
 });
 //]]>
@@ -396,8 +396,8 @@ $(document).ready(function(){
 				<?php html_titleline(gtext("Refresh"));?>
                 <?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the Containers tab.'),'',false);?>
                 <?php html_separator();?>
-                <?php html_titleline(gtext("Web Console"));?>
-                <?php html_checkbox2('show_console_button',gtext('Show console button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail row, to open the ttyd in a modal window. (requires ttyd installed).'),'',false);?>
+                <?php html_titleline(gtext("Web terminal"));?>
+                <?php html_checkbox2('show_web_terminal_button',gtext('Show web terminal button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail row, to open the ttyd in a modal window.'),'',false);?>
                 <?php html_separator();?>
 			</table>
 			<div id="remarks">
