@@ -455,14 +455,6 @@ $(window).on("load", function() {
         $("#web-terminal-content").toggleClass('fullscreen');
     });
 
-    // Todo Close modals with Escape key
-    $(document).keyup(function(e) {
-        if (e.key === "Escape") {
-            if ($("#web-terminal-modal").is(":visible")) {
-                $("#web-terminal-close").click();
-            }
-        }
-    });
 });
 
 function disableactionbuttons(ab_disable) {
@@ -507,10 +499,7 @@ function openWebTerminal(jailname) {
                         frameborder: 0
                     });
 
-                    $iframe.on('load', function() {
-                        this.contentWindow.focus();
-                        $(this).focus();
-                    });
+                    setupTerminalFocus($iframe);
 
                     $container.append($iframe);
                     $("#web-terminal-modal").show();
@@ -527,6 +516,13 @@ function openWebTerminal(jailname) {
             console.error('Error:', error);
             alert("Failed to connect to web-terminal backend.");
         });
+}
+
+function setupTerminalFocus(iframe) {
+    $(iframe).on('load', function() {
+        this.contentWindow.focus();
+        $(this).focus();
+    });
 }
 
 // --- AUTO-REFRESH JS ---
