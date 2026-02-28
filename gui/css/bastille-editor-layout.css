@@ -1,24 +1,27 @@
-/* IDE MAIN CONTAINER */
+/* MAIN IDE CONTAINER */
 .ide-container {
     display: grid;
+    /* Sidebar | Resizer | Main Area */
     grid-template-columns: 260px 4px 1fr;
-    height: 80vh;
+    height: 85vh; /* Dynamic height based on viewport */
     min-height: 500px;
     width: 100%;
     overflow: hidden;
     border: 1px solid #999;
+    background: #fff;
 }
 
-/* SIDEBAR AREA */
+/* SIDEBAR LAYOUT */
 .ide-sidebar {
     display: flex;
-    flex-direction: column;
+    flex-direction: column; /* Stack header, search, and list vertically */
     min-width: 0;
+    height: 100%;
     overflow: hidden;
     background-color: #f8f9fa;
 }
 
-/* SPLIT PANEL RESIZER */
+/* VERTICAL SPLIT-PANEL RESIZER */
 .ide-resizer {
     width: 4px;
     cursor: col-resize;
@@ -31,7 +34,7 @@
     background: #4a5568;
 }
 
-/* MAIN CONTENT AREA (HEADER + EDITOR) */
+/* MAIN EDITOR AREA */
 .ide-main {
     display: flex !important;
     flex-direction: column !important;
@@ -42,18 +45,19 @@
     background: #fff;
 }
 
-/* MONACO EDITOR ADAPTATION */
+/* MONACO CONTAINER FILLING REMAINING SPACE */
 #monaco-container {
     flex: 1;
     width: 100%;
     min-height: 0;
     position: relative;
+    overflow: hidden;
 }
 
-/* SIDEBAR TOGGLE LOGIC */
+/* SIDEBAR TOGGLE (ZEN MODE) */
 .sidebar-hidden.ide-container {
     grid-template-columns: 1fr !important;
-    display: block;
+    /*display: block;*/
 }
 .sidebar-hidden .ide-sidebar,
 .sidebar-hidden .ide-resizer {

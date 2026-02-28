@@ -108,14 +108,15 @@
     background: #aaa;
 }
 
+/* bastille-editor-components.css */
+
 /* TOOLBAR CONTAINER: Holds toggle and save buttons in the main header */
 .ide-main-header-toolbar {
     display: flex;
-    flex-direction: row; /* Buttons in a horizontal line */
-    align-items: center; /* Vertical center alignment */
-    /*gap: 8px; /* Space between buttons */
-    flex-shrink: 0; /* Prevents buttons from being squashed */
-    margin-left: auto; /* Pushes the toolbar to the far right of the header */
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
 }
 
 /* TOOLBAR BUTTONS: General styling for layout actions */
