@@ -804,7 +804,7 @@ function resize(e) {
     
     // Límites: mínimo 180px, máximo 600px
     if (newWidth > 180 && newWidth < 600) {
-        sidebar.style.width = newWidth + 'px';
+        container.style.gridTemplateColumns = `${newWidth}px 4px 1fr`;
         
         // Avisamos a Monaco que el tamaño cambió para que se ajuste solo
         if (window.editor) {
