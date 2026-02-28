@@ -1,65 +1,189 @@
-/* MODAL BACKDROP */
+/* =========================================================
+   bastille-editor-quicksearch.css
+   Unified Search Module (Modal, Header, Badges & Results)
+   ========================================================= */
+
+/* --- 1. MODAL BACKDROP & CONTAINER --- */
 #quick-search-backdrop {
     display: none;
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(2px);
     z-index: 9998;
 }
 
-/* MODAL BOX */
 #quick-search-modal {
     display: none;
     position: fixed;
-    top: 15%;
+    top: 20%;
     left: 50%;
     transform: translateX(-50%);
-    width: 600px;
-    background: #fff;
+    width: 550px;
+    background: #ffffff;
     border: 1px solid #8197b4;
-    border-radius: 8px;
+    border-radius: 6px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3); /* Restored deep shadow */
     z-index: 9999;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
     overflow: hidden;
 }
 
-/* RESULTS LIST */
-.qs-results {
-    max-height: 400px;
-    overflow-y: auto;
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.qs-results li a {
-    display: block;
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-    text-decoration: none;
-    color: #333;
-}
-.qs-results li a:hover,
-.qs-results li.selected a {
-    background-image: var(--bgi-topic);
-    color: #fff !important;
+/* --- 2. MODAL HEADER & INPUT (XigmaNAS Style) --- */
+.qs-header {
+    position: relative;
+    padding: 15px;
+    background-color: var(--bgc-topic, #95a7c0);
+    background-image: var(--bgi-topic, linear-gradient(#95a7c0, #97aac2, #8197b4));
+    border-bottom: 1px solid #8197b4;
 }
 
-/* HISTORY BADGES */
+.qs-header input {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #555;
+    color: #333;
+    padding: 10px 45px 10px 12px; /* Room for the clear button */
+    font-size: 16px;
+    border-radius: 4px;
+    box-sizing: border-box;
+    outline: none;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Clear Input Button ('X') */
+.qs-clear {
+    position: absolute;
+    top: 50%;
+    right: 25px; /* Restored positioning */
+    transform: translateY(-50%);
+    color: #333;
+    background-color: #f0f0f0;
+    border: 1px solid #8197b4;
+    border-radius: 50%;
+    display: none; /* Controlled by JS */
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.qs-clear:hover {
+    background-color: #ff4d4d;
+    color: #fff;
+    border-color: #ff4d4d;
+}
+
+/* --- 3. BADGES & SEARCH HISTORY --- */
 .qs-history {
     padding: 8px 15px;
     background: #e8edf3;
-    display: flex;
+    border-bottom: 1px solid #ced4da;
+    font-size: 11px;
+    font-weight: bold;
+    color: #495057;
+    display: none;
     align-items: center;
     flex-wrap: wrap;
-    font-size: 11px;
 }
+
+#qs-badges {
+    display: flex;
+    gap: 6px;
+    margin-left: 8px;
+}
+
 .qs-badge {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #fff;
+    background: #ffffff;
+    color: #333;
     padding: 2px 10px;
     border: 1px solid #adb5bd;
     border-radius: 10px;
     cursor: pointer;
+    transition: all 0.2s;
+}
+
+.qs-badge:hover {
+    background-color: var(--bgc-topic, #95a7c0);
+    color: #fff;
+}
+
+.badge-delete {
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0.3;
+}
+
+.badge-delete:hover {
+    opacity: 1;
+    color: #ff4d4d;
+}
+
+/* --- 4. SEARCH RESULTS LIST --- */
+.qs-results {
+    max-height: 350px;
+    overflow-y: auto;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    background: #fff;
+}
+
+/* VS Code style slim scrollbar for results */
+.qs-results::-webkit-scrollbar {
+    width: 6px;
+}
+.qs-results::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+.qs-results li a {
+    display: block;
+    padding: 10px 15px;
+    text-decoration: none;
+    border-bottom: 1px solid #eee;
+    border-left: 4px solid transparent;
+    color: #333 !important;
+    transition: background 0.1s ease;
+}
+
+.qs-item-title {
+    display: block;
+    font-weight: bold;
+    color: #007acc !important; /* XigmaNAS Blue */
+    font-size: 13px;
+}
+
+.qs-item-path {
+    display: block;
+    font-size: 10px;
+    color: #777 !important;
+    margin-top: 2px;
+}
+
+/* Hover & Selected states integrating XigmaNAS theme */
+.qs-results li a:hover,
+.qs-results li.selected a {
+    background-color: var(--bgc-topic, #95a7c0);
+    background-image: var(--bgi-topic);
+}
+
+/* Force text to white on hover/select for contrast */
+.qs-results li a:hover .qs-item-title,
+.qs-results li.selected a .qs-item-title,
+.qs-results li a:hover .qs-item-path,
+.qs-results li.selected a .qs-item-path {
+    color: #fff !important;
 }
