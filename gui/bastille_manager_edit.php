@@ -16,6 +16,13 @@ $jail_root = realpath("{$jail_dir}/{$jailname}");
 $current_dir = $_GET['dir'] ?? $_POST['dir'] ?? $jail_root;
 $filepath = $_GET['filepath'] ?? $_POST['filepath'] ?? '';
 
+$img_path   = "ext/bastille/images";
+$icon_folder = "<img src='{$img_path}/folder.svg' class='tree-icon' width='16' height='16'/>";
+$icon_file   = "<img src='{$img_path}/file.svg' class='tree-icon' width='16' height='16'/>";
+$icon_up     = "<img src='{$img_path}/up.svg' class='tree-icon' />";
+$icon_home   = "<img src='{$img_path}/home.svg' class='tree-icon' width='18' height='18'/>";
+$icon_toggle = "<img src='{$img_path}/sidebar-toggle.svg' width='18' height='18' alt='Toggle'>";
+
 // FIXME "Directory Traversal" ?
 $real_current_dir = realpath($current_dir);
 if ($real_current_dir === false || strpos($real_current_dir, $jail_root) !== 0) {
@@ -150,6 +157,48 @@ if (isset($_GET['ajax_search'])) {
     exit;
 }
 
+// --- AJAX: OBTENER CONTENIDO DE CARPETA (Lazy Loading) ---
+if (isset($_GET['ajax_get_dir'])) {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    ini_set('display_errors', 0);
+    error_reporting(0);
+
+    $dir_path = $_GET['ajax_get_dir'];
+    $real_path = realpath($dir_path);
+
+    // Seguridad: No dejar salir de la jaula
+    if ($real_path === false || strpos($real_path, $jail_root) !== 0) {
+        echo json_encode(['error' => 'Access denied']);
+        exit;
+    }
+
+    $items = @scandir($real_path);
+    $folders = [];
+    $files = [];
+
+    if ($items) {
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $full = $real_path . '/' . $item;
+            if (is_dir($full)) {
+                $folders[] = $item;
+            } else {
+                $files[] = $item;
+            }
+        }
+    }
+    natcasesort($folders);
+    natcasesort($files);
+
+    header('Content-Type: application/json');
+    echo json_encode(['folders' => array_values($folders), 'files' => array_values($files), 'parent' => $real_path]);
+    exit;
+}
+
 
 $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('File Editor v2'), $jailname];
 include 'fbegin.inc';
@@ -174,26 +223,35 @@ include 'fbegin.inc';
 
             <div class="ide-container">
                 <div class="ide-sidebar">
+
                     <div class="lhetop">
-                        Explorer: <?=$jailname?>
+                        <a href="?jailname=<?=urlencode($jailname)?>&dir=<?=urlencode($jail_root)?>" title="Go to Jail Root">
+                            <img src="ext/bastille/images/home.svg" class="home-icon" alt="Home">
+                        </a>
                     </div>
+
                     <div class="ide-search">
                         <input type="text" id="fileFilter" onkeyup="filterFiles()" placeholder="Search files... (Ctrl + K)">
                         <span class="ide-search-clear" id="clearFilterBtn" onclick="clearFilter()">&times;</span>
                     </div>
+
                     <ul class="ide-file-list" id="fileList">
                         <?php if ($real_current_dir !== $jail_root): ?>
-                            <li>
-                                <a href="?jailname=<?=$jailname?>&dir=<?=urlencode(dirname($real_current_dir))?>">
-                                    <span class="icon">⤴️</span> .. (Up)
-                                </a>
-                            </li>
+                           <li class="tree-item">
+                               <a href="?jailname=<?=$jailname?>&dir=<?=urlencode(dirname($real_current_dir))?>">
+                                   <?=$icon_up?> <span style="font-style:italic; color:#888;">.. (Up)</span>
+                               </a>
+                           </li>
                         <?php endif; ?>
 
-                        <?php foreach ($folders as $folder): ?>
-                            <li class="folder-item">
-                                <a href="?jailname=<?=$jailname?>&dir=<?=urlencode($real_current_dir . '/' . $folder)?>">
-                                    <span class="icon">📁</span> <?=htmlspecialchars($folder)?>
+                        <?php foreach ($folders as $folder):
+                            $full_path = $real_current_dir . '/' . $folder;
+                            ?>
+                            <li class="tree-item folder-item">
+                                <a href="javascript:void(0)" onclick="toggleFolder(this, '<?= addslashes($full_path) ?>')">
+                                    <span class="tree-caret">▶</span>
+                                    <?= $icon_folder ?> 
+                                    <span><?= htmlspecialchars($folder) ?></span>
                                 </a>
                             </li>
                         <?php endforeach; ?>
@@ -202,35 +260,37 @@ include 'fbegin.inc';
                             $full_file_path = $real_current_dir . '/' . $file;
                             $is_active = ($filepath === $full_file_path) ? 'active' : '';
                             ?>
-                            <li class="file-item <?=$is_active?>">
-                                <a href="?jailname=<?=$jailname?>&dir=<?=urlencode($real_current_dir)?>&filepath=<?=urlencode($full_file_path)?>">
-                                    <span class="icon">📄</span> <?=htmlspecialchars($file)?>
-                                </a>
-                            </li>
+                           <li class="tree-item file-item <?=$is_active?>">
+                               <a href="?jailname=<?=$jailname?>&dir=<?=urlencode($real_current_dir)?>&filepath=<?=urlencode($full_file_path)?>"
+                                    onclick="if(typeof spinner === 'function') spinner();">
+                                    <?= $icon_file ?> <span><?= htmlspecialchars($file) ?></span>
+                               </a>
+                           </li>
                         <?php endforeach; ?>
                     </ul>
                 </div>
 
+                <div id="ide-resizer" class="ide-resizer"></div>
+
                 <div class="ide-main">
                     <div class="ide-main-header lhetop">
-                        <div>
+                        <div class="ide-filepath-container">
                             <?php if (!empty($filepath)): ?>
-                                <span id="ide-filepath-display" class="ide-copy-path" title="Copy this path to clipboard">
+                                <span id="ide-filepath-display" title="<?=htmlspecialchars($filepath)?>">
                                     <?=htmlspecialchars($filepath)?>
                                 </span>
                             <?php else: ?>
-                                <span>Select a file from the explorer to edit.</span>
+                                <span style="color: inherit;">Select a file to edit</span>
                             <?php endif; ?>
                         </div>
 
                         <div class="ide-main-header-toolbar">
                             <div class="layout-btn" onclick="toggleSidebar()" title="Toggle Sidebar (Ctrl + B)">
-                                <svg width="18" height="18" viewBox="0 0 24 24">
-                                    <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14h2V7h-2v10z" fill="currentColor"/>
-                                </svg>
+                                <?= $icon_toggle ?>
                             </div>
-                            <input name="save" id="btn_save" type="submit" class="formbtn" value="<?=gtext("Save File");?>" title="Save File (Ctrl + S)" <?=empty($filepath) ? 'disabled' : ''?> />
+                            <input name="save" id="btn_save" type="submit" class="formbtn" value="<?=gtext("Save File");?>" <?=empty($filepath) ? 'disabled' : ''?> />
                         </div>
+                        
                     </div>
                     <div id="monaco-container"></div>
                 </div>
@@ -266,6 +326,12 @@ include 'fbegin.inc';
 <script src="ext/bastille/js/vs/loader.js"></script>
 
 <script>
+
+const ICONS = {
+    folder: `<img src="ext/bastille/images/folder.svg" class="tree-icon" />`,
+    file:   `<img src="ext/bastille/images/file.svg" class="tree-icon" />`,
+    caret:  `<span class="tree-caret">▶</span>`
+};
 
 // Toggle sidebar
 window.toggleSidebar = function() {
@@ -359,6 +425,9 @@ function runQuickSearch() {
     }
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
+        if (typeof spinner === "function") { 
+            spinner(); 
+        }
         qsResultsList.innerHTML = '<li style="padding: 15px; color:#888;">Searching recursively... 🚀</li>';
         // We use URLSearchParams to not break the XigmaNAS URL
         let url = new URL(window.location.origin + window.location.pathname);
@@ -396,6 +465,9 @@ function runQuickSearch() {
             .catch(err => {
                 console.error('Search error:', err);
                 qsResultsList.innerHTML = '<li style="padding: 15px; color:red;">Search engine offline.</li>';
+            })
+            .finally(() => {
+                hideSpinner();
             });
     }, 400); // 400ms debounce to avoid flooding the server with requests on every keystroke
 }
@@ -566,10 +638,9 @@ function fetchSearchRecursive(term) {
         });
 }
 
+//FIXME Duplicate definition of module 'vs/editor/editor.main'
 const MONACO_NODE_MODULES = '/ext/bastille/js/vs';
-
 require.config({ paths: { 'vs': MONACO_NODE_MODULES } });
-
 window.MonacoEnvironment = {
     getWorkerUrl: function(workerId, label) {
         const absolutePath = window.location.origin + MONACO_NODE_MODULES;
@@ -581,11 +652,9 @@ window.MonacoEnvironment = {
     }
 };
 
-// 3. Cargamos el editor e inicializamos
 require(['vs/editor/editor.main'], function() {
     var filepath = '<?=addslashes($filepath)?>';
     if (filepath !== '') {
-        // Determinamos el lenguaje
         var fileExt = filepath.split('.').pop().toLowerCase();
         var lang = 'shell';
         if (['php', 'inc'].includes(fileExt)) lang = 'php';
@@ -595,7 +664,6 @@ require(['vs/editor/editor.main'], function() {
         else if (fileExt === 'json') lang = 'json';
         else if (['html', 'htm'].includes(fileExt)) lang = 'html';
 
-        // Creamos la instancia global del editor
         window.editor = monaco.editor.create(document.getElementById('monaco-container'), {
             value: document.getElementById('file_content').value,
             language: lang,
@@ -607,17 +675,13 @@ require(['vs/editor/editor.main'], function() {
             fontSize: 14,
             renderWhitespace: 'boundary'
         });
-
-        // Atajo Ctrl + K para Quick Search dentro del editor
         window.editor.onKeyDown(function(e) {
-            if (e.ctrlKey && e.keyCode === 41) { // 41 es 'K'
+            if (e.ctrlKey && e.keyCode === 41) { // 41 is 'K'
                 e.preventDefault();
                 e.stopPropagation();
                 openQuickSearch();
             }
         });
-
-        // Atajo Maestro Ctrl + S para Guardar
         window.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
             const saveBtn = document.getElementById('btn_save');
             if (saveBtn && !saveBtn.disabled) {
@@ -656,6 +720,125 @@ window.saveAndSpin = function() {
     }
     return true;
 };
+
+function toggleFolder(element, path) {
+    const li = element.parentElement;
+    let subList = li.querySelector('ul');
+    
+    // Si ya existe, solo mostramos/ocultamos (Toggle)
+    if (subList) {
+        const isHidden = subList.style.display === 'none';
+        subList.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) {
+            li.classList.add('open');
+        } else {
+            li.classList.remove('open');
+        }
+        return;
+    }
+    if (typeof spinner === "function") { 
+        spinner(); 
+    }
+    // Si no existe, lo pedimos al servidor
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set('jailname', '<?=urlencode($jailname)?>');
+    url.searchParams.set('ajax_get_dir', path);
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            subList = document.createElement('ul');
+            subList.className = 'ide-file-list';
+            subList.style.paddingLeft = '15px';
+
+            // Inyectamos carpetas
+            data.folders.forEach(f => {
+                const fullP = path + '/' + f;
+                const safePath = fullP.replace(/'/g, "\\'");
+                subList.innerHTML += `
+                    <li class="tree-item folder-item">
+                        <a href="javascript:void(0)" onclick="toggleFolder(this, '${safePath}')">
+                            ${ICONS.caret} ${ICONS.folder} <span>${f}</span>
+                        </a>
+                    </li>`;
+            });
+
+            // Inyectamos archivos
+            data.files.forEach(f => {
+                const fullP = path + '/' + f;
+                const editUrl = `?jailname=<?=urlencode($jailname)?>&dir=${encodeURIComponent(path)}&filepath=${encodeURIComponent(fullP)}`;
+                subList.innerHTML += `
+                    <li class="tree-item file-item">
+                        <a href="${editUrl}" onclick="if(typeof spinner === 'function') spinner();">
+                            ${ICONS.file} <span>${f}</span>
+                        </a>
+                    </li>`;
+            });
+
+            li.appendChild(subList);
+            li.classList.add('open');
+            /*element.querySelector('.tree-caret').style.transform = 'rotate(90deg)';*/
+        })
+        .finally(() => {
+            hideSpinner();
+        });
+}
+
+// --- LÓGICA DEL RESIZER (SPLIT PANEL) ---
+const resizer = document.getElementById('ide-resizer');
+const sidebar = document.querySelector('.ide-sidebar');
+const container = document.querySelector('.ide-container');
+
+if (resizer) {
+    resizer.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        document.addEventListener('mousemove', resize);
+        document.addEventListener('mouseup', stopResize);
+        resizer.classList.add('resizing');
+    });
+}
+
+function resize(e) {
+    const containerRect = container.getBoundingClientRect();
+    const newWidth = e.clientX - containerRect.left;
+    
+    // Límites: mínimo 180px, máximo 600px
+    if (newWidth > 180 && newWidth < 600) {
+        sidebar.style.width = newWidth + 'px';
+        
+        // Avisamos a Monaco que el tamaño cambió para que se ajuste solo
+        if (window.editor) {
+            window.editor.layout();
+        }
+    }
+}
+
+function stopResize() {
+    document.removeEventListener('mousemove', resize);
+    resizer.classList.remove('resizing');
+}
+
+function hideSpinner() {
+    // 1. Ocultamos el overlay (Capa gris que bloquea clicks)
+    if (typeof $ !== 'undefined') {
+        $('#spinner_overlay').hide();
+    } else {
+        const overlay = document.getElementById('spinner_overlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    // 2. Limpiamos el objeto visual del spinner
+    const main = document.getElementById('spinner_main');
+    if (main) {
+        main.innerHTML = ''; 
+    }
+
+    // 3. BONUS: Forzamos a Monaco a recalcular su tamaño
+    // A veces el overlay "congela" el renderizado del editor
+    if (window.editor) {
+        window.editor.layout();
+    }
+}
 
 </script>
 <script src="js/spin.min.js"></script>

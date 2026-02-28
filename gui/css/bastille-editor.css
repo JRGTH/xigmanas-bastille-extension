@@ -4,15 +4,6 @@
     padding: 10px !important;
 }
 
-.ide-sidebar-header {
-    padding: 10px;
-    background: #2d2d30;
-    font-size: 12px;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
 .ide-search {
     padding: 10px;
     border-bottom: 1px solid #444;
@@ -121,17 +112,24 @@
 }
 
 .ide-container {
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    height: 75vh;
-    min-height: 500px;
-    border: 1px solid #c0c0c0;
-    overflow-y: hidden;
-    transition: grid-template-columns 0.2s ease;
+    display: flex;
+    height: 700px; /* Ajusta esta altura a lo que necesites */
+    border: 1px solid #ddd;
+    background: #fff;
+    overflow: hidden;
 }
 
 .ide-container.sidebar-hidden {
     grid-template-columns: 0px 1fr; /* Colapsa el sidebar a 0px */
+}
+
+.ide-sidebar-header {
+    padding: 10px;
+    background: #2d2d30;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .ide-container.sidebar-hidden .ide-sidebar {
@@ -143,12 +141,10 @@
 }
 
 .ide-sidebar {
-    /* Elimina el width: 280px de aquí, el grid ya se encarga de eso */
-    background: #f8f9fa;
-    border-right: 1px solid #ced4da;
+    width: 260px; /* Ancho inicial */
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    height: 100%;
     overflow: hidden;
 }
 
@@ -197,30 +193,58 @@
 }
 
 .ide-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: #fff;
 }
 
 .ide-main-header {
-    display: flex;
-    flex-direction: row;
+    flex-shrink: 0 !important; /* Prohíbe que el editor la aplaste */
+    display: flex !important;
+    justify-content: space-between;
     align-items: center;
-    justify-content: space-between; /* <--- Esto es clave para separar la ruta (izq) de las acciones (der) */
-    padding-right: 15px; /* Un poco de aire por la derecha */
+    background-color: #b1c1d1; /* El color azul de XigmaNAS */
+    border-bottom: 1px solid #999;
+    z-index: 10; /* Asegura que esté por encima */
 }
 
-.ide-main-header-button-save {
-    margin-left: auto;
+/* El Path: le damos un ancho máximo para que no empuje a los botones */
+.ide-filepath-container {
+    flex: 1;
+    min-width: 0; /* Permite que el texto se acorte con puntos suspensivos */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 15px;
 }
+
+/*.ide-main-header-button-save {
+    margin-left: auto;
+}*/
 
 #monaco-container {
-    flex: 1;
-    overflow: auto;
+    flex-grow: 1 !important;
+    flex-basis: auto;
+    min-height: 0; /* CRÍTICO: permite que el flex funcione bien */
+    width: 100%;
 }
 
 .ide-copy-path {
     cursor: pointer;
     transition: color 0.2s ease;
+}
+
+.ide-resizer {
+    width: 4px;
+    cursor: col-resize;
+    background: #cbd5e0; /* Color grisáceo para que combine con el NAS */
+    transition: background 0.2s;
+}
+
+.ide-resizer:hover,
+.ide-resizer:active {
+    background: #4a5568; /* Color azul al arrastrar */
 }
