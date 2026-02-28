@@ -3,7 +3,7 @@
     display: grid;
     /* Sidebar | Resizer | Main Area */
     grid-template-columns: 260px 4px 1fr;
-    height: 85vh; /* Dynamic height based on viewport */
+    height: calc(100vh - 130px); /* Dynamic height based on viewport */
     min-height: 500px;
     width: 100%;
     overflow: hidden;
@@ -57,7 +57,6 @@
 /* SIDEBAR TOGGLE (ZEN MODE) */
 .sidebar-hidden.ide-container {
     grid-template-columns: 1fr !important;
-    /*display: block;*/
 }
 .sidebar-hidden .ide-sidebar,
 .sidebar-hidden .ide-resizer {
