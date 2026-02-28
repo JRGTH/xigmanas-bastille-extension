@@ -472,7 +472,9 @@ function runQuickSearch() {
     }, 400); // 400ms debounce to avoid flooding the server with requests on every keystroke
 }
 
-qsInput.addEventListener('keyup', runQuickSearch);
+qsInput.removeEventListener('keyup', runQuickSearch);
+qsInput.addEventListener('input', runQuickSearch);
+
 document.addEventListener('keydown', function(e) {
     // TOGGLE SIDEBAR: Ctrl + B
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
@@ -496,34 +498,46 @@ document.addEventListener('keydown', function(e) {
             }
         }
     }
-});
-
-// Listen for Ctrl + K to open, or Escape to close
-document.addEventListener('keydown', function(e) {
+    // Ctrl + K to open quick search from anywhere
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         openQuickSearch();
+        return;
     }
-    if (e.key === 'Escape' && qsModal.style.display === 'block') {
-        closeQuickSearch();
-    }
-    const items = qsResultsList.getElementsByTagName('li');
-    if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        selectedIndex = (selectedIndex + 1) < items.length ? selectedIndex + 1 : selectedIndex;
-        updateSelection(items);
-    }
-    else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        selectedIndex = (selectedIndex - 1) >= 0 ? selectedIndex - 1 : 0;
-        updateSelection(items);
-    }
-    else if (e.key === 'Enter') {
-        if (selectedIndex > -1 && items[selectedIndex]) {
-            e.preventDefault();
-            items[selectedIndex].querySelector('a').click();
+
+    // ONLY intercept arrow keys if the MODAL IS OPEN
+    if (qsModal.style.display === 'block') {
+        
+        if (e.key === 'Escape') {
+            closeQuickSearch();
+            return;
         }
-    }
+
+        const items = qsResultsList.getElementsByTagName('li');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault(); // Prevents the text cursor from moving
+            selectedIndex = (selectedIndex + 1) < items.length ? selectedIndex + 1 : selectedIndex;
+            updateSelection(items);
+        }
+        else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = (selectedIndex - 1) >= 0 ? selectedIndex - 1 : 0;
+            updateSelection(items);
+        }
+        else if (e.key === 'Enter') {
+            if (selectedIndex > -1 && items[selectedIndex]) {
+                e.preventDefault();
+                items[selectedIndex].querySelector('a').click();
+            } else if (items.length > 0) {
+                // Enter abre el primer resultado automáticamente
+                // Enter opens the first result automatically
+                e.preventDefault();
+                items[0].querySelector('a').click();
+            }
+        }
+    }                 
+
 });
 
 function updateSelection(items) {
