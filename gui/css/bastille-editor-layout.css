@@ -1,0 +1,61 @@
+/* IDE MAIN CONTAINER */
+.ide-container {
+    display: grid;
+    grid-template-columns: 260px 4px 1fr;
+    height: 80vh;
+    min-height: 500px;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid #999;
+}
+
+/* SIDEBAR AREA */
+.ide-sidebar {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    background-color: #f8f9fa;
+}
+
+/* SPLIT PANEL RESIZER */
+.ide-resizer {
+    width: 4px;
+    cursor: col-resize;
+    background: #cbd5e0;
+    z-index: 10;
+    transition: background 0.2s;
+}
+.ide-resizer:hover,
+.ide-resizer.resizing {
+    background: #4a5568;
+}
+
+/* MAIN CONTENT AREA (HEADER + EDITOR) */
+.ide-main {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #fff;
+}
+
+/* MONACO EDITOR ADAPTATION */
+#monaco-container {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    position: relative;
+}
+
+/* SIDEBAR TOGGLE LOGIC */
+.sidebar-hidden.ide-container {
+    grid-template-columns: 1fr !important;
+    display: block;
+}
+.sidebar-hidden .ide-sidebar,
+.sidebar-hidden .ide-resizer {
+    display: none !important;
+}

@@ -1,0 +1,109 @@
+/* FLEX ALIGNMENT FOR SYSTEM HEADERS */
+.ide-sidebar-header {
+    display: flex;
+    flex-direction: column;
+    /* No align-items here if it breaks your look, or use 'center' only for the icon */
+    /*align-items: center;
+    padding: 0 10px;
+    flex-shrink: 0;*/
+}
+
+.home-icon {
+    width: 18px !important;
+    height: 18px !important;
+    display: block;
+    object-fit: contain; /* Ensures the SVG maintains its ratio */
+}
+
+.ide-main-header {
+    display: flex;
+    flex-direction: row; /* Horizontal bar */
+    align-items: center;
+    justify-content: space-between; /* Path left, buttons right */
+    /*padding: 0 10px;*/
+    background-color: #b1c1d1;
+    border-bottom: 1px solid #999;
+    flex-shrink: 0;
+}
+
+/* SIDEBAR SEARCH INPUT AREA */
+.ide-search {
+    display: flex; /* So the input and the 'X' button live together */
+    align-items: center;
+    padding: 8px 10px;
+    border-bottom: 1px solid #ddd;
+    background-color: #eee;
+    flex-shrink: 0;
+}
+.ide-search input {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+/* SCROLLABLE FILE TREE */
+.ide-file-list {
+    flex: 1; /* This makes the list take the rest of the height and scroll */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px 0;
+    margin: 0;
+    list-style: none;
+}
+
+/* TREE ITEM RECURSIVE LINES */
+.ide-file-list li {
+    position: relative;
+    padding-left: 15px;
+}
+.ide-file-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: -5px;
+    bottom: 0;
+    border-left: 1px solid #d7d7d7;
+}
+.ide-file-list li::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px;
+    width: 10px;
+    border-top: 1px solid #d7d7d7;
+}
+
+/* ICONS AND CARET */
+.tree-icon {
+    width: 16px;
+    height: 16px;
+    margin: 0 4px;
+    vertical-align: middle;
+}
+.tree-caret {
+    font-size: 8px;
+    margin-right: 5px;
+    transition: transform 0.2s;
+    cursor: pointer;
+    display: inline-block;
+}
+.tree-item.open > a .tree-caret {
+    transform: rotate(90deg);
+}
+
+/* CUSTOM SLIM SCROLLBAR (VS CODE STYLE) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
+}

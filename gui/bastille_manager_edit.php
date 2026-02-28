@@ -224,7 +224,7 @@ include 'fbegin.inc';
             <div class="ide-container">
                 <div class="ide-sidebar">
 
-                    <div class="lhetop">
+                    <div class="ide-sidebar-header lhetop">
                         <a href="?jailname=<?=urlencode($jailname)?>&dir=<?=urlencode($jail_root)?>" title="Go to Jail Root">
                             <img src="ext/bastille/images/home.svg" class="home-icon" alt="Home">
                         </a>
@@ -290,7 +290,7 @@ include 'fbegin.inc';
                             </div>
                             <input name="save" id="btn_save" type="submit" class="formbtn" value="<?=gtext("Save File");?>" <?=empty($filepath) ? 'disabled' : ''?> />
                         </div>
-                        
+
                     </div>
                     <div id="monaco-container"></div>
                 </div>
@@ -672,7 +672,7 @@ require(['vs/editor/editor.main'], function() {
             scrollBeyondLastLine: false,
             wordWrap: 'on',
             minimap: { enabled: true },
-            fontSize: 14,
+            fontSize: 11,
             renderWhitespace: 'boundary'
         });
         window.editor.onKeyDown(function(e) {
