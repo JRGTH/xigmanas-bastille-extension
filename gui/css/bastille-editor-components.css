@@ -169,6 +169,36 @@
     transform: rotate(90deg);
 }
 
+/* --- FILE TREE HOVER EFFECTS --- */
+
+/* Style the anchor tag to prevent highlighting parent folders */
+.tree-item > a {
+    display: flex;
+    align-items: center;
+    padding: 3px 5px; /* Adds a bit of breathing room inside the hover box */
+    border-radius: 4px; /* Rounded corners for modern IDE look */
+    text-decoration: none;
+    color: inherit;
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
+}
+
+/* Hover state using XigmaNAS area data color */
+.tree-item > a:hover {
+    color: var(--txc-a-link);
+    background-color: var(--bgc-area-data, #e2e8f0); /* Fallback to light gray if var fails */
+}
+
+/* Active/Selected file state (Bonus!) */
+.tree-item.active > a {
+    background-color: var(--bgc-topic, #95a7c0); /* XigmaNAS blue */
+    background-image: var(--bgi-topic);
+    color: #fff; /* White text for contrast */
+}
+
+/* --- FILE TREE HOVER EFFECTS --- */
+
 /* CUSTOM SLIM SCROLLBAR (VS CODE STYLE) */
 ::-webkit-scrollbar {
     width: 8px;
