@@ -19,8 +19,7 @@ $filepath = $_GET['filepath'] ?? $_POST['filepath'] ?? '';
 $img_path   = "ext/bastille/images";
 $icon_folder = "<img src='{$img_path}/folder.svg' class='tree-icon' width='16' height='16'/>";
 $icon_file   = "<img src='{$img_path}/file.svg' class='tree-icon' width='16' height='16'/>";
-$icon_up     = "<img src='{$img_path}/up.svg' class='tree-icon' />";
-$icon_home   = "<img src='{$img_path}/home.svg' class='tree-icon' width='18' height='18'/>";
+$icon_up     = "<img src='{$img_path}/up.svg' class='tree-icon' width='16' height='16'/>";
 $icon_toggle = "<img src='{$img_path}/sidebar-toggle.svg' width='18' height='18' alt='Toggle'>";
 
 // FIXME "Directory Traversal" ?
@@ -223,7 +222,7 @@ include 'fbegin.inc';
 
                     <div class="ide-sidebar-header lhetop">
                         <a href="?jailname=<?=urlencode($jailname)?>&dir=<?=urlencode($jail_root)?>" title="Go to Jail Root">
-                            <img src="ext/bastille/images/home.svg" class="home-icon" alt="Home">
+                            <img src="ext/bastille/images/home.svg" class="home-icon" alt="Home" width="18" height="18">
                         </a>
                     </div>
 
