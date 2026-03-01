@@ -276,7 +276,7 @@ include 'fbegin.inc';
                     <div class="ide-main-header lhetop">
                         <div class="ide-filepath-container">
                             <?php if (!empty($filepath)): ?>
-                                <span id="ide-filepath-display" title="<?=htmlspecialchars($filepath)?>">
+                                <span id="ide-filepath-display" class="ide-filepath-display" title="Copy full path to clipboard">
                                     <?=htmlspecialchars($filepath)?>
                                 </span>
                             <?php else: ?>
@@ -530,7 +530,6 @@ document.addEventListener('keydown', function(e) {
                 e.preventDefault();
                 items[selectedIndex].querySelector('a').click();
             } else if (items.length > 0) {
-                // Enter abre el primer resultado automáticamente
                 // Enter opens the first result automatically
                 e.preventDefault();
                 items[0].querySelector('a').click();

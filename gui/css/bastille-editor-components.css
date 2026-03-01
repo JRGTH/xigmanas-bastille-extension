@@ -119,6 +119,10 @@
     margin-left: auto;
 }
 
+.ide-filepath-display {
+    cursor: pointer;
+}
+
 /* TOOLBAR BUTTONS: General styling for layout actions */
 .layout-btn {
     cursor: pointer;
