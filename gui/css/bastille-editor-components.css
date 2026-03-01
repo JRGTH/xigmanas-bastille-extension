@@ -32,6 +32,7 @@
     flex-shrink: 0;
     position: relative; /* For 'x'*/
 }
+
 .ide-search input {
     width: 100%;
     padding: 4px 8px;
@@ -54,8 +55,6 @@
     font-weight: bold;
     font-size: 14px;
     cursor: pointer;
-
-    /* The trick for smooth border appearance */
     border: 1px solid transparent;
     transition: border-color 0.4s ease;
 }
@@ -79,6 +78,7 @@
     position: relative;
     padding-left: 15px;
 }
+
 .ide-file-list li::before {
     content: '';
     position: absolute;
@@ -87,6 +87,7 @@
     bottom: 0;
     border-left: 1px solid #d7d7d7;
 }
+
 .ide-file-list li::after {
     content: '';
     position: absolute;
@@ -94,6 +95,58 @@
     top: 12px;
     width: 10px;
     border-top: 1px solid #d7d7d7;
+}
+
+/* --- SIDEBAR RECURSIVE SEARCH RESULTS --- */
+
+/* Remove tree branches (lines) for search results as they are flat lists */
+.ide-file-list li.is-recursive::before,
+.ide-file-list li.is-recursive::after {
+    display: none !important;
+}
+
+/* Styling the recursive search item block */
+.ide-file-list li.is-recursive {
+    padding-left: 10px;
+    margin: 4px 0;
+    background: var(--bgi-lhe);
+    border-radius: 0 4px 4px 0;
+}
+
+.ide-file-list li.is-recursive:hover {
+    background-color: var(--bgc-topic, #95a7c0);
+    background-image: var(--bgi-topic);
+}
+
+/* Hover text color: Force text to white for contrast against the blue background */
+.ide-file-list li.is-recursive:hover .search-result-title,
+.ide-file-list li.is-recursive:hover .search-result-path {
+    color: #fff !important;
+}
+
+.ide-file-list li.is-recursive a {
+    display: flex;
+    flex-direction: column; /* Stack name and path vertically */
+    padding: 6px 0;
+    align-items: flex-start;
+    color: var(--txc-a-link); /*color: var(--txc-icon-info);*/
+}
+
+/* File name alignment with icon */
+.ide-file-list li.is-recursive .search-result-title {
+    display: flex;
+    align-items: center;
+    color: #333;
+}
+
+/* Path text styling */
+.ide-file-list li.is-recursive .search-result-path {
+    font-size: 10px;
+    color: #777;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90%;
 }
 
 /* ICONS AND CARET */
