@@ -196,6 +196,16 @@
     background-image: var(--bgi-topic);
     color: #fff; /* White text for contrast */
 }
+/* --- PREVENT NATIVE CLICK SHIFT --- */
+/* Neutralize XigmaNAS default active styles that move the link */
+.tree-item > a:active,
+.tree-item > a:focus {
+    transform: none !important;
+    top: 0 !important;
+    left: 0 !important;
+    margin: 0 !important;
+    padding: 3px 5px !important; /* Force the exact same padding as the normal state */
+}
 
 /* --- FILE TREE HOVER EFFECTS --- */
 
