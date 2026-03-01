@@ -444,7 +444,7 @@ function runQuickSearch() {
                 if (!data.items || data.items.length === 0) {
                     qsResultsList.innerHTML = `
                         <li class="no-results" style="padding: 20px; text-align: center; color: #999;">
-                            <div style="font-size: 24px; margin-bottom: 10px;">No files found!</div>
+                            <div style="font-size: 24px;">No files found!</div>
                         </li>`;
                     return;
                 }
