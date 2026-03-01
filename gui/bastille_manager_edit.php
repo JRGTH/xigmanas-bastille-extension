@@ -534,6 +534,13 @@ document.addEventListener('keydown', function(e) {
     }                 
 
 });
+//Scrool to active file on load
+document.addEventListener("DOMContentLoaded", function() {
+    const activeFile = document.querySelector('.tree-item.active');
+    if (activeFile) {
+        activeFile.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+});
 
 function updateSelection(items) {
     Array.from(items)
