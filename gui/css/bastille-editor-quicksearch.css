@@ -124,7 +124,7 @@
 
 .badge-delete:hover {
     opacity: 1;
-    color: #ff4d4d;
+    color: var(--bgc-nav);
 }
 
 /* --- 4. SEARCH RESULTS LIST --- */
