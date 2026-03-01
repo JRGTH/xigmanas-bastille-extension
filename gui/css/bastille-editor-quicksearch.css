@@ -61,24 +61,21 @@
     right: 25px; /* Restored positioning */
     transform: translateY(-50%);
     color: #333;
-    background-color: #f0f0f0;
-    border: 1px solid #8197b4;
     border-radius: 50%;
     display: none; /* Controlled by JS */
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 20px;
     cursor: pointer;
-    transition: all 0.2s;
+    border: 1px solid transparent;
+    transition: border-color 0.4s ease;
 }
 
 .qs-clear:hover {
-    background-color: #ff4d4d;
-    color: #fff;
-    border-color: #ff4d4d;
+    border: 1px solid #8197b4;
 }
 
 /* --- 3. BADGES & SEARCH HISTORY --- */
