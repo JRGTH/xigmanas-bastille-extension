@@ -172,13 +172,19 @@
 /* --- FILE TREE HOVER EFFECTS --- */
 
 /* Style the anchor tag to prevent highlighting parent folders */
-.tree-item > a {
-    display: flex;
-    align-items: center;
-    padding: 3px 5px; /* Adds a bit of breathing room inside the hover box */
-    border-radius: 4px; /* Rounded corners for modern IDE look */
-    text-decoration: none;
+.tree-item > a,
+.tree-item.active > a {
+    display: flex !important;
+    align-items: center !important;
+    padding: 3px 5px !important;
+    margin: 0 !important;
+    border: 1px solid transparent !important; /* Invisible border prevents jumping if active state adds one */
+    font-weight: normal !important; /* XigmaNAS usually bolds active links, this stops it */
+    letter-spacing: normal !important;
+    text-decoration: none !important;
     color: inherit;
+    box-sizing: border-box !important;
+    border-radius: 4px;
     transition:
         background-color 0.2s ease,
         color 0.2s ease;
@@ -203,8 +209,6 @@
     transform: none !important;
     top: 0 !important;
     left: 0 !important;
-    margin: 0 !important;
-    padding: 3px 5px !important; /* Force the exact same padding as the normal state */
 }
 
 /* --- FILE TREE HOVER EFFECTS --- */

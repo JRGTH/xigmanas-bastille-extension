@@ -62,12 +62,9 @@ $files = [];
 
 if ($items !== false) {
     foreach ($items as $item) {
-        if ($item === '.') {
+        if ($item === '.' || $item === '..') {
             continue;
         }
-        if ($item === '..' && $real_current_dir === $jail_root) {
-            continue;
-        } // prevent to go above the jail root
 
         $full_path = $real_current_dir . '/' . $item;
         if (is_dir($full_path)) {
