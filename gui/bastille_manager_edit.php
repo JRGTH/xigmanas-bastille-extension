@@ -146,7 +146,7 @@ if (isset($_GET['ajax_search'])) {
                 'full'     => $line,
                 'directory' => dirname($line),
                 //FIXME to svg ${icon_folder}
-                'relative' => "📂 " . str_replace($jail_root, "", dirname($line)),
+                'relative'  => $icon_folder . " " . str_replace($jail_root, "", dirname($line)),
                 'name'     => basename($line),
                 'source'   => $source
             ];
@@ -628,26 +628,25 @@ document.addEventListener('keydown', function(e) {
 
 });
 // --- INTERCEPT CLICKS IN THE TREE (ASYNC SPA MODE) ---
+//fixme detect reload
 document.querySelector('.ide-file-list').addEventListener('click', async function(e) {
     const link = e.target.closest('a');
     if (!link) return;
 
-    // 1. Averiguamos si es un archivo o una carpeta mirando la URL
     const urlParams = new URLSearchParams(link.href.split('?')[1]);
     const filepath = urlParams.get('filepath');
     const isFile = filepath && filepath !== ''; // Si tiene filepath, es un archivo
 
-    //
     if (isDirty) {
         e.preventDefault(); 
         hideSpinner();
         const userConfirmed = await showConfirmDialog(
-            "Cambios sin guardar",
-            "Tienes modificaciones. Si cambias de archivo ahora, perderás los cambios.",
+            "Unsaved changes",
+            "You have made changes. If you switch files now, you will lose your changes.",
             "warning"
         );
         if (!userConfirmed) {
-            return; // Si dice "Cancelar", abortamos
+            return;
         }
         isDirty = false; // Aceptó perder los cambios
         document.querySelectorAll('.dirty-dot').forEach(dot => dot.remove());
@@ -663,7 +662,7 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
     try {
         const response = await fetch(link.href + '&ajax=1');
         if (!response.ok) {
-            throw new Error('Error al leer el archivo desde el servidor');
+            throw new Error('Error reading the file from the server');
         }
         const fileContent = await response.text();
         if (typeof window.editor !== 'undefined') {
@@ -692,9 +691,24 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
         link.closest('.tree-item').classList.add('active');
         window.history.pushState({}, '', link.href);
         const pathDisplay = document.getElementById('ide-filepath-display');
+        const inputFile = document.querySelector('input[name="filepath"]');
+        const inputDir = document.querySelector('input[name="dir"]');
+
+        if (inputFile) inputFile.value = filepath;
+        if (inputDir) {
+            const directory = filepath.substring(0, filepath.lastIndexOf('/'));
+            inputDir.value = directory;
+        }
+        const form = document.getElementById('iform');
+        if (form) {
+            const currentUrl = new URL(window.location.href);
+            form.action = currentUrl.toString();
+        }
+
         if (pathDisplay) {
             pathDisplay.innerText = filepath;
         }
+
     } catch (error) {
         console.error("Error loading file:", error);
         showConfirmDialog("Error loading file", "The selected file could not be loaded. Check the console for more details.", "error");
@@ -730,7 +744,6 @@ function showConfirmDialog(title, message, type = 'warning') {
         //    else if (type === 'warning') headerText.innerText = "Confirmación necesaria";
         //    else headerText.innerText = "Information";
         //}
-        // 2. Inyectamos textos e interfaz
         titleEl.innerText = title;
         msgEl.innerText = message;
         iconWrapper.className = `ide-modal-icon-wrapper ${conf.iconClass}`;
@@ -919,7 +932,7 @@ require(['vs/editor/editor.main'], function() {
             }
         });
         window.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
-            ejecutarGuardadoMaestro(); 
+            executeSaved(); 
         });
         window.editor.onDidChangeModelContent(function() {
             if (isInjectingCode) {
@@ -944,11 +957,11 @@ require(['vs/editor/editor.main'], function() {
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault(); // ¡We blocked Chrome's ugly "Save as..." feature!
-        ejecutarGuardadoMaestro();
+        executeSaved();
     }
 });
 
-function ejecutarGuardadoMaestro() {
+function executeSaved() {
     // If the editor is not active or there is no file, we do nothing.
     if (typeof window.editor === 'undefined') return;
 
@@ -958,9 +971,30 @@ function ejecutarGuardadoMaestro() {
         fileContentInput.value = window.editor.getValue();
     }
 
+    // --- 🛠️ BUG FIX: SYNC HIDDEN INPUTS WITH ACTIVE FILE ---
+    const currentPathDisplay = document.getElementById('ide-filepath-display');
+    if (currentPathDisplay && currentPathDisplay.innerText.trim() !== 'Select a file') {
+        const activeFilepath = currentPathDisplay.innerText.trim();
+        
+        // Update hidden filepath
+        const filepathInput = document.querySelector('input[name="filepath"]');
+        if (filepathInput) filepathInput.value = activeFilepath;
+        
+        // Update hidden directory (extracting path without filename)
+        const dirInput = document.querySelector('input[name="dir"]');
+        if (dirInput) dirInput.value = activeFilepath.substring(0, activeFilepath.lastIndexOf('/'));
+        
+        // Update Form Action URL so the page reloads correctly after POST
+        const form = document.getElementById('iform');
+        if (form) form.action = window.location.href;
+    }
+    // --------------------------------------------------------
+
     // 2. We prepare the form
     const form = document.getElementById('iform'); 
-    if (!form) return;
+    if (!form) {
+        return;
+    }
 
     // 3. We inject PHP with the notice that we are saving (the 'save' input).
     if (!document.getElementById('hidden_save_trigger')) {
@@ -974,7 +1008,7 @@ function ejecutarGuardadoMaestro() {
 
     if (typeof spinner === "function") { 
         spinner();
-     }
+    }
 
     if (typeof form.requestSubmit === "function") {
         form.requestSubmit();
@@ -987,6 +1021,21 @@ window.saveAndSpin = function() {
     if (typeof window.editor !== 'undefined' && window.editor !== null) {
         document.getElementById('file_content').value = window.editor.getValue();
     } 
+
+    // --- 🛠️ BUG FIX: SYNC HIDDEN INPUTS WITH ACTIVE FILE ---
+    const currentPathDisplay = document.getElementById('ide-filepath-display');
+    if (currentPathDisplay && currentPathDisplay.innerText.trim() !== 'Select a file') {
+        const activeFilepath = currentPathDisplay.innerText.trim();
+        const filepathInput = document.querySelector('input[name="filepath"]');
+        const dirInput = document.querySelector('input[name="dir"]');
+        if (filepathInput) filepathInput.value = activeFilepath;
+        if (dirInput) dirInput.value = activeFilepath.substring(0, activeFilepath.lastIndexOf('/'));
+        
+        const form = document.getElementById('iform');
+        if (form) form.action = window.location.href;
+    }
+    // --------------------------------------------------------
+
     const form = document.getElementById('iform');
     if (!document.getElementById('hidden_save_trigger')) {
         const hiddenSave = document.createElement('input');
@@ -996,9 +1045,11 @@ window.saveAndSpin = function() {
         hiddenSave.id = 'hidden_save_trigger';
         form.appendChild(hiddenSave);
     }
+    
     if (typeof spinner === "function") {
         spinner();
     }
+    
     const saveBtn = document.getElementById('btn_save');
     if (saveBtn) {
         saveBtn.disabled = true;
