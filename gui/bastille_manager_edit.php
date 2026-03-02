@@ -29,12 +29,20 @@ if ($real_current_dir === false || strpos($real_current_dir, $jail_root) !== 0) 
     $real_current_dir = $jail_root;
 }
 
-// Save
+// Backup and saved, It must be fixed so that it saves correctly.
 if ($_POST && isset($_POST['save'])) {
     if (!empty($filepath) && is_file($filepath)) {
         conf_mount_rw();
         $new_content = preg_replace("/\r/", "", $_POST['file_content']);
-        @copy($filepath, $filepath . ".bak");
+        $file_dir = dirname($filepath);
+        $filename = basename($filepath);
+        $backup_dir = $file_dir . '/.backups/' . $filename;
+        if (!is_dir($backup_dir)) {
+            mkdir($backup_dir, 0755, true);
+        }
+        $timestamp = date('Ymd_His');
+        $backup_path = $backup_dir . '/' . $timestamp . '.bak';
+        @copy($filepath, $backup_path);
         if (file_put_contents($filepath, $new_content) !== false) {
             $savemsg = sprintf('%s %s', gtext('Saved file to'), $filepath);
             global $g;
@@ -48,6 +56,17 @@ if ($_POST && isset($_POST['save'])) {
     } else {
         $input_errors[] = gtext('Invalid file path.');
     }
+}
+
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    ob_clean();
+    if (is_file($filepath)) {
+        echo file_get_contents($filepath);
+    } else {
+        http_response_code(404);
+        echo "Error: File not found.";
+    }
+    exit;
 }
 
 $content = "";
@@ -64,8 +83,14 @@ if ($items !== false) {
         if ($item === '.' || $item === '..') {
             continue;
         }
-
+        if ($item === '.backups') {
+            continue;
+        }
         $full_path = $real_current_dir . '/' . $item;
+        clearstatcache(true, $full_path);
+        if (is_link($full_path)) {
+            continue;
+        }
         if (is_dir($full_path)) {
             $folders[] = $item;
         } else {
@@ -82,7 +107,7 @@ if (isset($_GET['ajax_search'])) {
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
-    // 2. Apagamos los avisos para que no rompan el JSON
+    // Fixme
     ini_set('display_errors', 0);
     error_reporting(0);
 
@@ -99,12 +124,12 @@ if (isset($_GET['ajax_search'])) {
     if (!empty($dirs)) {
         foreach ($dirs as $dir) {
             // Remove -maxdepth to search recursively to the bottom
-            $commands[basename($dir)] = "find -L " . escapeshellarg($dir) . " -type f -iname $search_term 2>/dev/null | head -n 20";
+            $commands[basename($dir)] = "find " . escapeshellarg($dir) . " -type f -iname $search_term 2>/dev/null | head -n 20";
         }
     }
 
     // This command searches for loose files in the jail root
-    $commands['jail_root'] = "find -L " . escapeshellarg($search_path) . " -maxdepth 1 -type f -iname $search_term 2>/dev/null";
+    $commands['jail_root'] = "find " . escapeshellarg($search_path) . " -maxdepth 1 -type f -iname $search_term 2>/dev/null";
 
     // MwExecParallel using executeWithSelect
     $searcher = new bastille_manager_MwExecParallel($commands);
@@ -120,8 +145,7 @@ if (isset($_GET['ajax_search'])) {
             $final_items[] = [
                 'full'     => $line,
                 'directory' => dirname($line),
-                // Calculate the relative path from the jail root
-                //FIXME to svg icon
+                //FIXME to svg ${icon_folder}
                 'relative' => "📂 " . str_replace($jail_root, "", dirname($line)),
                 'name'     => basename($line),
                 'source'   => $source
@@ -153,7 +177,7 @@ if (isset($_GET['ajax_search'])) {
     exit;
 }
 
-// --- AJAX: OBTENER CONTENIDO DE CARPETA (Lazy Loading) ---
+// (Lazy Loading) with ajax
 if (isset($_GET['ajax_get_dir'])) {
     while (ob_get_level() > 0) {
         ob_end_clean();
@@ -164,7 +188,7 @@ if (isset($_GET['ajax_get_dir'])) {
     $dir_path = $_GET['ajax_get_dir'];
     $real_path = realpath($dir_path);
 
-    // Seguridad: No dejar salir de la jaula
+    // Safety: Do not let them out of the cage.
     if ($real_path === false || strpos($real_path, $jail_root) !== 0) {
         echo json_encode(['error' => 'Access denied']);
         exit;
@@ -180,6 +204,10 @@ if (isset($_GET['ajax_get_dir'])) {
                 continue;
             }
             $full = $real_path . '/' . $item;
+            clearstatcache(true, $full);
+            if (is_link($full)) {
+                continue;
+            }
             if (is_dir($full)) {
                 $folders[] = $item;
             } else {
@@ -210,12 +238,24 @@ include 'fbegin.inc';
     </td></tr>
     <tr><td class="tabcont">
         <form action="bastille_manager_edit.php?jailname=<?=urlencode($jailname)?>&dir=<?=urlencode($real_current_dir)?>&filepath=<?=urlencode($filepath)?>" method="post" name="iform" id="iform" onsubmit="return saveAndSpin();">
-            <?php if (!empty($input_errors)) {
-                print_input_errors($input_errors);
-            } ?>
-            <?php if (!empty($savemsg)) {
-                print_info_box($savemsg);
-            } ?>
+            <?php if (!empty($input_errors)): ?>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        const errorMsg = "<?= addslashes(implode('\\n', $input_errors)) ?>";
+                        showConfirmDialog("Error Saving", errorMsg, "warning");
+                    });
+                </script>
+            <?php endif; ?>
+
+            <?php if (!empty($savemsg)): ?>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        const successMsg = "<?= addslashes($savemsg) ?>";
+                        showConfirmDialog("Saved", successMsg, "info");
+                        if (typeof isDirty !== 'undefined') isDirty = false;
+                    });
+                </script>
+            <?php endif; ?>
 
             <div class="ide-container">
                 <div class="ide-sidebar">
@@ -317,16 +357,72 @@ include 'fbegin.inc';
     </div>
 </div>
 
+<div id="ide-confirm-modal" class="ide-modal-overlay">
+    <div class="ide-modal-box">
+        
+        <div class="ide-modal-header">
+            <button class="ide-modal-close" onclick="document.getElementById('ide-confirm-modal').classList.remove('show')">×</button>
+        </div>
+
+        <div class="ide-modal-content-wrapper">
+            <div id="ide-modal-icon-wrapper" class="ide-modal-icon-wrapper">
+                <svg id="ide-modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <div class="ide-modal-text">
+                <h3 id="ide-modal-title">Title</h3>
+                <p id="ide-modal-message">Message...</p>
+            </div>
+        </div>
+
+        <div class="ide-modal-footer ">
+            <button id="ide-modal-btn-cancel" class="ide-btn ide-btn-cancel">Cancel</button>
+            <button id="ide-modal-btn-confirm" class="ide-btn ide-btn-primary">OK</button>
+        </div>
+
+    </div>
+</div>
+
 <link rel="stylesheet" type="text/css" href="ext/bastille/css/styles.css?v=<?=time();?>">
 <script src="ext/bastille/js/bastille_editor_clipboard.js?v=<?=time();?>"></script>
 <script src="ext/bastille/js/vs/loader.js"></script>
 
 <script>
 
+let searchTimer;
+let selectedIndex = -1;
+let isDirty = false;
+let isInjectingCode = false;
+let sidebarTimer;
+let originalSidebarHTML = '';
+
 const ICONS = {
     folder: `<img src="ext/bastille/images/folder.svg" class="tree-icon" />`,
     file:   `<img src="ext/bastille/images/file.svg" class="tree-icon" />`,
     caret:  `<span class="tree-caret">▶</span>`
+};
+
+const MODAL_CONFIG = {
+    warning: {
+        iconClass: 'icon-warning',
+        btnClass: 'ide-btn-primary',
+        btnText: 'OK',
+        showCancel: true,
+        svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`
+    },
+    success: {
+        iconClass: 'icon-success',
+        btnClass: 'ide-btn-primary',
+        btnText: 'OK',
+        showCancel: false,
+        svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+    },
+    error: {
+        iconClass: 'icon-error',
+        btnClass: 'ide-btn-primary',
+        btnText: 'OK',
+        showCancel: false,
+        svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
+    }
 };
 
 // Toggle sidebar
@@ -407,9 +503,6 @@ function clearQuickSearch() {
     runQuickSearch();
     qsInput.focus();
 }
-
-let searchTimer;
-let selectedIndex = -1;
 
 function runQuickSearch() {
     selectedIndex = -1;
@@ -534,6 +627,83 @@ document.addEventListener('keydown', function(e) {
     }                 
 
 });
+// --- INTERCEPT CLICKS IN THE TREE (ASYNC SPA MODE) ---
+document.querySelector('.ide-file-list').addEventListener('click', async function(e) {
+    const link = e.target.closest('a');
+    if (!link) return;
+
+    // 1. Averiguamos si es un archivo o una carpeta mirando la URL
+    const urlParams = new URLSearchParams(link.href.split('?')[1]);
+    const filepath = urlParams.get('filepath');
+    const isFile = filepath && filepath !== ''; // Si tiene filepath, es un archivo
+
+    //
+    if (isDirty) {
+        e.preventDefault(); 
+        hideSpinner();
+        const userConfirmed = await showConfirmDialog(
+            "Cambios sin guardar",
+            "Tienes modificaciones. Si cambias de archivo ahora, perderás los cambios.",
+            "warning"
+        );
+        if (!userConfirmed) {
+            return; // Si dice "Cancelar", abortamos
+        }
+        isDirty = false; // Aceptó perder los cambios
+        document.querySelectorAll('.dirty-dot').forEach(dot => dot.remove());
+        if (!isFile) {
+            window.location.href = link.href;
+            return;
+        }
+    } else if (!isFile) {
+        return; 
+    }
+    e.preventDefault(); 
+    document.body.style.cursor = 'wait';
+    try {
+        const response = await fetch(link.href + '&ajax=1');
+        if (!response.ok) {
+            throw new Error('Error al leer el archivo desde el servidor');
+        }
+        const fileContent = await response.text();
+        if (typeof window.editor !== 'undefined') {
+            isInjectingCode = true;
+            window.editor.setValue(fileContent);
+            isInjectingCode = false; 
+            isDirty = false; 
+            document.querySelectorAll('.dirty-dot').forEach(dot => dot.remove());
+        } else {
+            window.location.href = link.href;
+            return;
+        }
+        const ext = filepath.split('.').pop().toLowerCase();
+        let lang = 'shell';
+        if (['php', 'inc'].includes(ext)) lang = 'php';
+        else if (ext === 'xml') lang = 'xml';
+        else if (ext === 'js') lang = 'javascript';
+        else if (ext === 'css') lang = 'css';
+        else if (ext === 'json') lang = 'json';
+        else if (['html', 'htm'].includes(ext)) lang = 'html';
+        
+        monaco.editor.setModelLanguage(window.editor.getModel(), lang);
+
+        // Update UI
+        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+        link.closest('.tree-item').classList.add('active');
+        window.history.pushState({}, '', link.href);
+        const pathDisplay = document.getElementById('ide-filepath-display');
+        if (pathDisplay) {
+            pathDisplay.innerText = filepath;
+        }
+    } catch (error) {
+        console.error("Error loading file:", error);
+        showConfirmDialog("Error loading file", "The selected file could not be loaded. Check the console for more details.", "error");
+    } finally {
+        document.body.style.cursor = 'default';
+        hideSpinner();
+    }
+});
+
 //Scrool to active file on load
 document.addEventListener("DOMContentLoaded", function() {
     const activeFile = document.querySelector('.tree-item.active');
@@ -541,6 +711,62 @@ document.addEventListener("DOMContentLoaded", function() {
         activeFile.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 });
+
+// --- REUSABLE MODAL FUNCTION (MODERN UI) ---
+function showConfirmDialog(title, message, type = 'warning') {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('ide-confirm-modal');
+        const titleEl = document.getElementById('ide-modal-title');
+        const msgEl = document.getElementById('ide-modal-message');
+        const iconWrapper = document.getElementById('ide-modal-icon-wrapper');
+        const btnConfirm = document.getElementById('ide-modal-btn-confirm');
+        const btnCancel = document.getElementById('ide-modal-btn-cancel');
+
+        const configType = (type === 'info') ? 'success' : type;
+        const conf = MODAL_CONFIG[configType] || MODAL_CONFIG.warning;
+        //const headerText = document.getElementById('ide-modal-header-text');
+        //if (headerText) {
+        //    if (type === 'error') headerText.innerText = "Error";
+        //    else if (type === 'warning') headerText.innerText = "Confirmación necesaria";
+        //    else headerText.innerText = "Information";
+        //}
+        // 2. Inyectamos textos e interfaz
+        titleEl.innerText = title;
+        msgEl.innerText = message;
+        iconWrapper.className = `ide-modal-icon-wrapper ${conf.iconClass}`;
+        btnConfirm.className = `ide-btn ${conf.btnClass}`;
+        btnConfirm.innerText = conf.btnText;
+        btnCancel.style.display = conf.showCancel ? 'inline-block' : 'none';
+
+        iconWrapper.innerHTML = conf.svg; 
+        
+        const svg = iconWrapper.querySelector('svg');
+        if (svg) {
+            svg.setAttribute('width', '20');
+            svg.setAttribute('height', '20');
+            svg.style.display = 'block';
+            svg.style.color = 'inherit'; 
+        }
+
+        overlay.classList.add('show');
+
+        const cleanup = () => {
+            overlay.classList.remove('show');
+            btnCancel.removeEventListener('click', onCancel);
+            btnConfirm.removeEventListener('click', onConfirm);
+        };
+
+        const onCancel = () => { cleanup(); resolve(false); };
+        const onConfirm = () => { cleanup(); resolve(true); };
+
+        btnCancel.addEventListener('click', onCancel);
+        btnConfirm.addEventListener('click', onConfirm);
+        
+        if (!conf.showCancel) {
+            setTimeout(() => btnConfirm.focus(), 100);
+        }
+    });
+}
 
 function updateSelection(items) {
     Array.from(items)
@@ -552,24 +778,18 @@ function updateSelection(items) {
     }
 }
 
-let sidebarTimer;
-let originalSidebarHTML = '';
-
 function filterFiles() {
     const input = document.getElementById('fileFilter');
     const clearBtn = document.getElementById('clearFilterBtn');
     const ul = document.getElementById("fileList");
     const filter = input.value.toLowerCase().trim();
 
-    // Guardamos el estado original la primera vez que escribimos
     if (originalSidebarHTML === '' && filter !== '') {
         originalSidebarHTML = ul.innerHTML;
     }
 
-    // Mostrar/Ocultar botón de borrar
     clearBtn.style.display = filter.length > 0 ? "flex" : "none";
 
-    // 1. FILTRO LOCAL (Instantáneo)
     const li = ul.getElementsByTagName('li');
     let localMatches = 0;
     for (let i = 0; i < li.length; i++) {
@@ -585,15 +805,15 @@ function filterFiles() {
         }
     }
 
-    // 2. BÚSQUEDA RECURSIVA PARALELA (Debounced)
+    // PARALLEL RECURSIVE SEARCH (Debounced)
     clearTimeout(sidebarTimer);
     if (filter.length >= 2) {
         sidebarTimer = setTimeout(() => {
-            // Si hay pocos resultados locales, buscamos en profundidad
+            // If there are few local results, we search in depth
             fetchSearchRecursive(filter);
         }, 500);
     } else if (filter === '') {
-        clearFilter(); // Restaurar todo
+        clearFilter();
     }
 }
 
@@ -699,19 +919,69 @@ require(['vs/editor/editor.main'], function() {
             }
         });
         window.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
-            const saveBtn = document.getElementById('btn_save');
-            if (saveBtn && !saveBtn.disabled) {
-                window.saveAndSpin();
-                const form = document.getElementById('iform');
-                if (typeof form.requestSubmit === "function") {
-                    form.requestSubmit();
-                } else {
-                    form.submit();
+            ejecutarGuardadoMaestro(); 
+        });
+        window.editor.onDidChangeModelContent(function() {
+            if (isInjectingCode) {
+                return;
+            }
+            if (!isDirty) {
+                isDirty = true;
+                
+                const activeFileLink = document.querySelector('.tree-item.active > a');
+                if (activeFileLink && !activeFileLink.querySelector('.dirty-dot')) {
+                    const dot = document.createElement('span');
+                    dot.className = 'dirty-dot';
+                    dot.innerHTML = '•';
+                    dot.title = "Cambios sin guardar";
+                    activeFileLink.appendChild(dot);
                 }
-            }                
+            }
         });
     }
 });
+
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault(); // ¡We blocked Chrome's ugly "Save as..." feature!
+        ejecutarGuardadoMaestro();
+    }
+});
+
+function ejecutarGuardadoMaestro() {
+    // If the editor is not active or there is no file, we do nothing.
+    if (typeof window.editor === 'undefined') return;
+
+    // 1. We pass the Monaco code to the hidden textarea
+    const fileContentInput = document.getElementById('file_content');
+    if (fileContentInput) {
+        fileContentInput.value = window.editor.getValue();
+    }
+
+    // 2. We prepare the form
+    const form = document.getElementById('iform'); 
+    if (!form) return;
+
+    // 3. We inject PHP with the notice that we are saving (the 'save' input).
+    if (!document.getElementById('hidden_save_trigger')) {
+        const hiddenSave = document.createElement('input');
+        hiddenSave.type = 'hidden';
+        hiddenSave.name = 'save'; 
+        hiddenSave.value = '1';
+        hiddenSave.id = 'hidden_save_trigger';
+        form.appendChild(hiddenSave);
+    }
+
+    if (typeof spinner === "function") { 
+        spinner();
+     }
+
+    if (typeof form.requestSubmit === "function") {
+        form.requestSubmit();
+    } else {
+        form.submit();
+    }
+}
 
 window.saveAndSpin = function() {
     if (typeof window.editor !== 'undefined' && window.editor !== null) {
@@ -740,8 +1010,7 @@ window.saveAndSpin = function() {
 function toggleFolder(element, path) {
     const li = element.parentElement;
     let subList = li.querySelector('ul');
-    
-    // Si ya existe, solo mostramos/ocultamos (Toggle)
+
     if (subList) {
         const isHidden = subList.style.display === 'none';
         subList.style.display = isHidden ? 'block' : 'none';
@@ -755,7 +1024,7 @@ function toggleFolder(element, path) {
     if (typeof spinner === "function") { 
         spinner(); 
     }
-    // Si no existe, lo pedimos al servidor
+    // If it does not exist, we request it from the server.
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('jailname', '<?=urlencode($jailname)?>');
     url.searchParams.set('ajax_get_dir', path);
@@ -767,7 +1036,7 @@ function toggleFolder(element, path) {
             subList.className = 'ide-file-list';
             subList.style.paddingLeft = '15px';
 
-            // Inyectamos carpetas
+            // We inject folders
             data.folders.forEach(f => {
                 const fullP = path + '/' + f;
                 const safePath = fullP.replace(/'/g, "\\'");
@@ -779,7 +1048,7 @@ function toggleFolder(element, path) {
                     </li>`;
             });
 
-            // Inyectamos archivos
+            // We inject files
             data.files.forEach(f => {
                 const fullP = path + '/' + f;
                 const editUrl = `?jailname=<?=urlencode($jailname)?>&dir=${encodeURIComponent(path)}&filepath=${encodeURIComponent(fullP)}`;
@@ -800,7 +1069,7 @@ function toggleFolder(element, path) {
         });
 }
 
-// --- LÓGICA DEL RESIZER (SPLIT PANEL) ---
+// --- RESIZER LOGIC (SPLIT PANEL) ---
 const resizer = document.getElementById('ide-resizer');
 const sidebar = document.querySelector('.ide-sidebar');
 const container = document.querySelector('.ide-container');
@@ -818,11 +1087,11 @@ function resize(e) {
     const containerRect = container.getBoundingClientRect();
     const newWidth = e.clientX - containerRect.left;
     
-    // Límites: mínimo 180px, máximo 600px
+    // Limits: minimum 180px, maximum 600px
     if (newWidth > 180 && newWidth < 600) {
         container.style.gridTemplateColumns = `${newWidth}px 4px 1fr`;
         
-        // Avisamos a Monaco que el tamaño cambió para que se ajuste solo
+        // We notified Monaco that the size changed so that it would adjust itself.
         if (window.editor) {
             window.editor.layout();
         }
@@ -835,7 +1104,6 @@ function stopResize() {
 }
 
 function hideSpinner() {
-    // 1. Ocultamos el overlay (Capa gris que bloquea clicks)
     if (typeof $ !== 'undefined') {
         $('#spinner_overlay').hide();
     } else {
@@ -843,14 +1111,10 @@ function hideSpinner() {
         if (overlay) overlay.style.display = 'none';
     }
 
-    // 2. Limpiamos el objeto visual del spinner
     const main = document.getElementById('spinner_main');
     if (main) {
         main.innerHTML = ''; 
     }
-
-    // 3. BONUS: Forzamos a Monaco a recalcular su tamaño
-    // A veces el overlay "congela" el renderizado del editor
     if (window.editor) {
         window.editor.layout();
     }
