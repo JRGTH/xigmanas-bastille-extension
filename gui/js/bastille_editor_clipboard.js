@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     this.textContent = 'Copied!';
                     setTimeout(() => {
                         this.textContent = originalText;
-                        this.style.color = ''; // Vuelve al color original/hover
+                        this.style.color = '';
                     }, 800);
                 })
                 .catch((err) => {
