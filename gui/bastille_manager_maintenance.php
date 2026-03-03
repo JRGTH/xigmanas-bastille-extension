@@ -307,22 +307,35 @@ $(document).ready(function(){
 		$('#getinfo_ext').html(data.ext);
 	});
 
-    // --- LOGICA DEL CHECKBOX REFRESH (LocalStorage) ---
+    // --- CHECKBOX REFRESH LOGIC (LocalStorage) ---
     var $chk = $("#show_refresh_button");
 
-    // 1. Leer estado inicial desde LocalStorage
+    // 1. Read initial state from LocalStorage
     var savedState = localStorage.getItem('bastille_show_refresh_button');
     if (savedState === 'true') {
         $chk.prop('checked', true);
     } else {
-        $chk.prop('checked', false); // Por defecto deshabilitado
+        $chk.prop('checked', false);
     }
 
-    // 2. Guardar cambios al hacer click
+    // Save changes by clicking
     $chk.change(function() {
         var isChecked = $(this).is(':checked');
         localStorage.setItem('bastille_show_refresh_button', isChecked);
     });
+
+	// --- CHECKBOX BETA EDITOR LOGIC (LocalStorage) ---
+    var $chkBeta = $("#enable_beta_editor");
+    var savedBetaState = localStorage.getItem('bastille_enable_beta_editor');
+    if (savedBetaState === 'true') { 
+		$chkBeta.prop('checked', true); 
+	} else { 
+		$chkBeta.prop('checked', false); 
+	}
+    $chkBeta.change(function() { 
+		localStorage.setItem('bastille_enable_beta_editor', $(this).is(':checked'));
+	});
+
 });
 //]]>
 </script>
@@ -387,6 +400,12 @@ $(document).ready(function(){
 				<?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the containers tab.'),'',false);?>
 				<?php html_separator();?>
 			</table>
+			<table width="100%" border="0" cellpadding="6" cellspacing="0">
+                <?php html_separator();?>
+                <?php html_titleline(gtext("File Editor v2 (Beta)"));?>
+                <?php html_checkbox2('enable_beta_editor', gtext('Enable New Editor'), '' ? true : false, gtext('Use the new editor with Quick Search and syntax highlighting instead of the legacy editor.'), '', false);?>
+                <?php html_separator();?>
+            </table>
 			<div id="remarks">
 				<?php html_remark("note", gtext("Info"), sprintf(gtext("For general information visit the following link(s):")));?>
 				<div id="enumeration"><ul><li><a href="http://bastillebsd.org/" target="_blank" ><?=gtext("Bastille helps you quickly create and manage FreeBSD Jails.")?></a></li></ul></div>

@@ -199,7 +199,7 @@ function runQuickSearch() {
                 data.items.forEach((file) => {
                     let li = document.createElement('li');
                     let a = document.createElement('a');
-                    a.href = `bastille_manager_edit.php?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
+                    a.href = `bastille_manager_editor_v2.php?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
                     a.innerHTML = `<span class="qs-item-title">${file.name}</span><span class="qs-item-path">${file.relative}</span>`;
                     a.addEventListener('click', () => saveHistory(filter));
                     li.appendChild(a);
@@ -338,7 +338,7 @@ function fetchSearchRecursive(term) {
                 if (!document.querySelector(`a[href*="${encodeURIComponent(file.full)}"]`)) {
                     let li = document.createElement('li');
                     li.className = 'is-recursive';
-                    let editUrl = `bastille_manager_edit.php?jailname=${encodeURIComponent(cfg.jailname)}&filepath=${encodeURIComponent(file.full)}`;
+                    let editUrl = `bastille_manager_editor_v2.php?jailname=${encodeURIComponent(cfg.jailname)}&filepath=${encodeURIComponent(file.full)}`;
                     li.innerHTML = `<a href="${editUrl}" title="${file.full}"><strong>${file.name}</strong><span class="search-result-path">${file.relative}</span></a>`;
                     ul.appendChild(li);
                 }

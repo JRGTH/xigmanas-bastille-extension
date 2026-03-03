@@ -102,7 +102,9 @@ if($_POST):
 					$item = $container['jailname'];
 					$_SESSION['item'] = $item;
 					if ($_POST['advanced']):
-						header("Location: bastille_manager_edit.php?jailname={$item}");
+						$use_beta = (isset($_POST['use_beta_editor']) && $_POST['use_beta_editor'] === '1');
+                        $editor_file = $use_beta ? 'bastille_manager_edit.php' : 'bastille_manager_editor.php';
+                        header("Location: {$editor_file}?jailname={$item}");
 						exit;
 					else:
 						$input_errors[] = gtext("Failed to open editor, confirmation is required.");
@@ -477,7 +479,17 @@ include 'fbegin.inc';
 <script type="text/javascript">
 //<![CDATA[
 $(window).on("load",function() {
-	$("#iform").submit(function() { spinner(); });
+	$("#iform").submit(function() { 
+        // Check if the beta editor is enabled in localStorage
+        var useBeta = localStorage.getItem('bastille_enable_beta_editor') === 'true';
+        if (useBeta) {
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'use_beta_editor',
+                value: '1'
+            }).appendTo('#iform');
+        }
+    });
 	$(".spin").click(function() { spinner(); });
 });
 function enable_change(enable_change) {

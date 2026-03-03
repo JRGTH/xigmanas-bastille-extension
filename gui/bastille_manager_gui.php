@@ -60,8 +60,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
     ob_start();
 
     // Fetch fresh data
-    // Note: We rely on the internal caching of get_jail_infos() (5 seconds)
-    // to avoid overloading the system with 'bastille list' commands if multiple requests occur.
     $jls_list = [];
     if (function_exists('get_jail_infos')) {
         $jls_list = get_jail_infos();
@@ -187,7 +185,6 @@ if($zfs_status == "Invalid ZFS configuration"):
 	$input_errors[] = gtext("WARNING: Invalid ZFS configuration detected.");
 endif;
 
-// NOTE: POST logic for actions is now handled via JS/SSE, but we keep this for fallback/compatibility
 if($_POST):
 	if(isset($_POST['apply']) && $_POST['apply']):
 		$ret = array('output' => [], 'retval' => 0);
@@ -203,37 +200,176 @@ if($_POST):
 		updatenotify_delete($sphere_notifier);
 		$errormsg = implode("\n", $ret['output']);
 	endif;
+
+	if(isset($_POST['start_selected_jail']) && $_POST['start_selected_jail']):
+		$checkbox_member_array = isset($_POST[$checkbox_member_name]) ? $_POST[$checkbox_member_name] : [];
+		$commands = [];
+
+		foreach($checkbox_member_array as $checkbox_member_record):
+			if(false !== ($index = array_search_ex($checkbox_member_record, $sphere_array, 'jailname'))):
+				if(!isset($sphere_array[$index]['protected'])):
+					$commands[] = "/usr/local/bin/bastille start {$checkbox_member_record}";
+				endif;
+			endif;
+		endforeach;
+
+		if (!empty($commands)):
+			$results = mwexec_parallel($commands);
+
+			$success_count = 0;
+			$fail_count = 0;
+
+			foreach ($results as $result):
+				if ($result['return_code'] == 0):
+					$success_count++;
+				else:
+					$fail_count++;
+				endif;
+			endforeach;
+
+			if (function_exists('invalidate_jail_cache')) {
+				invalidate_jail_cache();
+			}
+
+			if ($fail_count > 0):
+				$errormsg = sprintf(gtext("Started %d jail(s), failed %d jail(s)."), $success_count, $fail_count);
+			else:
+				$savemsg = sprintf(gtext("%d jail(s) started successfully."), $success_count);
+			endif;
+
+			header($sphere_header);
+		endif;
+	endif;
+
+	if(isset($_POST['stop_selected_jail']) && $_POST['stop_selected_jail']):
+		$checkbox_member_array = isset($_POST[$checkbox_member_name]) ? $_POST[$checkbox_member_name] : [];
+		$commands = [];
+
+		foreach($checkbox_member_array as $checkbox_member_record):
+			if(false !== ($index = array_search_ex($checkbox_member_record, $sphere_array, 'jailname'))):
+				if(!isset($sphere_array[$index]['protected'])):
+					$commands[] = "/usr/local/bin/bastille stop {$checkbox_member_record}";
+				endif;
+			endif;
+		endforeach;
+
+		if (!empty($commands)):
+			$results = mwexec_parallel($commands);
+
+			$success_count = 0;
+			$fail_count = 0;
+
+			foreach ($results as $result):
+				if ($result['return_code'] == 0):
+					$success_count++;
+				else:
+					$fail_count++;
+				endif;
+			endforeach;
+
+			if (function_exists('invalidate_jail_cache')) {
+				invalidate_jail_cache();
+			}
+
+			if ($fail_count > 0):
+				$errormsg = sprintf(gtext("Stopped %d jail(s), failed %d jail(s)."), $success_count, $fail_count);
+			else:
+				$savemsg = sprintf(gtext("%d jail(s) stopped successfully."), $success_count);
+			endif;
+
+			header($sphere_header);
+		endif;
+	endif;
+
+	if(isset($_POST['restart_selected_jail']) && $_POST['restart_selected_jail']):
+		$checkbox_member_array = isset($_POST[$checkbox_member_name]) ? $_POST[$checkbox_member_name] : [];
+		$commands = [];
+
+		foreach($checkbox_member_array as $checkbox_member_record):
+			if(false !== ($index = array_search_ex($checkbox_member_record, $sphere_array, 'jailname'))):
+				if(!isset($sphere_array[$index]['protected'])):
+					$commands[] = "/usr/local/bin/bastille restart {$checkbox_member_record}";
+				endif;
+			endif;
+		endforeach;
+
+		if (!empty($commands)):
+			$results = mwexec_parallel($commands);
+
+			$success_count = 0;
+			$fail_count = 0;
+
+			foreach ($results as $result):
+				if ($result['return_code'] == 0):
+					$success_count++;
+				else:
+					$fail_count++;
+				endif;
+			endforeach;
+
+			if (function_exists('invalidate_jail_cache')) {
+				invalidate_jail_cache();
+			}
+
+			if ($fail_count > 0):
+				$errormsg = sprintf(gtext("Restarted %d jail(s), failed %d jail(s)."), $success_count, $fail_count);
+			else:
+				$savemsg = sprintf(gtext("%d jail(s) restarted successfully."), $success_count);
+			endif;
+
+			header($sphere_header);
+		endif;
+	endif;
+
+	if(isset($_POST['autoboot_selected_jail']) && $_POST['autoboot_selected_jail']):
+		$checkbox_member_array = isset($_POST[$checkbox_member_name]) ? $_POST[$checkbox_member_name] : [];
+		$commands = [];
+
+		foreach($checkbox_member_array as $checkbox_member_record):
+			if(false !== ($index = array_search_ex($checkbox_member_record, $sphere_array, 'jailname'))):
+				if(!isset($sphere_array[$index]['protected'])):
+					$commands[] = "/usr/local/bin/bastille config {$checkbox_member_record} set boot on";
+				endif;
+			endif;
+		endforeach;
+
+		if (!empty($commands)):
+			$results = mwexec_parallel($commands);
+
+			$success_count = 0;
+			$fail_count = 0;
+
+			foreach ($results as $result):
+				if ($result['return_code'] == 0):
+					$success_count++;
+				else:
+					$fail_count++;
+				endif;
+			endforeach;
+
+			if (function_exists('invalidate_jail_cache')) {
+				invalidate_jail_cache();
+			}
+
+			if ($fail_count > 0):
+				$errormsg = sprintf(gtext("Set autoboot on %d jail(s), failed %d jail(s)."), $success_count, $fail_count);
+			else:
+				$savemsg = sprintf(gtext("Autoboot set on %d jail(s) successfully."), $success_count);
+			endif;
+
+			header($sphere_header);
+		endif;
+	endif;
 endif;
 
 $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Manager')];
 include 'fbegin.inc';
 ?>
 <style>
-/* bastille_manager.css
-   Estilo NATIVO (Minimalista)
-*/
 
-#refresh-controls {
-    /* Fondo transparente y sin bordes para integrarse con el tema */
-    background: transparent;
-    border: none;
-    padding: 0;
-    margin-bottom: 5px;
-
-    /* Alineación a la derecha */
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 15px;
-
-    /* Fuente estándar del sistema */
-    font-size: 13px;
-    color: inherit;
-}
-
-/* Pequeño spinner azul discreto solo cuando actualiza */
 #refresh-spinner {
     display: inline-block;
+    position: absolute;
     width: 10px;
     height: 10px;
     border: 2px solid #ccc;
@@ -241,28 +377,23 @@ include 'fbegin.inc';
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-right: 5px;
-    position: absolute; /* Posicionamiento absoluto para no mover el layout */
-    right: 180px; /* Ajustar según sea necesario para que quede a la izquierda del botón */
+    right: 115px;
     margin-top: 2px;
 }
 
-/* Animación del spinner */
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 
-/* Asegurar que los iconos de la tabla estén centrados verticalmente */
 .area_data_selection tbody td img {
     vertical-align: middle;
 }
 
-/* Centrado perfecto para los checkboxes */
 .lcelc {
     text-align: center;
     vertical-align: middle;
 }
 
-/* Refresh button style */
 #refresh-now {
     appearance: none;
     font-family: inherit;
@@ -279,10 +410,9 @@ include 'fbegin.inc';
     filter: brightness(150%);
 }
 
-/* --- ESTILOS DE RESIZE SIMPLE --- */
+/* --- SIMPLE RESIZE STYLES --- */
 table.area_data_selection {
-    table-layout: fixed; /* Mantiene la cordura del navegador */
-    /*width: auto; IMPORTANTE: Auto para empezar */
+    table-layout: fixed;
     border-collapse: collapse;
 }
 
@@ -294,7 +424,7 @@ table.area_data_selection th {
     text-overflow: ellipsis;
 }
 
-/* El tirador visible */
+/* The visible handle */
 .resizer {
     position: absolute;
     top: 0;
@@ -311,131 +441,28 @@ table.area_data_selection th {
     background-color: #007bff; /* Azul */
     opacity: 1;
 }
-
-/* --- MODAL DE LOGS --- */
-#log-modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-}
-
-#log-content {
-    background-color: #fefefe;
-    margin: 10% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 800px;
-    border-radius: 5px;
-    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
-}
-
-#log-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 10px;
-}
-
-#log-title {
-    font-weight: bold;
-    font-size: 1.2em;
-}
-
-#log-close {
-    color: #aaa;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-#log-close:hover {
-    color: black;
-}
-
-#log-terminal {
-    background-color: #1e1e1e;
-    color: #00ff00;
-    font-family: 'Courier New', Courier, monospace;
-    padding: 10px;
-    height: 300px;
-    overflow-y: auto;
-    border-radius: 3px;
-    font-size: 0.9em;
-    white-space: pre-wrap;
-}
-
-.log-line { margin: 2px 0; }
-.log-error { color: #ff4444; }
-.log-success { color: #00ff00; font-weight: bold; }
-.log-info { color: #44aaff; }
 </style>
 
 <script type="text/javascript">
 //<![CDATA[
-var currentEvtSource = null; // Global variable to track current SSE connection
-var refreshAbortController = null; // Controller to abort fetch requests
-
 $(window).on("load", function() {
 	// Init action buttons
-	$("#start_selected_jail").click(function (e) {
-        e.preventDefault();
-        if (confirm('<?=$gt_selection_start_confirm;?>')) {
-            runBastilleAction('start');
-        }
+	$("#start_selected_jail").click(function () {
+        stopAutoRefresh(); // Pause for safety
+		return confirm('<?=$gt_selection_start_confirm;?>');
 	});
-	$("#stop_selected_jail").click(function (e) {
-        e.preventDefault();
-        if (confirm('<?=$gt_selection_stop_confirm;?>')) {
-            runBastilleAction('stop');
-        }
+	$("#stop_selected_jail").click(function () {
+        stopAutoRefresh();
+		return confirm('<?=$gt_selection_stop_confirm;?>');
 	});
-	$("#restart_selected_jail").click(function (e) {
-        e.preventDefault();
-        if (confirm('<?=$gt_selection_restart_confirm;?>')) {
-            runBastilleAction('restart');
-        }
+	$("#restart_selected_jail").click(function () {
+        stopAutoRefresh();
+		return confirm('<?=$gt_selection_restart_confirm;?>');
 	});
-	$("#autoboot_selected_jail").click(function (e) {
-        // Autoboot is fast, maybe keep it normal or stream it too? Let's stream it for consistency.
-        e.preventDefault();
-        if (confirm('<?=$gt_selection_autoboot_confirm;?>')) {
-            // Note: bastille_stream.php needs to handle 'config set boot on' logic if we stream this.
-            // For now, let's keep autoboot as standard POST or update stream.php.
-            // Assuming stream.php handles it or we fallback.
-            // Let's fallback to standard POST for autoboot for now as it wasn't in the stream.php example.
-            $("#iform").append('<input type="hidden" name="autoboot_selected_jail" value="1">').submit();
-        }
+	$("#autoboot_selected_jail").click(function () {
+        stopAutoRefresh();
+		return confirm('<?=$gt_selection_autoboot_confirm;?>');
 	});
-
-    // Close modal
-    $("#log-close").click(function() {
-        // Close stream if active
-        if (currentEvtSource) {
-            currentEvtSource.close();
-            currentEvtSource = null;
-        }
-
-        $("#log-modal").hide();
-
-        // Resume auto-refresh if enabled
-        if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
-            startAutoRefresh();
-        }
-
-        // Trigger immediate update with a small delay to allow browser to breathe
-        setTimeout(function() {
-            updateJailTable();
-        }, 100);
-    });
-
 	// Disable action buttons.
 	disableactionbuttons(true);
 	$("#iform").submit(function() { spinner(); });
@@ -447,8 +474,7 @@ $(window).on("load", function() {
         $("#refresh-interval").val(savedInterval);
         autoRefresh.interval = parseInt(savedInterval);
     }
-	// --- REFRESH INIT ---
-    // Solo iniciar si el botón está visible (habilitado en configuración)
+	// --- REFRESH INIT
     if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
         $("#refresh-controls").show();
         startAutoRefresh();
@@ -469,10 +495,8 @@ $(window).on("load", function() {
         }
     });
 
-    // --- INICIALIZAR EL RESIZE MANUAL ---
     initSimpleResize();
 
-    // --- DELEGACIÓN DE EVENTOS PARA CHECKBOXES ---
     $(document).on('click', "input[name='<?=$checkbox_member_name;?>[]']", function() {
         controlactionbuttons(this, '<?=$checkbox_member_name;?>[]');
     });
@@ -492,144 +516,6 @@ function controlactionbuttons(ego, triggerbyname) {
     disableactionbuttons(ab_disable);
 }
 
-// --- STREAMING ACTION LOGIC ---
-function runBastilleAction(action) {
-    var selectedJails = [];
-    $("input[name='<?=$checkbox_member_name;?>[]']:checked").each(function() {
-        selectedJails.push($(this).val());
-    });
-
-    if (selectedJails.length === 0) return;
-
-    stopAutoRefresh(); // Pause auto-refresh
-
-    // Abort any pending refresh
-    if (refreshAbortController) {
-        refreshAbortController.abort();
-    }
-
-    // Setup Modal
-    $("#log-terminal").empty();
-    $("#log-title").text("Executing: " + action.toUpperCase());
-    $("#log-modal").show();
-    $("#log-terminal").append('<div class="log-info">Initializing...</div>');
-
-    // Close previous stream if exists
-    if (currentEvtSource) {
-        currentEvtSource.close();
-    }
-
-    // Start SSE
-    var url = 'bastille_manager_stream.php?action=' + action + '&jails=' + encodeURIComponent(selectedJails.join(','));
-    currentEvtSource = new EventSource(url);
-
-    currentEvtSource.onopen = function() {
-        console.log("SSE Connection opened.");
-        $("#log-terminal").append('<div class="log-info">Connection established. Waiting for data...</div>');
-        scrollToBottom();
-    };
-
-    currentEvtSource.onmessage = function(e) {
-        // Handle generic messages (keep-alive pings)
-        if (e.data === '' || e.data.includes('keep-alive')) {
-            // Silent keep-alive, just for connection maintenance
-        }
-    };
-
-    currentEvtSource.addEventListener('log', function(e) {
-        try {
-            var data = JSON.parse(e.data);
-            var line = data.jail ? `[${data.jail}] ${data.message}` : data.message;
-            $("#log-terminal").append(`<div class="log-line">${escapeHtml(line)}</div>`);
-            scrollToBottom();
-        } catch (err) {
-            console.error('Error parsing log event:', err);
-        }
-    });
-
-    currentEvtSource.addEventListener('info', function(e) {
-        try {
-            var data = JSON.parse(e.data);
-            var msg = data.message ? data.message : e.data;
-            $("#log-terminal").append(`<div class="log-line log-info">${escapeHtml(msg)}</div>`);
-            scrollToBottom();
-        } catch (err) {
-            console.error('Error parsing info event:', err);
-        }
-    });
-
-    currentEvtSource.addEventListener('success', function(e) {
-        try {
-            var data = JSON.parse(e.data);
-            var line = data.jail ? `[${data.jail}] ${data.message}` : data.message;
-            $("#log-terminal").append(`<div class="log-line log-success">✓ ${escapeHtml(line)}</div>`);
-            scrollToBottom();
-        } catch (err) {
-            console.error('Error parsing success event:', err);
-        }
-    });
-
-    currentEvtSource.addEventListener('error', function(e) {
-        try {
-            var data = JSON.parse(e.data);
-            var msg = data.message ? data.message : e.data;
-            var jail = data.jail ? `[${data.jail}] ` : '';
-            $("#log-terminal").append(`<div class="log-line log-error">✗ ${escapeHtml(jail + msg)}</div>`);
-            scrollToBottom();
-        } catch (err) {
-            console.error('Error parsing error event:', err);
-        }
-    });
-
-    currentEvtSource.addEventListener('close', function(e) {
-        console.log("Stream closed by server");
-        if (currentEvtSource) {
-            currentEvtSource.close();
-            currentEvtSource = null;
-        }
-        $("#log-terminal").append('<div class="log-line log-info">--- Stream finished ---</div>');
-        scrollToBottom();
-
-        // Refresh table after a short delay
-        setTimeout(function() {
-             updateJailTable();
-             if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
-                 startAutoRefresh();
-             }
-        }, 1500);
-    });
-
-    currentEvtSource.onerror = function(e) {
-        console.error("EventSource error:", e);
-        if (currentEvtSource.readyState === EventSource.CLOSED) {
-            console.log("Stream connection closed");
-        } else {
-            $("#log-terminal").append('<div class="log-line log-error">Connection error. Check server logs.</div>');
-            scrollToBottom();
-        }
-        if (currentEvtSource) {
-            currentEvtSource.close();
-            currentEvtSource = null;
-        }
-    };
-}
-
-function scrollToBottom() {
-    var div = document.getElementById("log-terminal");
-    div.scrollTop = div.scrollHeight;
-}
-
-function escapeHtml(text) {
-    var map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-}
-
 // --- AUTO-REFRESH JS ---
 var autoRefresh = {
     enabled: true,
@@ -647,28 +533,15 @@ function updateJailTable() {
     // Activar spinner
     $("#refresh-spinner").show();
 
-    // Abort previous request if any
-    if (refreshAbortController) {
-        refreshAbortController.abort();
-    }
-    refreshAbortController = new AbortController();
-    const signal = refreshAbortController.signal;
-
-    // Backup de checkboxes marcados para persistencia
+    // Backup of checked checkboxes for persistence
     autoRefresh.selectedJails = [];
     $("input[name='<?=$checkbox_member_name;?>[]']:checked").each(function() {
         autoRefresh.selectedJails.push($(this).val());
     });
 
-    // Timeout for fetch (10 seconds)
-    const fetchTimeout = setTimeout(() => {
-        if (refreshAbortController) refreshAbortController.abort();
-    }, 10000);
-
-    fetch('bastille_manager_gui.php?action=refresh_table', { signal })
+    fetch('bastille_manager_gui.php?action=refresh_table')
         .then(response => response.json())
         .then(data => {
-            clearTimeout(fetchTimeout);
             if (data.success) {
                 var tbody = $(".area_data_selection tbody");
                 tbody.empty();
@@ -680,17 +553,15 @@ function updateJailTable() {
                         .attr('value', jail.jailname)
                         .attr('id', jail.jailname)
                         .prop('checked', autoRefresh.selectedJails.includes(jail.jailname));
-                        // .click() eliminado en favor de delegación
+
                     checkCell.append(cb);
                     row.append(checkCell);
 
                     // 2. Data Columns
                     row.append($('<td class="lcell">').text(jail.id || '-'));
                     row.append($('<td class="lcell">').text(jail.name || '-'));
-
                     // Description Column
                     // row.append($('<td class="lcell">').text(jail.description || '-'));
-
                     row.append($('<td class="lcell">').text(jail.boot || '-'));
                     row.append($('<td class="lcell">').text(jail.prio || '-'));
                     row.append($('<td class="lcell">').text(jail.state || '-'));
@@ -715,24 +586,18 @@ function updateJailTable() {
                 });
                 autoRefresh.lastUpdate = Date.now();
 
-                // Restaurar estado de botones
+                // Restore button state
                 controlactionbuttons(null, '<?=$checkbox_member_name;?>[]');
 
-                // Re-aplicar anchos de columna guardados después de actualizar la tabla
+                // Reapply saved column widths after updating the table
                 applySavedColumnWidths();
             }
         })
         .catch(error => {
-            if (error.name === 'AbortError') {
-                console.log('Fetch aborted');
-            } else {
-                console.error('Error fetching jail data:', error);
-            }
+            console.error('Error fetching jail data: ', error);
         })
         .finally(() => {
             autoRefresh.isUpdating = false;
-            refreshAbortController = null;
-            // Desactivar spinner
             $("#refresh-spinner").hide();
         });
 }
@@ -747,23 +612,23 @@ function stopAutoRefresh() {
     if (autoRefresh.timerId) clearInterval(autoRefresh.timerId);
 }
 
-// --- FUNCIÓN DE REDIMENSIONADO ESTABLE (Sin %) ---
+// --- STABLE REDIMENSIONING FUNCTION (without %) ---
 function initSimpleResize() {
     var $table = $("table.area_data_selection");
     var $cols = $table.find('colgroup col');
     var $headers = $table.find('thead th');
 
-    // 1. Aplicar anchos guardados al inicio
+    // 1. Apply saved widths at the beginning
     applySavedColumnWidths();
 
-    // 2. AÑADIR TIRADORES
+    // 2. ADD HANDLES
     $headers.each(function(i) {
-        if (i >= $headers.length - 1) return; // Ignorar la última columna
+        if (i >= $headers.length - 1) return; // Ignore the last column
         var $resizer = $('<div class="resizer"></div>');
         $(this).append($resizer);
     });
 
-    // 3. LÓGICA DE ARRASTRE
+    // 3. DRAG LOGIC
     var isResizing = false;
     var startX = 0;
     var $currentCol = null;
@@ -773,7 +638,7 @@ function initSimpleResize() {
         e.preventDefault(); e.stopPropagation();
         stopAutoRefresh();
 
-        // Convertir todas las columnas a píxeles fijos al iniciar el arrastre
+        // Convert all columns to fixed pixels when starting to drag
         $cols.each(function() {
             var w = $(this).width();
             $(this).css('width', w + 'px');
@@ -805,11 +670,11 @@ function initSimpleResize() {
             $('.resizer').removeClass('resizing');
             $(document).off('mousemove.rsz mouseup.rsz');
 
-            // Guardar anchos al terminar de redimensionar
+            // Save widths after resizing
             saveColumnWidths();
 
             setTimeout(function() {
-                // Solo reanudar si estaba habilitado
+                // Only resume if enabled
                 if (localStorage.getItem('bastille_show_refresh_button') === 'true') {
                     startAutoRefresh();
                 }
@@ -822,7 +687,7 @@ function saveColumnWidths() {
     var widths = {};
     var $cols = $("table.area_data_selection colgroup col");
     $cols.each(function(index) {
-        // Guardamos el ancho en píxeles
+        // We save the width in pixels.
         widths[index] = $(this).css('width');
     });
     localStorage.setItem('bastille_col_widths', JSON.stringify(widths));
@@ -910,8 +775,8 @@ $document->render();
 			<col style="width:4%">
 			<col style="width:4%">
 			<col style="width:4%">
-			<col style="width:10%">
-			<col style="width:10%">
+			<col style="width:12%">
+			<col style="width:12%">
 			<col style="width:7%">
 			<col style="width:10%">
 			<col style="width:4%">
@@ -1025,18 +890,6 @@ $document->render();
 		<input name="restart_selected_jail" id="restart_selected_jail" type="button" class="formbtn" value="<?=$gt_selection_restart;?>"/>
 		<input name="autoboot_selected_jail" id="autoboot_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_autoboot;?>"/>
 	</div>
-
-    <!-- LOG MODAL -->
-    <div id="log-modal">
-        <div id="log-content">
-            <div id="log-header">
-                <span id="log-title">Action Log</span>
-                <span id="log-close">&times;</span>
-            </div>
-            <div id="log-terminal"></div>
-        </div>
-    </div>
-
 <?php
     include 'formend.inc';
 ?>
