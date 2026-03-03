@@ -90,7 +90,7 @@ window.IDE_CONFIG = {
                             <div class="layout-btn" onclick="toggleSidebar()" title="Toggle Sidebar (Ctrl + B)">
                                 <?= $icon_toggle ?>
                             </div>
-                            <input name="save" id="btn_save" type="button" class="formbtn" value="<?=gtext("Save File");?>" onclick="executeSaved();" <?=empty($filepath) ? 'disabled' : ''?> />
+                            <input name="save" id="btn_save" type="button" class="formbtn" title= "Save File (Ctrl + S)" value="<?=gtext("Save File");?>" onclick="executeSaved();" <?=empty($filepath) ? 'disabled' : ''?> />
                         </div>
                     </div>
                     <div id="monaco-container"></div>
