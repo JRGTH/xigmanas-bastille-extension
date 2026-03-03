@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.4.05......Include ttyd cmd tool for sharing the terminal over the web.
 1.4.04......Dashboard cosmetic changes and fixes, thanks to rucko24.
 1.4.03......Cosmetic changes, adjust options row position.
 1.4.02......Add resizable columns and auto-refresh option, thanks to rucko24.

@@ -72,6 +72,7 @@ BASTILLECONF_EXT="${CWDIR}/conf/bastille.conf.ext"
 INCLUDE_PATH="${CWDIR}/conf/system"
 FREEBSD_UPDATE="${INCLUDE_PATH}/freebsd-update/${HOSTVERSION}"
 SYSTEM_INCLUDE="${INCLUDE_PATH}/include/${HOSTVERSION}"
+THIRDPARTY_INCLUDE="${INCLUDE_PATH}/thirdparty/include/${HOSTVERSION}"
 INSTALLPATH="${CWDIR}/${FULLAPPNAME}"
 BRANCH="master"
 BASTILLE_URL="https://github.com/BastilleBSD/${APPNAME}/archive/${BRANCH}.zip" # Official Bastille Repository)
@@ -402,12 +403,14 @@ platform_check()
 		bastille_initial_download
 		sys_symlinkdir
 		include_files
+		thirdparty_include
 	elif [ "${PRDPLATFORM}" = "x64-full" ]; then
 		create_addon_env
 		ext_initial_download
 		bastille_initial_download
 		sys_symlinkdir
 		include_files
+		thirdparty_include
 	fi
 }
 
@@ -544,6 +547,41 @@ include_files()
 				fi
 			fi
 		done
+	fi
+}
+
+thirdparty_include()
+{
+	# This function is for current and future enhancements with dependencies.
+	# We will specify and symlink only the required files here.
+
+	# Program symlinks.
+	THIRDPARTY_BIN_FILES="ttyd"
+	if [ -d "${THIRDPARTY_INCLUDE}/program/bin" ]; then
+		cd ${THIRDPARTY_INCLUDE}/program/bin
+		for file in ${THIRDPARTY_BIN_FILES}
+			do
+				if [ ! -f "${USRLOCAL}/bin/${file}" ]; then
+					chmod 0555 "${THIRDPARTY_INCLUDE}/program/bin/${file}"
+					ln -fhs ${THIRDPARTY_INCLUDE}/program/bin/${file} ${USRLOCAL}/bin/${file}
+				fi
+		done
+	fi
+
+	# Dependencies symlinks.
+	THIRDPARTY_LIB_FILES="libjson-c.so libjson-c.so.5 libuv.so libuv.so.1 libwebsockets.so libjson-c.a libjson-c.so.5.4.0 \
+	libuv.a libuv.so.1.0.0 libwebsockets-evlib_uv.so libwebsockets.a libwebsockets.so.19"
+	if [ -d "${THIRDPARTY_INCLUDE}/depends/lib" ]; then
+		cd ${THIRDPARTY_INCLUDE}/depends/lib
+		for file in ${THIRDPARTY_LIB_FILES}
+			do
+				if [ ! -f "${USRLOCAL}/lib/${file}" ]; then
+					chmod 0555 "${THIRDPARTY_INCLUDE}/depends/lib/${file}"
+					ln -fhs ${THIRDPARTY_INCLUDE}/depends/lib/${file} ${USRLOCAL}/lib/${file}
+				fi
+		done
+		# Update hints file after scanning.
+		ldconfig -m ${USRLOCAL}/lib
 	fi
 }
 
