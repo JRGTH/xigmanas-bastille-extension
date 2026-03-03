@@ -612,3 +612,11 @@ if (typeof require !== 'undefined') {
         }
     });
 }
+
+// --- PREVENT DATA LOSS (F5) ---
+window.addEventListener('beforeunload', function (e) {
+    if (isDirty) {
+        e.preventDefault();
+        return '';
+    }
+});
