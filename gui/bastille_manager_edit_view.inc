@@ -19,11 +19,11 @@ window.IDE_CONFIG = {
         <ul id="tabnav">
             <li class="tabinact"><a href="bastille_manager_gui.php"><span><?=gtext("Containers");?></span></a></li>
             <li class="tabinact"><a href="bastille_manager_jconf.php?jailname=<?=$jailname?>"><span><?=gtext("Configuration");?></span></a></li>
-            <li class="tabact"><a href="bastille_manager_edit.php?jailname=<?=$jailname?>" title="<?=gtext('Reload');?>"><span><?=gtext("Editor");?></span></a></li>
+            <li class="tabact"><a href="bastille_manager_editor_v2.php?jailname=<?=$jailname?>" title="<?=gtext('Reload');?>"><span><?=gtext("Editor");?></span></a></li>
         </ul>
     </td></tr>
     <tr><td class="tabcont">
-        <form action="bastille_manager_edit.php?jailname=<?=urlencode($jailname)?>&dir=<?=urlencode($real_current_dir)?>&filepath=<?=urlencode($filepath)?>" method="post" name="iform" id="iform">
+        <form action="bastille_manager_editor_v2.php?jailname=<?=urlencode($jailname)?>&dir=<?=urlencode($real_current_dir)?>&filepath=<?=urlencode($filepath)?>" method="post" name="iform" id="iform">
             
             <div class="ide-container">
                 <div class="ide-sidebar">
