@@ -165,13 +165,14 @@ if($_POST):
                 	$ausgabe = preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $ausgabe);
                 	$ausgabe = trim($ausgabe);
                 	if (!empty($ausgabe)) {
-                	    $savemsg .= str_replace("\n", "<br />", htmlspecialchars($ausgabe)) . "<br />";
+                	    $savemsg .= str_replace("\n", "<br />", $ausgabe)."<br />";
                 	} else {
-                	    $savemsg .= sprintf(gtext('%s: Bootstrap process completed successfully.'), $get_release) . "<br />";
+                	    $savemsg .= sprintf(gtext('%s Bootstrap process completed successfully.'), $get_release) . "<br />";
                 	}
+                    // Set back default distfiles.
                 	exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$default_distfiles\"");
             	else:
-                	$errormsg .= sprintf(gtext('%s: Failed to download and/or extract release base.'), $get_release);
+                	$errormsg .= sprintf(gtext('%s Failed to download and/or extract release base.'),$get_release);
            		endif;
 
 			endif;
