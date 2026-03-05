@@ -8,12 +8,18 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Releases')];
 
 // --- PROCESAMIENTO ASÍNCRONO (Streaming Real-Time) ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
-    // ¡La magia! Liberamos la sesión para no bloquear XigmaNAS
+    // 1. Liberar la web (Session Unlocking)
     session_write_close();
 
+    // 2. Destruir cualquier tipo de buffer del servidor/PHP
+    @ini_set('output_buffering', '0');
+    @ini_set('zlib.output_compression', '0');
+    @ini_set('implicit_flush', '1');
+    ob_implicit_flush(1);
+    header('X-Accel-Buffering: no'); // Crítico si usas Nginx o proxy
+    header('Content-Encoding: none'); // Apagar Gzip
     header('Content-Type: text/plain; charset=utf-8');
-    header('Cache-Control: no-cache');
-    header('X-Accel-Buffering: no');
+    header('Cache-Control: no-cache, must-revalidate');
     while (ob_get_level()) ob_end_clean();
 
     $mode = $_GET['mode'] ?? '';
@@ -26,20 +32,22 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         if (!empty($config_path)) {
             exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"base $lib32 $ports $src\"");
         }
-        $command = sprintf('/usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
+        // stdbuf -o0 fuerza a FreeBSD a no retener el log
+        $command = sprintf('stdbuf -o0 /usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
     } else {
-        $command = sprintf('/usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
+        $command = sprintf('stdbuf -o0 /usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
     }
 
     $handle = popen($command, 'r');
     if ($handle) {
-        // CAMBIO CLAVE: Usamos fread() para no esperar al salto de línea \n
+        stream_set_blocking($handle, false); // 3. Lectura No Bloqueante
         while (!feof($handle)) {
-            $chunk = fread($handle, 64); // Leemos en bloques pequeños
+            $chunk = fread($handle, 32); // Leemos miguitas de pan
             if ($chunk !== false && $chunk !== '') {
-                // Limpiamos colores y mandamos inmediatamente
                 echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $chunk);
                 flush();
+            } else {
+                usleep(15000); // 15ms de pausa para no fundir la CPU
             }
         }
         pclose($handle);
@@ -105,19 +113,24 @@ async function runBastilleAction(mode) {
 
             const chunk = decoder.decode(value, { stream: true });
 
-            // CAMBIO CLAVE: Emulador de terminal en JS letra a letra
             for (let i = 0; i < chunk.length; i++) {
                 const char = chunk[i];
                 if (char === '\r') {
-                    // Si llega un \r, borramos el texto hasta el último \n
-                    const lastNewline = currentText.lastIndexOf('\n');
-                    currentText = lastNewline !== -1 ? currentText.substring(0, lastNewline + 1) : '';
+                    // Evitar que un \r\n (salto de línea clásico) nos borre la línea
+                    if (i + 1 < chunk.length && chunk[i + 1] === '\n') {
+                        currentText += '\n';
+                        i++; // Saltamos el \n porque ya lo hemos procesado
+                    } else {
+                        // Es un \r puro (Barra de progreso de Bastille)
+                        const lastNewline = currentText.lastIndexOf('\n');
+                        currentText = lastNewline !== -1 ? currentText.substring(0, lastNewline + 1) : '';
+                    }
                 } else {
                     currentText += char;
                 }
             }
             logArea.textContent = currentText;
-            logArea.scrollTop = logArea.scrollHeight;
+            logArea.scrollTop = logArea.scrollHeight; // Auto-scroll
         }
     } catch (e) {
         logArea.textContent += "\n[Error]: " + e;
