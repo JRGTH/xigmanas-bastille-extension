@@ -6,9 +6,8 @@ require_once("bastille_manager-lib.inc");
 $gt_selection_delete_confirm = gtext('Do you really want to destroy this base release?');
 $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Releases')];
 
-// --- PROCESAMIENTO ASÍNCRONO (Streaming Real-Time) ---
+// --- ASYNCHRONOUS STREAMING PROCESSING ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
-    // 1. Desbloquear la sesión de XigmaNAS (¡La magia de no bloquear la web!)
     session_write_close();
 
     @ini_set('output_buffering', '0');
@@ -31,22 +30,22 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         if (!empty($config_path)) {
             exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"base $lib32 $ports $src\"");
         }
-        // EL TRUCO: Usar /usr/bin/script para emular una TTY y forzar el progreso en vivo
-        $command = sprintf('/usr/bin/script -q /dev/null /usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
+        // Using 'script' to trick bastille into thinking it has a TTY for real-time progress
+        $command = sprintf('script -q /dev/null /usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
     } else {
-        $command = sprintf('/usr/bin/script -q /dev/null /usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
+        $command = sprintf('script -q /dev/null /usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
     }
 
     $handle = popen($command, 'r');
     if ($handle) {
         stream_set_blocking($handle, false);
         while (!feof($handle)) {
-            $chunk = fread($handle, 64);
+            $chunk = fread($handle, 128);
             if ($chunk !== false && $chunk !== '') {
                 echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $chunk);
                 flush();
             } else {
-                usleep(15000);
+                usleep(20000);
             }
         }
         pclose($handle);
@@ -58,7 +57,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     exit;
 }
 
-// Lógica de listado para la tabla
 $sphere_array = [];
 if (is_dir("{$rootfolder}/releases")):
    $entries = preg_grep('/^[0-9]+\.[0-9]+\-RELEASE|(Debian[0-9]{1,2}$)|(Ubuntu_[0-9]{4}$)/', scandir("{$rootfolder}/releases"));
@@ -104,7 +102,7 @@ async function runBastilleAction(mode) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
-        let currentText = logArea.textContent;
+        let currentLines = logArea.textContent.split('\n');
 
         while (true) {
             const { done, value } = await reader.read();
@@ -115,25 +113,22 @@ async function runBastilleAction(mode) {
             for (let i = 0; i < chunk.length; i++) {
                 const char = chunk[i];
                 if (char === '\r') {
-                    // Si es un salto de línea normal de Windows (\r\n), lo ignoramos
-                    if (i + 1 < chunk.length && chunk[i + 1] === '\n') {
-                        continue;
-                    }
-                    // Si es un \r puro (Progreso de FreeBSD), volvemos al inicio de la línea actual
-                    const lastNewline = currentText.lastIndexOf('\n');
-                    currentText = lastNewline !== -1 ? currentText.substring(0, lastNewline + 1) : '';
+                    // Reset current line on Carriage Return
+                    currentLines[currentLines.length - 1] = "";
+                } else if (char === '\n') {
+                    currentLines.push("");
                 } else {
-                    currentText += char;
+                    currentLines[currentLines.length - 1] += char;
                 }
             }
-            logArea.textContent = currentText;
+            logArea.textContent = currentLines.join('\n');
+            logArea.parentNode.scrollTop = logArea.parentNode.scrollHeight;
         }
     } catch (e) {
         logArea.textContent += "\n[Error]: " + e;
     } finally {
         btnDown.disabled = btnDest.disabled = false;
-        logArea.textContent += "\n\n== PROCESO FINALIZADO ==";
-        // 0 recargas molestas. Te quedas leyendo tu log tranquilamente.
+        logArea.textContent += "\n\n=== PROCESS COMPLETED ===";
     }
 }
 </script>
@@ -158,8 +153,7 @@ $document->render();
 
         <div id="log-container" style="display:none; margin-bottom:15px;">
             <?php
-                // Usamos print_info_box pero inyectamos un div interno para el texto
-                print_info_box('<div id="log-area" style="text-align: left; white-space: pre-wrap; font-family: monospace;"></div>');
+                print_info_box('<div style="max-height: 300px; overflow-y: auto;"><div id="log-area" style="text-align: left; white-space: pre; font-family: monospace; font-size: 11px;"></div></div>');
             ?>
         </div>
 
