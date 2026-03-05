@@ -122,7 +122,7 @@ if($_POST):
 		$src = "";
 		$get_release = $pconfig['release_item'];
 		$check_release = ("{$rootfolder}/releases/{$get_release}");
-		$cmd = sprintf('/bin/echo "Y" | /usr/local/bin/bastille bootstrap %1$s > %2$s',$get_release,$logevent);
+		$cmd = sprintf('/bin/echo "Y" | /usr/local/bin/bastille bootstrap %1$s > %2$s 2>&1', $get_release, $logevent);
 		$base_mandatory = "base";
 		$zfs_status = get_state_zfs();
 
@@ -153,27 +153,26 @@ if($_POST):
 					endif;
 				endif;
 				$return_val = 0;
-				$output = [];
-				exec($cmd,$output,$return_val);
-				if($return_val == 0):
-                	ob_start();
-                	if (file_exists($logevent)) {
-                	    include("{$logevent}");
-                	}
-                	$ausgabe = ob_get_contents();
-                	ob_end_clean();
-                	$ausgabe = preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $ausgabe);
-                	$ausgabe = trim($ausgabe);
-                	if (!empty($ausgabe)) {
-                	    $savemsg .= str_replace("\n", "<br />", $ausgabe)."<br />";
-                	} else {
-                	    $savemsg .= sprintf(gtext('%s Bootstrap process completed successfully.'), $get_release) . "<br />";
-                	}
-                    // Set back default distfiles.
-                	exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$default_distfiles\"");
-            	else:
-                	$errormsg .= sprintf(gtext('%s Failed to download and/or extract release base.'),$get_release);
-           		endif;
+                $output = [];
+                exec($cmd,$output,$return_val);
+
+                if($return_val == 0):
+                      $ausgabe = "";
+                      if (file_exists($logevent)) {
+                          $ausgabe = file_get_contents($logevent);
+                      }
+                      $ausgabe = preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $ausgabe);
+                      $ausgabe = trim($ausgabe);
+                      if (!empty($ausgabe)) {
+                          $savemsg .= str_replace("\n", "<br />", htmlspecialchars($ausgabe)) . "<br />";
+                      } else {
+                          $savemsg .= sprintf(gtext('%s Bootstrap process completed successfully.'), $get_release) . "<br />";
+                      }
+                      // Set back default distfiles.
+                      exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$default_distfiles\"");
+                else:
+                      $errormsg .= sprintf(gtext('%s Failed to download and/or extract release base.'),$get_release);
+                endif;
 
 			endif;
 		endif;
