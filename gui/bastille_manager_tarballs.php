@@ -8,16 +8,16 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Releases')];
 
 // --- PROCESAMIENTO ASÍNCRONO (Streaming Real-Time) ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
-    // 1. Liberar la web (Session Unlocking)
+    // Liberar la sesión para no bloquear XigmaNAS
     session_write_close();
 
-    // 2. Destruir cualquier tipo de buffer del servidor/PHP
+    // Configuración para evitar el buffering de PHP/Nginx
     @ini_set('output_buffering', '0');
     @ini_set('zlib.output_compression', '0');
     @ini_set('implicit_flush', '1');
     ob_implicit_flush(1);
-    header('X-Accel-Buffering: no'); // Crítico si usas Nginx o proxy
-    header('Content-Encoding: none'); // Apagar Gzip
+    header('X-Accel-Buffering: no');
+    header('Content-Encoding: none');
     header('Content-Type: text/plain; charset=utf-8');
     header('Cache-Control: no-cache, must-revalidate');
     while (ob_get_level()) ob_end_clean();
@@ -32,22 +32,22 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         if (!empty($config_path)) {
             exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"base $lib32 $ports $src\"");
         }
-        // stdbuf -o0 fuerza a FreeBSD a no retener el log
-        $command = sprintf('stdbuf -o0 /usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
+        // Quitamos stdbuf porque no está disponible en tu entorno
+        $command = sprintf('/usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
     } else {
-        $command = sprintf('stdbuf -o0 /usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
+        $command = sprintf('/usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
     }
 
     $handle = popen($command, 'r');
     if ($handle) {
-        stream_set_blocking($handle, false); // 3. Lectura No Bloqueante
+        stream_set_blocking($handle, false); // Lectura no bloqueante
         while (!feof($handle)) {
-            $chunk = fread($handle, 32); // Leemos miguitas de pan
+            $chunk = fread($handle, 64); // Leemos en bloques pequeños
             if ($chunk !== false && $chunk !== '') {
                 echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $chunk);
                 flush();
             } else {
-                usleep(15000); // 15ms de pausa para no fundir la CPU
+                usleep(15000); // Pequeña pausa para no saturar la CPU
             }
         }
         pclose($handle);
@@ -116,12 +116,10 @@ async function runBastilleAction(mode) {
             for (let i = 0; i < chunk.length; i++) {
                 const char = chunk[i];
                 if (char === '\r') {
-                    // Evitar que un \r\n (salto de línea clásico) nos borre la línea
                     if (i + 1 < chunk.length && chunk[i + 1] === '\n') {
                         currentText += '\n';
-                        i++; // Saltamos el \n porque ya lo hemos procesado
+                        i++;
                     } else {
-                        // Es un \r puro (Barra de progreso de Bastille)
                         const lastNewline = currentText.lastIndexOf('\n');
                         currentText = lastNewline !== -1 ? currentText.substring(0, lastNewline + 1) : '';
                     }
@@ -136,10 +134,27 @@ async function runBastilleAction(mode) {
         logArea.textContent += "\n[Error]: " + e;
     } finally {
         btnDown.disabled = btnDest.disabled = false;
-        if(mode === 'destroy') { setTimeout(() => { location.reload(); }, 1500); }
+        logArea.textContent += "\n\n== PROCESO FINALIZADO ==";
+        // Eliminada la recarga automática. El log se queda en pantalla.
     }
 }
 </script>
+
+<?php
+// RESTAURADOS: Botones de navegación (Tabs)
+$document = new co_DOMDocument();
+$document->
+    add_area_tabnav()->
+       push()->
+       add_tabnav_upper()->
+          ins_tabnav_record('bastille_manager_gui.php',gettext('Containers'),gettext('Reload page'),true)->
+          ins_tabnav_record('bastille_manager_info.php',gettext('Information'),gettext('Reload page'),true)->
+          ins_tabnav_record('bastille_manager_maintenance.php',gettext('Maintenance'),gettext('Reload page'),true)->
+       pop()->add_tabnav_lower()->
+          ins_tabnav_record('bastille_manager_config.php',gettext('Bastille Configuration'),gettext('Reload page'),true)->
+          ins_tabnav_record('bastille_manager_tarballs.php',gettext('Base Releases'),gettext('Reload page'),true);
+$document->render();
+?>
 
 <form action="bastille_manager_tarballs.php" method="post" name="iform" id="iform">
     <table id="area_data"><tbody><tr><td id="area_data_frame">
