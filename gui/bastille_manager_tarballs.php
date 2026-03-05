@@ -8,6 +8,7 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Releases')];
 
 // --- ASYNCHRONOUS STREAMING PROCESSING ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
+    // 1. Liberar la sesión para que XigmaNAS no se congele
     session_write_close();
 
     @ini_set('output_buffering', '0');
@@ -30,10 +31,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         if (!empty($config_path)) {
             exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"base $lib32 $ports $src\"");
         }
-        // Using 'script' to trick bastille into thinking it has a TTY for real-time progress
-        $command = sprintf('script -q /dev/null /usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
+        // Ejecución directa, sin herramientas de emulación TTY
+        $command = sprintf('/usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
     } else {
-        $command = sprintf('script -q /dev/null /usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
+        $command = sprintf('/usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
     }
 
     $handle = popen($command, 'r');
@@ -45,7 +46,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
                 echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $chunk);
                 flush();
             } else {
-                usleep(20000);
+                usleep(20000); // Pausa de 20ms
             }
         }
         pclose($handle);
@@ -102,7 +103,7 @@ async function runBastilleAction(mode) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
-        let currentLines = logArea.textContent.split('\n');
+        let currentText = logArea.textContent;
 
         while (true) {
             const { done, value } = await reader.read();
@@ -113,16 +114,18 @@ async function runBastilleAction(mode) {
             for (let i = 0; i < chunk.length; i++) {
                 const char = chunk[i];
                 if (char === '\r') {
-                    // Reset current line on Carriage Return
-                    currentLines[currentLines.length - 1] = "";
-                } else if (char === '\n') {
-                    currentLines.push("");
+                    // Si llega un retorno de carro, borramos hasta el último salto de línea
+                    const lastNewline = currentText.lastIndexOf('\n');
+                    currentText = lastNewline !== -1 ? currentText.substring(0, lastNewline + 1) : '';
                 } else {
-                    currentLines[currentLines.length - 1] += char;
+                    currentText += char;
                 }
             }
-            logArea.textContent = currentLines.join('\n');
-            logArea.parentNode.scrollTop = logArea.parentNode.scrollHeight;
+            logArea.textContent = currentText;
+
+            // Auto-scroll para que siga el log hacia abajo
+            const parentDiv = logArea.parentElement;
+            if(parentDiv) parentDiv.scrollTop = parentDiv.scrollHeight;
         }
     } catch (e) {
         logArea.textContent += "\n[Error]: " + e;
@@ -153,7 +156,7 @@ $document->render();
 
         <div id="log-container" style="display:none; margin-bottom:15px;">
             <?php
-                print_info_box('<div style="max-height: 300px; overflow-y: auto;"><div id="log-area" style="text-align: left; white-space: pre; font-family: monospace; font-size: 11px;"></div></div>');
+                print_info_box('<div style="max-height: 300px; overflow-y: auto;"><div id="log-area" style="text-align: left; white-space: pre-wrap; font-family: monospace; font-size: 11px;"></div></div>');
             ?>
         </div>
 
