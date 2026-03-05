@@ -6,8 +6,11 @@ require_once("bastille_manager-lib.inc");
 $gt_selection_delete_confirm = gtext('Do you really want to destroy this base release?');
 $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Releases')];
 
-// --- MOTOR DE STREAMING ---
+// --- PROCESAMIENTO ASÍNCRONO (Streaming) ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
+    // 1. FUNDAMENTAL: Liberamos el bloqueo de sesión para que la web NO se bloquee
+    session_write_close();
+
     header('Content-Type: text/plain; charset=utf-8');
     header('Cache-Control: no-cache');
     header('X-Accel-Buffering: no');
@@ -33,20 +36,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         while (!feof($handle)) {
             $line = fgets($handle);
             if ($line !== false) {
-                // Enviamos la línea tal cual (el JS se encarga del \r)
+                // Quitamos colores ANSI y escupimos la línea
                 echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $line);
                 flush();
             }
         }
         pclose($handle);
     }
+
     if ($mode === 'bootstrap' && !empty($config_path)) {
         exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$default_distfiles\"");
     }
     exit;
 }
 
-// Lógica de listado original para la tabla superior
+// Lógica de listado para la tabla (Respetando tu imagen original)
 $sphere_array = [];
 if (is_dir("{$rootfolder}/releases")):
    $entries = preg_grep('/^[0-9]+\.[0-9]+\-RELEASE|(Debian[0-9]{1,2}$)|(Ubuntu_[0-9]{4}$)/', scandir("{$rootfolder}/releases"));
@@ -72,11 +76,9 @@ async function runBastilleAction(mode) {
 
     const logArea = document.getElementById('log-area');
     const logContainer = document.getElementById('log-container');
-    const btnRefresh = document.getElementById('btn-refresh-list');
 
     logContainer.style.display = 'block';
-    btnRefresh.style.display = 'none';
-    logArea.textContent = "== Iniciando " + mode.toUpperCase() + " ==\n";
+    logArea.textContent = "Processing " + mode + " for " + release + "...\n";
 
     const btnDown = document.getElementById('btn-download');
     const btnDest = document.getElementById('btn-destroy');
@@ -100,24 +102,23 @@ async function runBastilleAction(mode) {
 
             const chunk = decoder.decode(value, { stream: true });
 
-            // MANEJO DE PROGRESO (\r)
+            // Lógica de porcentaje mejorada (\r)
             if (chunk.includes('\r')) {
-                const parts = chunk.split('\r');
+                const subparts = chunk.split('\r');
                 let lines = logArea.textContent.split('\n');
-                // Reemplazamos el final de la última línea con el nuevo progreso
-                lines[lines.length - 1] = parts[parts.length - 1];
+                lines[lines.length - 1] = subparts[subparts.length - 1];
                 logArea.textContent = lines.join('\n');
             } else {
                 logArea.textContent += chunk;
             }
             logArea.scrollTop = logArea.scrollHeight;
         }
-        logArea.textContent += "\n== FINALIZADO ==";
-        btnRefresh.style.display = 'inline'; // Mostrar botón para actualizar
     } catch (e) {
         logArea.textContent += "\n[Error]: " + e;
     } finally {
         btnDown.disabled = btnDest.disabled = false;
+        // Si fue un destroy, recargamos al final para actualizar la lista de la tabla
+        if(mode === 'destroy') { setTimeout(() => { location.reload(); }, 1500); }
     }
 }
 </script>
@@ -125,19 +126,14 @@ async function runBastilleAction(mode) {
 <form action="bastille_manager_tarballs.php" method="post" name="iform" id="iform">
     <table id="area_data"><tbody><tr><td id="area_data_frame">
 
-        <div id="log-container" style="display:none; margin-bottom:15px; border:1px solid #ccc; background:#fff;">
-            <div style="background:#eee; padding:5px; font-weight:bold; border-bottom:1px solid #ccc;">
-                <?=gtext("Bastille Console Output:");?>
-                <button type="button" id="btn-refresh-list" style="display:none; float:right;" onclick="location.reload();"><?=gtext("Actualizar Lista");?></button>
-            </div>
-            <pre id="log-area" style="margin:0; padding:10px; max-height:300px; overflow:auto; font-family:monospace; white-space:pre-wrap; font-size:11px;"></pre>
+        <div id="log-container" style="display:none; margin-bottom:15px;">
+            <pre id="log-area" style="background:#f0f0f0; border:1px solid #ccc; padding:10px; font-family:monospace; white-space:pre-wrap; font-size:11px; color:#333;"></pre>
         </div>
 
         <table class="area_data_settings">
            <colgroup><col class="area_data_settings_col_tag"><col class="area_data_settings_col_data"></colgroup>
            <thead>
               <?php
-              // RESTAURADA: Sección de versiones instaladas
               if (!empty($sphere_array)):
                  html_titleline2(gettext('FreeBSD/Linux Base Release Installed'));
                  foreach ($sphere_array as $sphere_record):
@@ -151,7 +147,7 @@ async function runBastilleAction(mode) {
            <tbody>
               <?php
               html_combobox2('release_item', gettext('Select Base Release'), '', $a_action, '', true, false);
-              html_titleline2(gettext('Optional Distfiles (Overrides config)'));
+              html_titleline2(gettext('Optional Distfiles (Overrides config, has no effect on Linux Releases)'));
               html_checkbox2('lib32', gettext('32-bit Compatibility'), false, 'lib32.txz', '', false);
               html_checkbox2('ports', gettext('Ports tree'), false, 'ports.txz', '', false);
               html_checkbox2('src', gettext('System source tree'), false, 'src.txz', '', false);
