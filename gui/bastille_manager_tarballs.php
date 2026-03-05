@@ -8,10 +8,9 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Releases')];
 
 // --- PROCESAMIENTO ASÍNCRONO (Streaming Real-Time) ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
-    // Liberar la sesión para no bloquear XigmaNAS
+    // 1. Desbloquear la sesión de XigmaNAS (¡La magia de no bloquear la web!)
     session_write_close();
 
-    // Configuración para evitar el buffering de PHP/Nginx
     @ini_set('output_buffering', '0');
     @ini_set('zlib.output_compression', '0');
     @ini_set('implicit_flush', '1');
@@ -32,22 +31,22 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         if (!empty($config_path)) {
             exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"base $lib32 $ports $src\"");
         }
-        // Quitamos stdbuf porque no está disponible en tu entorno
-        $command = sprintf('/usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
+        // EL TRUCO: Usar /usr/bin/script para emular una TTY y forzar el progreso en vivo
+        $command = sprintf('/usr/bin/script -q /dev/null /usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
     } else {
-        $command = sprintf('/usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
+        $command = sprintf('/usr/bin/script -q /dev/null /usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
     }
 
     $handle = popen($command, 'r');
     if ($handle) {
-        stream_set_blocking($handle, false); // Lectura no bloqueante
+        stream_set_blocking($handle, false);
         while (!feof($handle)) {
-            $chunk = fread($handle, 64); // Leemos en bloques pequeños
+            $chunk = fread($handle, 64);
             if ($chunk !== false && $chunk !== '') {
                 echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $chunk);
                 flush();
             } else {
-                usleep(15000); // Pequeña pausa para no saturar la CPU
+                usleep(15000);
             }
         }
         pclose($handle);
@@ -87,7 +86,7 @@ async function runBastilleAction(mode) {
     const logContainer = document.getElementById('log-container');
 
     logContainer.style.display = 'block';
-    logArea.textContent = "Processing " + mode + " for " + release + "...\n";
+    logArea.textContent = "Processing " + mode + " for " + release + "...\n\n";
 
     const btnDown = document.getElementById('btn-download');
     const btnDest = document.getElementById('btn-destroy');
@@ -116,32 +115,30 @@ async function runBastilleAction(mode) {
             for (let i = 0; i < chunk.length; i++) {
                 const char = chunk[i];
                 if (char === '\r') {
+                    // Si es un salto de línea normal de Windows (\r\n), lo ignoramos
                     if (i + 1 < chunk.length && chunk[i + 1] === '\n') {
-                        currentText += '\n';
-                        i++;
-                    } else {
-                        const lastNewline = currentText.lastIndexOf('\n');
-                        currentText = lastNewline !== -1 ? currentText.substring(0, lastNewline + 1) : '';
+                        continue;
                     }
+                    // Si es un \r puro (Progreso de FreeBSD), volvemos al inicio de la línea actual
+                    const lastNewline = currentText.lastIndexOf('\n');
+                    currentText = lastNewline !== -1 ? currentText.substring(0, lastNewline + 1) : '';
                 } else {
                     currentText += char;
                 }
             }
             logArea.textContent = currentText;
-            logArea.scrollTop = logArea.scrollHeight; // Auto-scroll
         }
     } catch (e) {
         logArea.textContent += "\n[Error]: " + e;
     } finally {
         btnDown.disabled = btnDest.disabled = false;
         logArea.textContent += "\n\n== PROCESO FINALIZADO ==";
-        // Eliminada la recarga automática. El log se queda en pantalla.
+        // 0 recargas molestas. Te quedas leyendo tu log tranquilamente.
     }
 }
 </script>
 
 <?php
-// RESTAURADOS: Botones de navegación (Tabs)
 $document = new co_DOMDocument();
 $document->
     add_area_tabnav()->
@@ -160,7 +157,10 @@ $document->render();
     <table id="area_data"><tbody><tr><td id="area_data_frame">
 
         <div id="log-container" style="display:none; margin-bottom:15px;">
-            <pre id="log-area" style="background:#f0f0f0; border:1px solid #ccc; padding:10px; font-family:monospace; white-space:pre-wrap; font-size:11px; color:#333;"></pre>
+            <?php
+                // Usamos print_info_box pero inyectamos un div interno para el texto
+                print_info_box('<div id="log-area" style="text-align: left; white-space: pre-wrap; font-family: monospace;"></div>');
+            ?>
         </div>
 
         <table class="area_data_settings">
