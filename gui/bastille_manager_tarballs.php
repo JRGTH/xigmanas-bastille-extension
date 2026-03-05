@@ -6,9 +6,9 @@ require_once("bastille_manager-lib.inc");
 $gt_selection_delete_confirm = gtext('Do you really want to destroy this base release?');
 $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Releases')];
 
-// --- PROCESAMIENTO ASÍNCRONO (Streaming) ---
+// --- PROCESAMIENTO ASÍNCRONO (Streaming Real-Time) ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
-    // 1. FUNDAMENTAL: Liberamos el bloqueo de sesión para que la web NO se bloquee
+    // ¡La magia! Liberamos la sesión para no bloquear XigmaNAS
     session_write_close();
 
     header('Content-Type: text/plain; charset=utf-8');
@@ -33,11 +33,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
 
     $handle = popen($command, 'r');
     if ($handle) {
+        // CAMBIO CLAVE: Usamos fread() para no esperar al salto de línea \n
         while (!feof($handle)) {
-            $line = fgets($handle);
-            if ($line !== false) {
-                // Quitamos colores ANSI y escupimos la línea
-                echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $line);
+            $chunk = fread($handle, 64); // Leemos en bloques pequeños
+            if ($chunk !== false && $chunk !== '') {
+                // Limpiamos colores y mandamos inmediatamente
+                echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $chunk);
                 flush();
             }
         }
@@ -50,7 +51,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     exit;
 }
 
-// Lógica de listado para la tabla (Respetando tu imagen original)
+// Lógica de listado para la tabla
 $sphere_array = [];
 if (is_dir("{$rootfolder}/releases")):
    $entries = preg_grep('/^[0-9]+\.[0-9]+\-RELEASE|(Debian[0-9]{1,2}$)|(Ubuntu_[0-9]{4}$)/', scandir("{$rootfolder}/releases"));
@@ -96,28 +97,32 @@ async function runBastilleAction(mode) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
+        let currentText = logArea.textContent;
+
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
 
-            // Lógica de porcentaje mejorada (\r)
-            if (chunk.includes('\r')) {
-                const subparts = chunk.split('\r');
-                let lines = logArea.textContent.split('\n');
-                lines[lines.length - 1] = subparts[subparts.length - 1];
-                logArea.textContent = lines.join('\n');
-            } else {
-                logArea.textContent += chunk;
+            // CAMBIO CLAVE: Emulador de terminal en JS letra a letra
+            for (let i = 0; i < chunk.length; i++) {
+                const char = chunk[i];
+                if (char === '\r') {
+                    // Si llega un \r, borramos el texto hasta el último \n
+                    const lastNewline = currentText.lastIndexOf('\n');
+                    currentText = lastNewline !== -1 ? currentText.substring(0, lastNewline + 1) : '';
+                } else {
+                    currentText += char;
+                }
             }
+            logArea.textContent = currentText;
             logArea.scrollTop = logArea.scrollHeight;
         }
     } catch (e) {
         logArea.textContent += "\n[Error]: " + e;
     } finally {
         btnDown.disabled = btnDest.disabled = false;
-        // Si fue un destroy, recargamos al final para actualizar la lista de la tabla
         if(mode === 'destroy') { setTimeout(() => { location.reload(); }, 1500); }
     }
 }
