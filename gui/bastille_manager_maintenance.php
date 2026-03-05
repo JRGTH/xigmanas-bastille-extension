@@ -308,20 +308,30 @@ $(document).ready(function(){
 	});
 
     // --- LOGICA DEL CHECKBOX REFRESH (LocalStorage) ---
-    var $chk = $("#show_refresh_button");
-
-    // 1. Leer estado inicial desde LocalStorage
-    var savedState = localStorage.getItem('bastille_show_refresh_button');
-    if (savedState === 'true') {
-        $chk.prop('checked', true);
+    var $chkRefresh = $("#show_refresh_button");
+    var savedStateRefresh = localStorage.getItem('bastille_show_refresh_button');
+    if (savedStateRefresh === 'true') {
+        $chkRefresh.prop('checked', true);
     } else {
-        $chk.prop('checked', false); // Por defecto deshabilitado
+        $chkRefresh.prop('checked', false);
     }
-
-    // 2. Guardar cambios al hacer click
-    $chk.change(function() {
+    $chkRefresh.change(function() {
         var isChecked = $(this).is(':checked');
         localStorage.setItem('bastille_show_refresh_button', isChecked);
+    });
+
+    // --- LOGICA DEL CHECKBOX CONSOLE (LocalStorage) ---
+    var $chkConsole = $("#show_web_terminal_button");
+    var savedStateConsole = localStorage.getItem('bastille_show_web_terminal_button');
+    // Default to true if not set, or false? Let's default to false for safety/cleanliness if ttyd not installed
+    if (savedStateConsole === 'true') {
+        $chkConsole.prop('checked', true);
+    } else {
+        $chkConsole.prop('checked', false);
+    }
+    $chkConsole.change(function() {
+        var isChecked = $(this).is(':checked');
+        localStorage.setItem('bastille_show_web_terminal_button', isChecked);
     });
 });
 //]]>
@@ -382,10 +392,13 @@ $(document).ready(function(){
 				<input name="restore" type="submit" class="formbtn" title="<?=gtext("Restore a container");?>" value="<?=gtext("Restore");?>" />
 			</div>
 			<table width="100%" border="0" cellpadding="6" cellspacing="0">
-				<?php html_separator();?>
+                 <?php html_separator();?>
 				<?php html_titleline(gtext("Refresh"));?>
-				<?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the containers tab.'),'',false);?>
-				<?php html_separator();?>
+                <?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the Containers tab.'),'',false);?>
+                <?php html_separator();?>
+                <?php html_titleline(gtext("Web terminal"));?>
+                <?php html_checkbox2('show_web_terminal_button',gtext('Show web terminal button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail row, to open the ttyd in a modal window.'),'',false);?>
+                <?php html_separator();?>
 			</table>
 			<div id="remarks">
 				<?php html_remark("note", gtext("Info"), sprintf(gtext("For general information visit the following link(s):")));?>
