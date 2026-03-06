@@ -8,7 +8,6 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Releases')];
 
 // --- ASYNCHRONOUS STREAMING PROCESSING ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
-    // 1. Liberar la sesión para que XigmaNAS no se congele
     session_write_close();
 
     @ini_set('output_buffering', '0');
@@ -31,11 +30,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         if (!empty($config_path)) {
             exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"base $lib32 $ports $src\"");
         }
-        // Usando gstdbuf para romper el buffer del sistema
-        $command = sprintf('/usr/local/bin/gstdbuf -o0 /usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
+        $command = sprintf('/usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
     } else {
-        // Para destroy también
-        $command = sprintf('/usr/local/bin/gstdbuf -o0 /usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
+        $command = sprintf('/usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
     }
 
     $handle = popen($command, 'r');
@@ -47,7 +44,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
                 echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $chunk);
                 flush();
             } else {
-                usleep(20000); // Pausa de 20ms
+                usleep(20000);
             }
         }
         pclose($handle);
@@ -86,7 +83,7 @@ async function runBastilleAction(mode) {
     const logContainer = document.getElementById('log-container');
 
     logContainer.style.display = 'block';
-    logArea.textContent = "Processing " + mode + " for " + release + "...\n\n";
+    logArea.textContent = ""; // Empieza vacío, sin "Processing..."
 
     const btnDown = document.getElementById('btn-download');
     const btnDest = document.getElementById('btn-destroy');
@@ -104,7 +101,7 @@ async function runBastilleAction(mode) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
-        let currentText = logArea.textContent;
+        let fullText = "";
 
         while (true) {
             const { done, value } = await reader.read();
@@ -115,24 +112,21 @@ async function runBastilleAction(mode) {
             for (let i = 0; i < chunk.length; i++) {
                 const char = chunk[i];
                 if (char === '\r') {
-                    // Si llega un retorno de carro, borramos hasta el último salto de línea
-                    const lastNewline = currentText.lastIndexOf('\n');
-                    currentText = lastNewline !== -1 ? currentText.substring(0, lastNewline + 1) : '';
+                    // Si hay un retorno de carro, buscamos el último salto de línea
+                    const lastNewline = fullText.lastIndexOf('\n');
+                    // Borramos desde el último salto de línea hasta el final para sobreescribir el progreso
+                    fullText = lastNewline !== -1 ? fullText.substring(0, lastNewline + 1) : '';
                 } else {
-                    currentText += char;
+                    fullText += char;
                 }
             }
-            logArea.textContent = currentText;
-
-            // Auto-scroll para que siga el log hacia abajo
-            const parentDiv = logArea.parentElement;
-            if(parentDiv) parentDiv.scrollTop = parentDiv.scrollHeight;
+            logArea.textContent = fullText;
         }
     } catch (e) {
         logArea.textContent += "\n[Error]: " + e;
     } finally {
         btnDown.disabled = btnDest.disabled = false;
-        logArea.textContent += "\n\n=== PROCESS COMPLETED ===";
+        // No añadimos el mensaje de "Process Completed" ni recargamos
     }
 }
 </script>
@@ -157,7 +151,8 @@ $document->render();
 
         <div id="log-container" style="display:none; margin-bottom:15px;">
             <?php
-                print_info_box('<div style="max-height: 300px; overflow-y: auto;"><div id="log-area" style="text-align: left; white-space: pre-wrap; font-family: monospace; font-size: 11px;"></div></div>');
+                // Usamos la caja original de XigmaNAS sin scrolls manuales
+                print_info_box('<div id="log-area" style="text-align: left; white-space: pre-wrap; font-family: monospace; font-size: 11px; padding: 5px;"></div>');
             ?>
         </div>
 
