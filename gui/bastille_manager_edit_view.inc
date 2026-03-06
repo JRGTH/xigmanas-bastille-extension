@@ -39,15 +39,8 @@ window.IDE_CONFIG = {
                     </div>
 
                     <ul class="ide-file-list" id="fileList">
-                        <?php if ($real_current_dir !== $jail_root): ?>
-                           <li class="tree-item">
-                               <a href="?jailname=<?=$jailname?>&dir=<?=urlencode(dirname($real_current_dir))?>">
-                                   <?=$icon_up?> <span style="font-style:italic; color:#888;">.. (Up)</span>
-                               </a>
-                           </li>
-                        <?php endif; ?>
-
                         <?php foreach ($folders as $folder):
+                            if ($folder === '..' || $folder === '.') continue; // ¡Fuera!
                             $full_path = $real_current_dir . '/' . $folder;
                             ?>
                             <li class="tree-item folder-item">

@@ -289,7 +289,6 @@ function filterFiles() {
 
     const li = ul.getElementsByTagName('li');
     for (let i = 0; i < li.length; i++) {
-        if (li[i].textContent.includes('.. (Up)')) continue;
         let a = li[i].getElementsByTagName('a')[0];
         let txtValue = a ? a.textContent || a.innerText : '';
         li[i].style.display = txtValue.toLowerCase().indexOf(filter) > -1 ? '' : 'none';
@@ -498,6 +497,9 @@ window.toggleFolder = function (element, path) {
             subList.style.paddingLeft = '15px';
 
             data.folders.forEach((f) => {
+                if (f === '..' || f === '.') {
+                    return;
+                }
                 const fullP = path + '/' + f;
                 const safePath = fullP.replace(/'/g, "\\'");
                 subList.innerHTML += `<li class="tree-item folder-item"><a href="javascript:void(0)" onclick="toggleFolder(this, '${safePath}')">${cfg.icons.caret} ${cfg.icons.folder} <span>${f}</span></a></li>`;
