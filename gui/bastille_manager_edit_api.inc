@@ -31,7 +31,7 @@ if (isset($_GET['ajax_search'])) {
     }
     $commands['jail_root'] = "find " . escapeshellarg($search_path) . " -maxdepth 1 -type f -iname $search_term 2>/dev/null";
 
-    $searcher = new bastille_manager_MwExecParallel($commands);
+    $searcher = new BastilleManagerMwExecParallel($commands);
     $raw_results = $searcher->executeWithSelect();
     $final_items = [];
 

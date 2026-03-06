@@ -3,7 +3,7 @@
 require_once 'auth.inc';
 require_once 'guiconfig.inc';
 require_once 'bastille_manager-lib.inc';
-require_once 'bastille_manager_MwExecParallel.php';
+require_once 'BastilleManagerMwExecParallel.php';
 
 $jailname = $_GET['jailname'] ?? $_POST['jailname'] ?? '';
 
