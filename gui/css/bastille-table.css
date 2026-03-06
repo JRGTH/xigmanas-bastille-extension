@@ -1,0 +1,48 @@
+/* --- SIMPLE RESIZE STYLES --- */
+table.area_data_selection {
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+table.area_data_selection th {
+    position: relative;
+    padding: 5px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The visible handle */
+.resizer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 100;
+    user-select: none;
+    touch-action: none;
+}
+
+.resizer:hover, .resizing {
+    background-color: #007bff; /* Azul */
+    opacity: 1;
+}
+
+.web-terminal-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    filter: brightness(0.8);
+    transition: all 0.2s ease-in-out;
+}
+
+.web-terminal-icon-disabled {
+   opacity: 0.4;
+   cursor: not-allowed;
+}
+
+a:hover .web-terminal-icon {
+   transform: scale(1.1);
+}

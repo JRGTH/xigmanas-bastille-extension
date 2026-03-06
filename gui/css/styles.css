@@ -1,4 +1,7 @@
+/* main css */
 @import url('bastille-editor-layout.css');
 @import url('bastille-editor-components.css');
 @import url('bastille-editor-quicksearch.css');
 @import url('bastille-header-refresh.css');
+@import url('bastille-table.css');
+@import url('bastille-web-terminal-modal.css');

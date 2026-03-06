@@ -307,32 +307,42 @@ $(document).ready(function(){
 		$('#getinfo_ext').html(data.ext);
 	});
 
-    // --- CHECKBOX REFRESH LOGIC (LocalStorage) ---
-    var $chk = $("#show_refresh_button");
-
-    // 1. Read initial state from LocalStorage
-    var savedState = localStorage.getItem('bastille_show_refresh_button');
-    if (savedState === 'true') {
-        $chk.prop('checked', true);
+    // --- LOGICA DEL CHECKBOX REFRESH (LocalStorage) ---
+    var $chkRefresh = $("#show_refresh_button");
+    var savedStateRefresh = localStorage.getItem('bastille_show_refresh_button');
+    if (savedStateRefresh === 'true') {
+        $chkRefresh.prop('checked', true);
     } else {
-        $chk.prop('checked', false);
+        $chkRefresh.prop('checked', false);
     }
-
-    // Save changes by clicking
-    $chk.change(function() {
+    $chkRefresh.change(function() {
         var isChecked = $(this).is(':checked');
         localStorage.setItem('bastille_show_refresh_button', isChecked);
+    });
+
+    // --- LOGICA DEL CHECKBOX CONSOLE (LocalStorage) ---
+    var $chkConsole = $("#show_web_terminal_button");
+    var savedStateConsole = localStorage.getItem('bastille_show_web_terminal_button');
+    // Default to true if not set, or false? Let's default to false for safety/cleanliness if ttyd not installed
+    if (savedStateConsole === 'true') {
+        $chkConsole.prop('checked', true);
+    } else {
+        $chkConsole.prop('checked', false);
+    }
+    $chkConsole.change(function() {
+        var isChecked = $(this).is(':checked');
+        localStorage.setItem('bastille_show_web_terminal_button', isChecked);
     });
 
 	// --- CHECKBOX BETA EDITOR LOGIC (LocalStorage) ---
     var $chkBeta = $("#enable_beta_editor");
     var savedBetaState = localStorage.getItem('bastille_enable_beta_editor');
-    if (savedBetaState === 'true') { 
-		$chkBeta.prop('checked', true); 
-	} else { 
-		$chkBeta.prop('checked', false); 
+    if (savedBetaState === 'true') {
+		$chkBeta.prop('checked', true);
+	} else {
+		$chkBeta.prop('checked', false);
 	}
-    $chkBeta.change(function() { 
+    $chkBeta.change(function() {
 		localStorage.setItem('bastille_enable_beta_editor', $(this).is(':checked'));
 	});
 
@@ -395,10 +405,13 @@ $(document).ready(function(){
 				<input name="restore" type="submit" class="formbtn" title="<?=gtext("Restore a container");?>" value="<?=gtext("Restore");?>" />
 			</div>
 			<table width="100%" border="0" cellpadding="6" cellspacing="0">
-				<?php html_separator();?>
+                 <?php html_separator();?>
 				<?php html_titleline(gtext("Refresh"));?>
-				<?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the containers tab.'),'',false);?>
-				<?php html_separator();?>
+                <?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the Containers tab.'),'',false);?>
+                <?php html_separator();?>
+                <?php html_titleline(gtext("Web terminal"));?>
+                <?php html_checkbox2('show_web_terminal_button',gtext('Show web terminal button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail row, to open the ttyd in a modal window.'),'',false);?>
+                <?php html_separator();?>
 			</table>
 			<table width="100%" border="0" cellpadding="6" cellspacing="0">
                 <?php html_separator();?>
