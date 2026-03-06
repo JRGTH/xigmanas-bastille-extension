@@ -2,12 +2,18 @@
 // bastille_manager_edit_api.inc
 
 // 1. FILE CONTENT LOAD (SPA)
-if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
-    ob_clean();
-    if (is_file($filepath)) {
-        echo file_get_contents($filepath);
+if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    session_write_close();
+    $file_to_read = $_GET['filepath'] ?? '';
+
+    if (!empty($file_to_read) && file_exists($file_to_read)) {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo file_get_contents($file_to_read);
     } else {
-        http_response_code(404);
+        header("HTTP/1.1 404 Not Found");
         echo "Error: File not found.";
     }
     exit;

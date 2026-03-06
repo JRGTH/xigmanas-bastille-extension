@@ -348,14 +348,17 @@ function fetchSearchRecursive(term) {
 // --- SPA & TREE LOGIC ---
 document.querySelector('.ide-file-list').addEventListener('click', async function (e) {
     const link = e.target.closest('a');
+
     if (!link || link.getAttribute('onclick')?.includes('toggleFolder')) return;
 
-    const urlParams = new URLSearchParams(link.href.split('?')[1]);
-    const filepath = urlParams.get('filepath');
-    const isFile = filepath && filepath !== '';
+    const url = new URL(link.href, window.location.origin);
+    const filepath = url.searchParams.get('filepath');
+
+    if (!filepath) return;
+
+    e.preventDefault();
 
     if (isDirty) {
-        e.preventDefault();
         hideSpinner();
         const ok = await showConfirmDialog(
             'Unsaved changes',
@@ -365,59 +368,39 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
         if (!ok) return;
         isDirty = false;
         document.querySelectorAll('.dirty-dot').forEach((dot) => dot.remove());
-        if (!isFile) {
-            window.location.href = link.href;
-            return;
-        }
-    } else if (!isFile) {
-        return;
     }
 
-    e.preventDefault();
     document.body.style.cursor = 'wait';
+    if (typeof spinner === 'function') spinner();
 
     try {
-        const response = await fetch(link.href + '&ajax=1');
-        if (!response.ok) throw new Error('Server read error');
+        url.searchParams.set('ajax', '1');
+
+        const response = await fetch(url.toString());
+        if (!response.ok) throw new Error('Fetch failed');
+
         const fileContent = await response.text();
 
-        if (typeof window.editor !== 'undefined') {
+        if (window.editor) {
             isInjectingCode = true;
-            window.editor.setValue(fileContent);
+            window.editor.setValue(fileContent); // Monaco content
             isInjectingCode = false;
-            isDirty = false;
-            document.querySelectorAll('.dirty-dot').forEach((dot) => dot.remove());
-        } else {
-            window.location.href = link.href;
-            return;
         }
-
-        const ext = filepath.split('.').pop().toLowerCase();
-        let lang = 'shell';
-        if (['php', 'inc'].includes(ext)) lang = 'php';
-        else if (ext === 'xml') lang = 'xml';
-        else if (ext === 'js') lang = 'javascript';
-        else if (ext === 'css') lang = 'css';
-        else if (ext === 'json') lang = 'json';
-        else if (['html', 'htm'].includes(ext)) lang = 'html';
-
-        monaco.editor.setModelLanguage(window.editor.getModel(), lang);
 
         document.querySelectorAll('.tree-item').forEach((el) => el.classList.remove('active'));
         link.closest('.tree-item').classList.add('active');
-        window.history.pushState({}, '', link.href);
+
+        document.querySelector('input[name="filepath"]').value = filepath;
+        document.querySelector('input[name="dir"]').value = filepath.substring(0, filepath.lastIndexOf('/'));
+
+        url.searchParams.delete('ajax');
+        window.history.pushState({}, '', url.toString());
 
         const pathDisplay = document.getElementById('ide-filepath-display');
         if (pathDisplay) pathDisplay.innerText = filepath;
 
-        const inputFile = document.querySelector('input[name="filepath"]');
-        const inputDir = document.querySelector('input[name="dir"]');
-        if (inputFile) inputFile.value = filepath;
-        if (inputDir) inputDir.value = filepath.substring(0, filepath.lastIndexOf('/'));
-
-        const form = document.getElementById('iform');
-        if (form) form.action = window.location.href;
     } catch (error) {
+        console.error("Editor Error:", error);
         showConfirmDialog('Error', 'The selected file could not be loaded.', 'error');
     } finally {
         document.body.style.cursor = 'default';

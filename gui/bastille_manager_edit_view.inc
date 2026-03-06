@@ -28,7 +28,7 @@ window.IDE_CONFIG = {
             <div class="ide-container">
                 <div class="ide-sidebar">
                     <div class="ide-sidebar-header lhetop">
-                        <a href="?jailname=<?=urlencode($jailname)?>&dir=<?=urlencode($jail_root)?>" title="Go to Jail Root">
+                        <a href="?jailname=<?=urlencode($jailname)?>&filepath=<?=urlencode($filepath)?>" title="Reset Tree">
                             <img src="ext/bastille/images/home.svg" class="home-icon" alt="Home" width="18" height="18">
                         </a>
                     </div>
@@ -39,29 +39,44 @@ window.IDE_CONFIG = {
                     </div>
 
                     <ul class="ide-file-list" id="fileList">
-                        <?php foreach ($folders as $folder):
-                            if ($folder === '..' || $folder === '.') continue; // ¡Fuera!
-                            $full_path = $real_current_dir . '/' . $folder;
-                            ?>
-                            <li class="tree-item folder-item">
-                                <a href="javascript:void(0)" onclick="toggleFolder(this, '<?= addslashes($full_path) ?>')">
-                                    <span class="tree-caret">▶</span>
-                                    <?= $icon_folder ?> <span><?= htmlspecialchars($folder) ?></span>
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
+                        <li class="tree-item folder-item open">
+                            <a href="javascript:void(0)" style="cursor:default; pointer-events:none;">
+                                <span class="tree-caret">▼</span>
+                                <?= $icon_folder ?> <span style="font-weight:bold;">/</span>
+                            </a>
 
-                        <?php foreach ($files as $file):
-                            $full_file_path = $real_current_dir . '/' . $file;
-                            $is_active = ($filepath === $full_file_path) ? 'active' : '';
-                            ?>
-                           <li class="tree-item file-item <?=$is_active?>">
-                               <a href="?jailname=<?=$jailname?>&dir=<?=urlencode($real_current_dir)?>&filepath=<?=urlencode($full_file_path)?>"
-                                    onclick="if(typeof spinner === 'function') spinner();">
-                                    <?= $icon_file ?> <span><?= htmlspecialchars($file) ?></span>
-                               </a>
-                           </li>
-                        <?php endforeach; ?>
+                            <ul class="ide-file-list" style="display:block; padding-left:15px;">
+                                <?php
+                                // IMPORTANTE: Aquí usamos una lógica que siempre pida el contenido de la RAÍZ de la jail
+                                // aunque estemos editando un archivo en el quinto pino.
+                                $root_folders = scandir($jail_root);
+                                foreach ($root_folders as $folder):
+                                    if ($folder === '..' || $folder === '.') continue;
+                                    $full_path = rtrim($jail_root, '/') . '/' . $folder;
+                                    if (is_dir($full_path)): ?>
+                                        <li class="tree-item folder-item">
+                                            <a href="javascript:void(0)" onclick="toggleFolder(this, '<?= addslashes($full_path) ?>')">
+                                                <span class="tree-caret">▶</span>
+                                                <?= $icon_folder ?> <span><?= htmlspecialchars($folder) ?></span>
+                                            </a>
+                                        </li>
+                                    <?php endif;
+                                endforeach;
+
+                                foreach ($root_folders as $file):
+                                    $full_file_path = rtrim($jail_root, '/') . '/' . $file;
+                                    if (is_file($full_file_path)):
+                                        $is_active = ($filepath === $full_file_path) ? 'active' : ''; ?>
+                                        <li class="tree-item file-item <?=$is_active?>">
+                                            <a href="?jailname=<?=$jailname?>&filepath=<?=urlencode($full_file_path)?>"
+                                                 onclick="if(typeof spinner === 'function') spinner();">
+                                                 <?= $icon_file ?> <span><?= htmlspecialchars($file) ?></span>
+                                            </a>
+                                        </li>
+                                    <?php endif;
+                                endforeach; ?>
+                            </ul>
+                        </li>
                     </ul>
                 </div>
 
