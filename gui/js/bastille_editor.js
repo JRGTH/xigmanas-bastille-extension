@@ -408,10 +408,94 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
     }
 });
 
-document.addEventListener('DOMContentLoaded', function () {
-    const activeFile = document.querySelector('.tree-item.active');
-    if (activeFile) activeFile.scrollIntoView({ behavior: 'smooth', block: 'center' });
+document.addEventListener('DOMContentLoaded', async function () {
+    if (cfg.filepath && cfg.filepath !== '') {
+        // Esperamos a que el robot termine de abrir todo
+        await syncSidebarWithFile();
+    }
 });
+
+/**
+ * Esta función es el "robot" que abre las carpetas por ti
+ */
+/**
+ * Synchronizes the sidebar tree with the current filepath on page load (F5)
+ * Refactored to handle the Persistent Root structure and null-safety.
+ */
+async function syncSidebarWithFile() {
+    const targetFile = cfg.filepath;
+    if (!targetFile) return;
+
+    // 1. Get segments
+    let relativePath = targetFile.replace(cfg.jailRoot, '');
+    let segments = relativePath.split('/').filter(s => s !== '');
+    segments.pop(); // Remove filename, keep folders
+
+    let currentPath = cfg.jailRoot.replace(/\/$/, '');
+
+    // START: Look inside the main fileList
+    let $currentContainer = document.getElementById('fileList');
+    if (!$currentContainer) {
+        console.warn("IDE: #fileList not found in DOM.");
+        return;
+    }
+
+    // 2. Open folders sequentially
+    for (const segment of segments) {
+        currentPath += '/' + segment;
+
+        // Find the folder link
+        // We look for any folder link that contains the segment name in its span
+        const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
+            .find(a => {
+                const span = a.querySelector('span:last-child');
+                return span && span.innerText.trim() === segment;
+            });
+
+        if (folderLink) {
+            // WAIT for toggleFolder to finish
+            await window.toggleFolder(folderLink, currentPath);
+
+            // UPDATE container to the NEW <ul> created by toggleFolder
+            // We search within the parent <li> of the clicked link
+            const nextUl = folderLink.parentElement.querySelector('ul');
+            if (nextUl) {
+                $currentContainer = nextUl;
+            } else {
+                console.warn("IDE: Could not find sub-folder container for: " + segment);
+                break;
+            }
+        } else {
+            console.log("IDE: Path segment not found in tree: " + segment);
+            break;
+        }
+    }
+
+    // 3. FINAL SELECTION & SCROLL
+    // Use a small delay to ensure the browser has painted the last set of files
+    setTimeout(() => {
+        const allFileLinks = document.querySelectorAll('.file-item > a');
+        let targetLink = null;
+
+        allFileLinks.forEach(a => {
+            const linkUrl = new URL(a.href, window.location.origin);
+            if (linkUrl.searchParams.get('filepath') === targetFile) {
+                targetLink = a;
+            }
+        });
+
+        if (targetLink) {
+            const li = targetLink.closest('.tree-item');
+
+            // Mark as active
+            document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+            li.classList.add('active');
+
+            // SMOOTH SCROLL
+            li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 150);
+}
 
 // --- EDITOR LOGIC & SAVING ---
 window.executeSaved = function () {
@@ -472,7 +556,7 @@ window.toggleFolder = function (element, path) {
     url.searchParams.set('jailname', cfg.jailname);
     url.searchParams.set('ajax_get_dir', path);
 
-    fetch(url)
+    return fetch(url)
         .then((res) => res.json())
         .then((data) => {
             subList = document.createElement('ul');
