@@ -714,6 +714,7 @@ gui_disable()
 	# Disable gui if -t option specified.
 	if [ -d "${CWDIR}/gui" ]; then
 		rm -f ${WWWPATH}bastille_manager_*.php
+		rm -f ${WWWPATH}Bastille[A-Z]*.php
 		rm -rf ${WWWPATH}/ext/bastille
 		rm -rf ${WWWPATH}/ext/bastille/images
 		rm -rf ${WWWPATH}/ext/bastille/css
