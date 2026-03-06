@@ -315,6 +315,7 @@ function clearFilter() {
     input.focus();
 }
 
+//FIXME add a badged filters
 function fetchSearchRecursive(term) {
     const ul = document.getElementById('fileList');
     let url = new URL(window.location.origin + window.location.pathname);
@@ -328,36 +329,39 @@ function fetchSearchRecursive(term) {
             if (!data.items || data.items.length === 0) {
                 let li = document.createElement('li');
                 li.className = 'no-results';
-                li.innerHTML =
-                    '<span style="padding:10px; color:#888; font-style:italic;">No matches found...</span>';
+                li.innerHTML = '<span style="padding:10px; color:#888; font-style:italic;">No matches found...</span>';
                 ul.appendChild(li);
                 return;
             }
             data.items.forEach((file) => {
                 if (!document.querySelector(`a[href*="${encodeURIComponent(file.full)}"]`)) {
                     let li = document.createElement('li');
-                    li.className = 'is-recursive';
+                    li.className = 'tree-item is-recursive';
                     let editUrl = `bastille_manager_editor_v2.php?jailname=${encodeURIComponent(cfg.jailname)}&filepath=${encodeURIComponent(file.full)}`;
                     li.innerHTML = `<a href="${editUrl}" title="${file.full}"><strong>${file.name}</strong><span class="search-result-path">${file.relative}</span></a>`;
                     ul.appendChild(li);
                 }
             });
-        });
+        })
+        .catch(err => console.error("Search Error: ", err));
 }
 
 // --- SPA & TREE LOGIC ---
 document.querySelector('.ide-file-list').addEventListener('click', async function (e) {
     const link = e.target.closest('a');
 
+    // Skip if not a link or if it's a folder toggle
     if (!link || link.getAttribute('onclick')?.includes('toggleFolder')) return;
 
     const url = new URL(link.href, window.location.origin);
     const filepath = url.searchParams.get('filepath');
 
+    // If no filepath, let the default behavior handle it (navigation)
     if (!filepath) return;
 
     e.preventDefault();
 
+    // Check for unsaved changes
     if (isDirty) {
         hideSpinner();
         const ok = await showConfirmDialog(
@@ -381,6 +385,7 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
 
         const fileContent = await response.text();
 
+        // Inject content into Monaco
         if (window.editor) {
             isInjectingCode = true;
             window.editor.setValue(fileContent);
@@ -389,12 +394,22 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
             isDirty = false;
         }
 
+        // --- UI UPDATES (SPA MODE) ---
+
+        // 1. Manage active state safely
         document.querySelectorAll('.tree-item').forEach((el) => el.classList.remove('active'));
-        link.closest('.tree-item').classList.add('active');
+        const treeItem = link.closest('.tree-item');
+        if (treeItem) {
+            treeItem.classList.add('active');
+        }
 
-        document.querySelector('input[name="filepath"]').value = filepath;
-        document.querySelector('input[name="dir"]').value = filepath.substring(0, filepath.lastIndexOf('/'));
+        // 2. Sync hidden form inputs for Save button
+        const inputFp = document.querySelector('input[name="filepath"]');
+        const inputDr = document.querySelector('input[name="dir"]');
+        if (inputFp) inputFp.value = filepath;
+        if (inputDr) inputDr.value = filepath.substring(0, filepath.lastIndexOf('/'));
 
+        // 3. Update Browser URL and display path
         url.searchParams.delete('ajax');
         window.history.pushState({}, '', url.toString());
 
