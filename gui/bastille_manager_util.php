@@ -103,7 +103,7 @@ if($_POST):
 					$_SESSION['item'] = $item;
 					if ($_POST['advanced']):
 						$use_beta = (isset($_POST['use_beta_editor']) && $_POST['use_beta_editor'] === '1');
-                        $editor_file = $use_beta ? 'bastille_manager_edit.php' : 'bastille_manager_editor.php';
+                        $editor_file = $use_beta ? 'bastille_manager_edit.php' : 'bastille_manager_editor_v2.php';
                         header("Location: {$editor_file}?jailname={$item}");
 						exit;
 					else:
