@@ -113,7 +113,7 @@
 
 /* Styling the recursive search item block */
 .ide-file-list li.is-recursive {
-    padding-left: 10px;
+    padding-left: 0px;
     margin: 4px 0;
     background: var(--bgi-lhe);
     border-radius: 0 4px 4px 0;
@@ -131,11 +131,14 @@
 }
 
 .ide-file-list li.is-recursive a {
-    display: flex;
-    flex-direction: column; /* Stack name and path vertically */
-    padding: 6px 0;
-    align-items: flex-start;
-    color: var(--txc-a-link); /*color: var(--txc-icon-info);*/
+    display: flex !important;
+    flex-direction: column;
+    padding: 8px 5px !important;
+    align-items: flex-start !important;
+    color: var(--txc-a-link) !important;
+    text-decoration: none !important;
+    background: transparent;
+    transition: background 0.1s ease; /* Smooth transition */
 }
 
 /* File name alignment with icon */
@@ -147,7 +150,7 @@
 
 /* Path text styling */
 .ide-file-list li.is-recursive .search-result-path {
-    font-size: 10px;
+    font-size: 11px;
     color: #777;
     white-space: nowrap;
     overflow: hidden;
@@ -159,7 +162,6 @@
 .tree-icon {
     width: 16px;
     height: 16px;
-    margin: 0 4px;
     vertical-align: middle;
 }
 .tree-caret {
