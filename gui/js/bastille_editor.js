@@ -383,8 +383,10 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
 
         if (window.editor) {
             isInjectingCode = true;
-            window.editor.setValue(fileContent); // Monaco content
+            window.editor.setValue(fileContent);
+            window.editor.updateOptions({ readOnly: false });
             isInjectingCode = false;
+            isDirty = false;
         }
 
         document.querySelectorAll('.tree-item').forEach((el) => el.classList.remove('active'));
@@ -410,14 +412,10 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
 
 document.addEventListener('DOMContentLoaded', async function () {
     if (cfg.filepath && cfg.filepath !== '') {
-        // Esperamos a que el robot termine de abrir todo
         await syncSidebarWithFile();
     }
 });
 
-/**
- * Esta función es el "robot" que abre las carpetas por ti
- */
 /**
  * Synchronizes the sidebar tree with the current filepath on page load (F5)
  * Refactored to handle the Persistent Root structure and null-safety.
@@ -426,26 +424,21 @@ async function syncSidebarWithFile() {
     const targetFile = cfg.filepath;
     if (!targetFile) return;
 
-    // 1. Get segments
     let relativePath = targetFile.replace(cfg.jailRoot, '');
     let segments = relativePath.split('/').filter(s => s !== '');
-    segments.pop(); // Remove filename, keep folders
+    segments.pop();
 
     let currentPath = cfg.jailRoot.replace(/\/$/, '');
 
-    // START: Look inside the main fileList
     let $currentContainer = document.getElementById('fileList');
     if (!$currentContainer) {
         console.warn("IDE: #fileList not found in DOM.");
         return;
     }
 
-    // 2. Open folders sequentially
     for (const segment of segments) {
         currentPath += '/' + segment;
 
-        // Find the folder link
-        // We look for any folder link that contains the segment name in its span
         const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
             .find(a => {
                 const span = a.querySelector('span:last-child');
@@ -453,11 +446,8 @@ async function syncSidebarWithFile() {
             });
 
         if (folderLink) {
-            // WAIT for toggleFolder to finish
             await window.toggleFolder(folderLink, currentPath);
 
-            // UPDATE container to the NEW <ul> created by toggleFolder
-            // We search within the parent <li> of the clicked link
             const nextUl = folderLink.parentElement.querySelector('ul');
             if (nextUl) {
                 $currentContainer = nextUl;
@@ -471,8 +461,6 @@ async function syncSidebarWithFile() {
         }
     }
 
-    // 3. FINAL SELECTION & SCROLL
-    // Use a small delay to ensure the browser has painted the last set of files
     setTimeout(() => {
         const allFileLinks = document.querySelectorAll('.file-item > a');
         let targetLink = null;
@@ -487,11 +475,9 @@ async function syncSidebarWithFile() {
         if (targetLink) {
             const li = targetLink.closest('.tree-item');
 
-            // Mark as active
             document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
             li.classList.add('active');
 
-            // SMOOTH SCROLL
             li.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }, 150);
@@ -624,6 +610,7 @@ if (typeof require !== 'undefined') {
         paths: { vs: MONACO_NODE_MODULES },
         ignoreDuplicateModules: ['vs/editor/editor.main'],
     });
+
     window.MonacoEnvironment = {
         getWorkerUrl: function (workerId, label) {
             const absolutePath = window.location.origin + MONACO_NODE_MODULES;
@@ -633,52 +620,52 @@ if (typeof require !== 'undefined') {
     };
 
     require(['vs/editor/editor.main'], function () {
-        let filepath = cfg.filepath;
+        let filepath = cfg.filepath || '';
+        let fileContent = document.getElementById('file_content').value || '';
+
+        let lang = 'plaintext';
         if (filepath !== '') {
             let fileExt = filepath.split('.').pop().toLowerCase();
-            let lang = 'shell';
+            lang = 'shell';
             if (['php', 'inc'].includes(fileExt)) lang = 'php';
             else if (fileExt === 'xml') lang = 'xml';
             else if (fileExt === 'js') lang = 'javascript';
             else if (fileExt === 'css') lang = 'css';
             else if (fileExt === 'json') lang = 'json';
             else if (['html', 'htm'].includes(fileExt)) lang = 'html';
-
-            window.editor = monaco.editor.create(document.getElementById('monaco-container'), {
-                value: document.getElementById('file_content').value,
-                language: lang,
-                theme: 'vs',
-                automaticLayout: true,
-                wordWrap: 'on',
-                minimap: { enabled: true },
-                fontSize: 11,
-            });
-
-            window.editor.onKeyDown(function (e) {
-                if (e.ctrlKey && e.keyCode === 41) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openQuickSearch();
-                }
-            });
-            window.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
-                executeSaved();
-            });
-
-            window.editor.onDidChangeModelContent(function () {
-                if (isInjectingCode) return;
-                if (!isDirty) {
-                    isDirty = true;
-                    const activeFileLink = document.querySelector('.tree-item.active > a');
-                    if (activeFileLink && !activeFileLink.querySelector('.dirty-dot')) {
-                        const dot = document.createElement('span');
-                        dot.className = 'dirty-dot';
-                        dot.innerHTML = '•';
-                        activeFileLink.appendChild(dot);
-                    }
-                }
-            });
+        } else {
+            fileContent = "# Welcome to Bastille Editor\n# Select a file from the sidebar to start editing.";
+            lang = 'shell';
         }
+
+        window.editor = monaco.editor.create(document.getElementById('monaco-container'), {
+            value: fileContent,
+            language: lang,
+            theme: 'vs',
+            automaticLayout: true,
+            wordWrap: 'on',
+            minimap: { enabled: true },
+            fontSize: 11,
+            readOnly: (filepath === '')
+        });
+
+        window.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
+            executeSaved();
+        });
+
+        window.editor.onDidChangeModelContent(function () {
+            if (isInjectingCode) return;
+            if (!isDirty) {
+                isDirty = true;
+                const activeFileLink = document.querySelector('.tree-item.active > a');
+                if (activeFileLink && !activeFileLink.querySelector('.dirty-dot')) {
+                    const dot = document.createElement('span');
+                    dot.className = 'dirty-dot';
+                    dot.innerHTML = '•';
+                    activeFileLink.appendChild(dot);
+                }
+            }
+        });
     });
 }
 
