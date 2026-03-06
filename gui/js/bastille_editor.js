@@ -223,27 +223,45 @@ if (qsInput) {
 
 // --- GLOBAL KEYBINDS ---
 document.addEventListener('keydown', function (e) {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+    const isCtrl = e.ctrlKey || e.metaKey;
+    const key = e.key.toLowerCase();
+
+    // --- 1. ATAJOS GLOBALES (Interceptados antes que Monaco) ---
+
+    // Ctrl + B: Sidebar
+    if (isCtrl && key === 'b') {
         e.preventDefault();
+        e.stopPropagation();
         toggleSidebar();
+        return; // Salimos para que no procese nada más
     }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+
+    // Ctrl + S: Guardar
+    if (isCtrl && key === 's') {
         e.preventDefault();
         e.stopPropagation();
         executeSaved();
+        return;
     }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+
+    // Ctrl + K: Buscador rápido (reemplaza tu isCtrlK anterior)
+    if (isCtrl && key === 'k') {
         e.preventDefault();
+        e.stopPropagation();
         openQuickSearch();
         return;
     }
+
+    // --- 2. LÓGICA DE LA MODAL (Se mantiene intacta) ---
 
     if (qsModal && qsModal.style.display === 'block') {
         if (e.key === 'Escape') {
             closeQuickSearch();
             return;
         }
+
         const items = qsResultsList.getElementsByTagName('li');
+
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             selectedIndex = selectedIndex + 1 < items.length ? selectedIndex + 1 : selectedIndex;
@@ -262,7 +280,7 @@ document.addEventListener('keydown', function (e) {
             }
         }
     }
-});
+}, true); // <--- ESTE 'TRUE' ES EL QUE HACE LA MAGIA
 
 function updateSelection(items) {
     Array.from(items).forEach((li) => li.classList.remove('selected'));
