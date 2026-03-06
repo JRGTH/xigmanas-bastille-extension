@@ -561,8 +561,10 @@ thirdparty_include()
 		cd ${THIRDPARTY_INCLUDE}/program/bin
 		for file in ${THIRDPARTY_BIN_FILES}
 			do
-				if [ ! -f "${USRLOCAL}/bin/${file}" ]; then
+				if ! stat -f "%Op" "${THIRDPARTY_INCLUDE}/program/bin/${file}" | grep -q '100555'; then
 					chmod 0555 "${THIRDPARTY_INCLUDE}/program/bin/${file}"
+				fi
+				if [ ! -f "${USRLOCAL}/bin/${file}" ]; then
 					ln -fhs ${THIRDPARTY_INCLUDE}/program/bin/${file} ${USRLOCAL}/bin/${file}
 				fi
 		done
@@ -575,8 +577,10 @@ thirdparty_include()
 		cd ${THIRDPARTY_INCLUDE}/depends/lib
 		for file in ${THIRDPARTY_LIB_FILES}
 			do
-				if [ ! -f "${USRLOCAL}/lib/${file}" ]; then
+				if ! stat -f "%Op" "${THIRDPARTY_INCLUDE}/depends/lib/${file}" | grep -q '100555'; then
 					chmod 0555 "${THIRDPARTY_INCLUDE}/depends/lib/${file}"
+				fi
+				if [ ! -f "${USRLOCAL}/lib/${file}" ]; then
 					ln -fhs ${THIRDPARTY_INCLUDE}/depends/lib/${file} ${USRLOCAL}/lib/${file}
 				fi
 		done
