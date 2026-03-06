@@ -31,10 +31,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         if (!empty($config_path)) {
             exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"base $lib32 $ports $src\"");
         }
-        // Ejecución directa, sin herramientas de emulación TTY
-        $command = sprintf('/usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
+        // Usando gstdbuf para romper el buffer del sistema
+        $command = sprintf('/usr/local/bin/gstdbuf -o0 /usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
     } else {
-        $command = sprintf('/usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
+        // Para destroy también
+        $command = sprintf('/usr/local/bin/gstdbuf -o0 /usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
     }
 
     $handle = popen($command, 'r');
