@@ -105,10 +105,14 @@ if (isset($_GET['ajax_search'])) {
         $line = trim($line);
         if (empty($line) || !file_exists($line)) continue;
 
+        $rel_path = str_replace($jail_root, "", dirname($line));
+
+        $display_path = ($rel_path === "" || $rel_path === false) ? "/" : $rel_path;
+
         $final_items[] = [
             'full'      => $line,
-            'directory' => dirname($line), // Mantenemos esto para que tu runQuickSearch no pete
-            'relative'  => $icon_folder . " " . str_replace($jail_root, "", dirname($line)) ?: "/",
+            'directory' => dirname($line),
+            'relative'  => $icon_folder . " " . $display_path,
             'name'      => basename($line)
         ];
     }
