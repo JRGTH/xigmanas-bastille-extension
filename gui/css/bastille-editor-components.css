@@ -15,10 +15,9 @@
 
 .ide-main-header {
     display: flex;
-    flex-direction: row; /* Horizontal bar */
+    flex-direction: row;
     align-items: center;
-    justify-content: space-between; /* Path left, buttons right */
-    /*padding: 0 10px;*/
+    justify-content: space-between;
     background-color: #b1c1d1;
     border-bottom: 1px solid #999;
     flex-shrink: 0;
@@ -26,8 +25,8 @@
 
 /* SIDEBAR SEARCH INPUT AREA */
 .ide-search {
-    position: relative; /* For 'x'*/
-    display: flex; /* So the input and the 'X' button live together */
+    position: relative;
+    display: flex;
     align-items: center;
     padding: 10px;
     border-bottom: 1px solid #ddd;
@@ -48,11 +47,11 @@
 .ide-search-clear {
     position: absolute;
     top: 50%;
-    right: 18px; /* Adjusted slightly so it looks perfectly centered in the input's padding */
+    right: 18px;
     transform: translateY(-50%);
     color: #333;
     border-radius: 50%;
-    display: none; /* Controlled by JS */
+    display: none;
     align-items: center;
     justify-content: center;
     width: 15px;
@@ -71,7 +70,7 @@
 
 /* SCROLLABLE FILE TREE */
 .ide-file-list {
-    flex: 1; /* This makes the list take the rest of the height and scroll */
+    flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 10px 0;
@@ -138,7 +137,7 @@
     color: var(--txc-a-link) !important;
     text-decoration: none !important;
     background: transparent;
-    transition: background 0.1s ease; /* Smooth transition */
+    transition: background 0.1s ease;
 }
 
 /* File name alignment with icon */
@@ -190,8 +189,8 @@
     align-items: center !important;
     padding: 3px 5px !important;
     margin: 0 !important;
-    border: 1px solid transparent !important; /* Invisible border prevents jumping if active state adds one */
-    font-weight: normal !important; /* XigmaNAS usually bolds active links, this stops it */
+    border: 1px solid transparent !important;
+    font-weight: normal !important;
     letter-spacing: normal !important;
     text-decoration: none !important;
     color: inherit;
@@ -205,12 +204,12 @@
 /* Hover state using XigmaNAS area data color */
 .tree-item > a:hover {
     color: var(--txc-a-link);
-    background-color: var(--bgc-area-data, #e2e8f0); /* Fallback to light gray if var fails */
+    background-color: var(--bgc-area-data, #e2e8f0);
 }
 
 /* Active/Selected file state (Bonus!) */
 .tree-item.active > a {
-    background-color: var(--bgc-topic, #95a7c0); /* XigmaNAS blue */
+    background-color: var(--bgc-topic, #95a7c0);
     background-image: var(--bgi-topic);
     color: #fff; /* White text for contrast */
 }
@@ -254,7 +253,7 @@
 .ide-filepath-display {
     display: flex;
     align-items: center;
-    gap: 6px; /* Espacio entre palabas y barras */
+    gap: 0;
     font-family: monospace;
     font-size: 11px;
     white-space: nowrap;
@@ -263,41 +262,44 @@
 }
 
 .bc-part {
-    color: #ffffff; /* Color gris suave para las carpetas */
-}
-
-.bc-part.jail-name {
-    color: #ffffff; /* Destacamos el nombre de la jail en verde/azul */
-    font-weight: bold;
-}
-
-.bc-sep {
-    color: #555; /* Barras separadoras muy sutiles */
-    font-size: 14px;
-}
-
-.bc-part.bc-file {
-    color: #ffffff; /* El archivo final destaca en blanco */
-    font-weight: bold;
-}
-
-/* Feedback visual al pasar el ratón por los breadcrumbs */
-.bc-part {
+    color: #ffffff;
     cursor: pointer;
     transition: color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 1px;
 }
 
-.bc-part:hover {
+/* Folder segments hover effect (NAS blue link color) */
+.bc-part.bc-folder:hover {
     color: var(--txc-a-link);
     text-decoration: underline;
 }
 
-.bc-part.bc-file {
-    cursor: default; /* El archivo final no hace falta que parezca un link (opcional) */
+/* Separator styling: tightening the space between slashes and text */
+.bc-sep {
+    color: var(--txc-page-title);
+    font-size: 13px;
+    user-select: none;
+    margin-bottom: 2px;
 }
-.bc-part.bc-file:hover {
-    text-decoration: none;
+
+.bc-part.bc-file {
     color: #ffffff;
+    font-weight: bold;
+    padding-left: 2px;
+}
+
+.bc-part.bc-file:hover {
+    text-decoration: none !important;
+    color: #ffffff;
+}
+
+.copy-icon-img {
+    width: 18px;
+    height: 18px;
+    margin-left: 2px;
+    pointer-events: none;
 }
 
 /* --- BREADCRUMBS --- */
@@ -331,8 +333,7 @@
     z-index: 9999;
     opacity: 0;
     transition: opacity 0.2s ease;
-    font-family:
-        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 .ide-modal-overlay.show {

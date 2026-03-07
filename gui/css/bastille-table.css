@@ -26,7 +26,7 @@ table.area_data_selection th {
 }
 
 .resizer:hover, .resizing {
-    background-color: #007bff; /* Azul */
+    background-color: #007bff;
     opacity: 1;
 }
 
