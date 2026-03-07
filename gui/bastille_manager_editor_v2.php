@@ -31,37 +31,8 @@ if ($real_current_dir === false || strpos($real_current_dir, $jail_root) !== 0) 
 
 // ROUTER AJAX (API) ---
 // If there is an asynchronous request, enter here and stop the execution of the rest.
-if (isset($_GET['ajax']) || isset($_GET['ajax_search']) || isset($_GET['ajax_get_dir'])) {
+if (isset($_GET['ajax']) || isset($_GET['ajax_search']) || isset($_GET['ajax_get_dir']) || isset($_POST['ajax_save'])) {
     include 'bastille_manager_edit_api.inc';
-}
-
-// STORAGE AND BACKUPS
-if ($_POST && isset($_POST['save'])) {
-    if (!empty($filepath) && is_file($filepath)) {
-        conf_mount_rw();
-        $new_content = preg_replace("/\r/", "", $_POST['file_content']);
-        $file_dir = dirname($filepath);
-        $filename = basename($filepath);
-        $backup_dir = $file_dir . '/.backups/' . $filename;
-        if (!is_dir($backup_dir)) {
-            mkdir($backup_dir, 0755, true);
-        }
-        $timestamp = date('Ymd_His');
-        $backup_path = $backup_dir . '/' . $timestamp . '.bak';
-        @copy($filepath, $backup_path);
-        if (file_put_contents($filepath, $new_content) !== false) {
-            $savemsg = sprintf('%s %s', gtext('Saved file to'), $filepath);
-            global $g;
-            if (isset($g['cf_conf_path']) && $filepath === "{$g['cf_conf_path']}/config.xml") {
-                unlink_if_exists("{$g['tmp_path']}/config.cache");
-            }
-        } else {
-            $input_errors[] = sprintf('%s %s', gtext('Failed to write to file:'), $filepath);
-        }
-        conf_mount_ro();
-    } else {
-        $input_errors[] = gtext('Invalid file path.');
-    }
 }
 
 // --- INITIAL STATUS LOAD ---

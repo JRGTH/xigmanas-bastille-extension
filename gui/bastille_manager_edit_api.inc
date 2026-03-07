@@ -19,6 +19,67 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     exit;
 }
 
+// STORAGE AND BACKUPS
+if ($_POST && isset($_POST['save'])) {
+    $is_ajax = isset($_POST['ajax_save']) && $_POST['ajax_save'] === '1';
+
+    if ($is_ajax) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+    }
+
+    if (!empty($filepath) && is_file($filepath)) {
+        conf_mount_rw();
+        $new_content = preg_replace("/\r/", "", $_POST['file_content']);
+        $file_dir = dirname($filepath);
+        $filename = basename($filepath);
+        $backup_dir = $file_dir . '/.backups/' . $filename;
+
+        if (!is_dir($backup_dir)) {
+            mkdir($backup_dir, 0755, true);
+        }
+        $timestamp = date('Ymd_His');
+        $backup_path = $backup_dir . '/' . $timestamp . '.bak';
+        @copy($filepath, $backup_path);
+
+        $save_success = file_put_contents($filepath, $new_content) !== false;
+
+        if ($save_success) {
+            global $g;
+            if (isset($g['cf_conf_path']) && $filepath === "{$g['cf_conf_path']}/config.xml") {
+                unlink_if_exists("{$g['tmp_path']}/config.cache");
+            }
+        }
+
+        conf_mount_ro();
+
+        if ($save_success) {
+            if ($is_ajax) {
+                echo json_encode(['success' => true]);
+                exit; //
+            } else {
+                $savemsg = sprintf('%s %s', gtext('Saved file to'), $filepath);
+            }
+        } else {
+            if ($is_ajax) {
+                echo json_encode(['success' => false, 'error' => 'Failed to write to file: ' . $filename]);
+                exit;
+            } else {
+                $input_errors[] = sprintf('%s %s', gtext('Failed to write to file:'), $filepath);
+            }
+        }
+    } else {
+        if (isset($is_ajax) && $is_ajax) {
+            echo json_encode(['success' => false, 'error' => 'Invalid file path.']);
+            exit; // ¡EL HACHAZO!
+        } else {
+            $input_errors[] = gtext('Invalid file path.');
+        }
+    }
+}
+
 // 2. PARALLEL RECURSIVE SEARCH ENGINE
 if (isset($_GET['ajax_search'])) {
     while (ob_get_level() > 0) ob_end_clean();
