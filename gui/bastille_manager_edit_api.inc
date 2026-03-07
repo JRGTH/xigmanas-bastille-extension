@@ -140,7 +140,7 @@ if (isset($_GET['ajax_search'])) {
 
     echo json_encode([
         'items' => array_slice($final_items, 0, 40),
-        'perf'  => $searcher->getMs() // Usamos el método nativo de tu clase
+        'perf'  => $searcher->getMs()
     ]);
     exit;
 }

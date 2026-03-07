@@ -754,31 +754,51 @@ function hideSpinner() {
 }
 
 // --- BREADCRUMBS BUILDER ---
+/**
+ * Updates the breadcrumb display and sets copy attributes.
+ * Fixes the SyntaxError by removing duplicate 'relPath' declarations.
+ */
 function updateBreadcrumbs(fullPath) {
-    const container = document.getElementById('ide-filepath-display');
-    if (!container) return;
+    const container = document.querySelector('.ide-filepath-display');
+    if (!container) {
+        return;
+    }
 
-    let relPath = fullPath.replace(cfg.jailRoot, '').replace(/^\/+/, '');
-    const parts = relPath.split('/').filter(p => p !== '');
+    const relativePart = fullPath.replace(cfg.jailRoot.replace(/\/$/, ''), '').replace(/^\/+/, '');
+    const copyRelPath = cfg.jailname + (relativePart ? '/' + relativePart : '');
 
+    container.setAttribute('data-fullpath', fullPath);
+    container.setAttribute('data-relpath', copyRelPath);
+
+    const parts = relativePart.split('/').filter(p => p !== '');
     let currentPath = cfg.jailRoot.replace(/\/$/, '');
 
-    let html = `<span class="bc-part jail-name" data-path="${currentPath}">${cfg.jailname}</span>`;
+    let html = `<span class="bc-part bc-folder" data-path="${currentPath}">${cfg.jailname}</span>`;
 
     parts.forEach((part, index) => {
         currentPath += '/' + part;
         html += `<span class="bc-sep">/</span>`;
-        const isLast = index === parts.length - 1;
-        html += `<span class="bc-part ${isLast ? 'bc-file' : ''}" data-path="${currentPath}">${part}</span>`;
+
+        const isLast = (index === parts.length - 1);
+
+        if (isLast) {
+            const titleAttr = 'title="Click: Relative path | Right-Click: Absolute path"';
+            html += `
+                <span class="bc-part bc-file" ${titleAttr}>
+                    ${part}
+                    <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy">
+                </span>`;
+        } else {
+            html += `<span class="bc-part bc-folder" data-path="${currentPath}">${part}</span>`;
+        }
     });
 
     container.innerHTML = html;
-    container.title = fullPath;
 }
 
 // --- BREADCRUMB CLICK LISTENER (SPA NAVIGATION) ---
 document.addEventListener('click', async function(e) {
-    const bcPart = e.target.closest('#ide-filepath-display .bc-part');
+    const bcPart = e.target.closest('.ide-filepath-display .bc-part');
     if (!bcPart) return;
 
     e.preventDefault();

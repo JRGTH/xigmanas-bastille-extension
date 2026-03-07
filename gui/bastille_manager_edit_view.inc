@@ -47,8 +47,6 @@ window.IDE_CONFIG = {
 
                             <ul class="ide-file-list" style="display:block; padding-left:15px;">
                                 <?php
-                                // IMPORTANTE: Aquí usamos una lógica que siempre pida el contenido de la RAÍZ de la jail
-                                // aunque estemos editando un archivo en el quinto pino.
                                 $root_folders = scandir($jail_root);
                                 foreach ($root_folders as $folder):
                                     if ($folder === '..' || $folder === '.') continue;
@@ -88,27 +86,35 @@ window.IDE_CONFIG = {
                             <?php if (!empty($filepath)):
                                 $rel_path = trim(str_replace($jail_root, "", $filepath), '/');
                                 $parts = explode('/', $rel_path);
-                                // Inicializamos la ruta acumulada con la raíz de la jail
                                 $accumulated_path = rtrim($jail_root, '/');
                             ?>
-                                <div id="ide-filepath-display" class="ide-filepath-display" title="<?=htmlspecialchars($filepath)?>">
-                                    <span class="bc-part jail-name" data-path="<?=htmlspecialchars($accumulated_path)?>">
-                                        <?=htmlspecialchars($jailname)?>
-                                    </span>
+                            <div id="ide-filepath-display" class="ide-filepath-display"
+                                data-fullpath="<?=htmlspecialchars($filepath)?>"
+                                data-relpath="<?=htmlspecialchars($jailname . str_replace($jail_root, "", $filepath))?>">
+                                <span class="bc-part bc-folder" data-path="<?=htmlspecialchars($accumulated_path)?>">
+                                    <?=htmlspecialchars($jailname)?>
+                                </span>
 
-                                    <?php foreach ($parts as $index => $part):
-                                        $accumulated_path .= '/' . $part;
-                                        $is_last = ($index === count($parts) - 1);
-                                    ?>
-                                        <span class="bc-sep">/</span>
-                                        <span class="bc-part <?= $is_last ? 'bc-file' : '' ?>" data-path="<?=htmlspecialchars($accumulated_path)?>">
+                                <?php foreach ($parts as $index => $part):
+                                    $accumulated_path .= '/' . $part;
+                                    $is_last = ($index === count($parts) - 1);
+                                ?>
+                                    <span class="bc-sep">/</span>
+                                    <?php if ($is_last): ?>
+                                        <span class="bc-part bc-file" title="Click: Relative path | Right-Click: Absolute path">
+                                            <?=htmlspecialchars($part)?>
+                                            <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy">
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="bc-part bc-folder" data-path="<?=htmlspecialchars($accumulated_path)?>">
                                             <?=htmlspecialchars($part)?>
                                         </span>
-                                    <?php endforeach; ?>
-                                </div>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
                             <?php else: ?>
                                 <div id="ide-filepath-display" class="ide-filepath-display">
-                                    <span style="color: #888; font-style: italic;">Select a file to edit</span>
+                                    <span style="color: #fff;">Select a file to edit</span>
                                 </div>
                             <?php endif; ?>
                         </div>
