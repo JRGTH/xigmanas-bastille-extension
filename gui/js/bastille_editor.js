@@ -343,7 +343,7 @@ function fetchSearchRecursive(term) {
     fetch(url)
         .then((res) => res.json())
         .then((data) => {
-            document.querySelectorAll('.is-recursive .no-results').forEach((el) => el.remove());
+            ul.querySelectorAll('.is-recursive .no-results').forEach((el) => el.remove());
             if (!data.items || data.items.length === 0) {
                 let li = document.createElement('li');
                 li.className = 'no-results';
@@ -352,7 +352,7 @@ function fetchSearchRecursive(term) {
                 return;
             }
             data.items.forEach((file) => {
-                if (!document.querySelector(`a[href*="${encodeURIComponent(file.full)}"]`)) {
+                if (!ul.querySelector(`a[href*="${encodeURIComponent(file.full)}"]`)) {
                     let li = document.createElement('li');
                     li.className = 'tree-item is-recursive';
                     let editUrl = `bastille_manager_editor_v2.php?jailname=${encodeURIComponent(cfg.jailname)}&filepath=${encodeURIComponent(file.full)}`;
