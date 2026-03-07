@@ -403,9 +403,10 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
             'You have made changes. If you switch files now, you will lose your changes.',
             'warning'
         );
-        if (!ok) return;
-        isDirty = false;
-        document.querySelectorAll('.dirty-dot').forEach((dot) => dot.remove());
+        if (!ok) {
+            return;
+        }
+        clearDirtyState();
     }
 
     document.body.style.cursor = 'wait';
@@ -653,8 +654,7 @@ window.executeSaved = async function () {
         const data = await response.json();
 
         if (data.success) {
-            isDirty = false;
-            document.querySelectorAll('.dirty-dot').forEach((dot) => dot.remove());
+            clearDirtyState();
             showConfirmDialog('Saved', 'Saved file to ' + filepath, 'success');
         } else {
             throw new Error(data.error || 'Server rejected the save request.');
@@ -675,6 +675,17 @@ window.executeSaved = async function () {
         hideSpinner();
     }
 };
+
+function clearDirtyState() {
+    isDirty = false;
+    originalSidebarHTML = '';
+    document.querySelectorAll('.dirty-dot').forEach((dot) => dot.remove());
+    document.title = document.title.replace('* ', '');
+    const saveBtn = document.getElementById('btn_save');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+    }
+}
 
 window.toggleFolder = function (element, path) {
     const li = element.parentElement;
