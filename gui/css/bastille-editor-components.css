@@ -158,6 +158,10 @@
     max-width: 90%;
 }
 
+.ide-file-list li.is-recursive .search-result-path .tree-icon {
+   margin-right: 0px;
+}
+
 /* ICONS AND CARET */
 .tree-icon {
     width: 16px;
@@ -165,6 +169,7 @@
     margin-right: 5px;
     vertical-align: middle;
 }
+
 .tree-caret {
     font-size: 8px;
     margin-right: 5px;
