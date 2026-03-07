@@ -162,6 +162,7 @@
 .tree-icon {
     width: 16px;
     height: 16px;
+    margin-right: 5px;
     vertical-align: middle;
 }
 .tree-caret {
@@ -192,8 +193,8 @@
     box-sizing: border-box !important;
     border-radius: 4px;
     transition:
-        background-color 0.2s ease,
-        color 0.2s ease;
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Hover state using XigmaNAS area data color */
