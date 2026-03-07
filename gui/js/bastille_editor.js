@@ -432,34 +432,28 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
         // 1. Manage active state safely
         const isSearchResult = link.closest('.is-recursive');
         if (isSearchResult) {
-            // --- RESTAURAR EL ÁRBOL ORIGINAL ---
+
             const searchInput = document.querySelector('.ide-search input');
             const clearBtn = document.querySelector('.ide-search-clear');
 
-            // 1a. Vaciamos el input y disparamos el evento para que tu JS original reaccione
             if (searchInput) {
                 searchInput.value = '';
-                searchInput.dispatchEvent(new Event('input')); // Simula que el usuario ha borrado el texto
+                searchInput.dispatchEvent(new Event('input'));
             }
 
-            // 1b. Hacemos clic en tu botón de limpiar (por si tiene lógica atada)
             if (clearBtn) {
                 clearBtn.style.display = 'none';
                 clearBtn.click();
             }
 
-            // 1c. Limpiamos a la fuerza los resultados inyectados
             document.querySelectorAll('.is-recursive, .no-results').forEach((el) => el.remove());
 
-            // 1d. SEGURO DE VIDA: Forzamos a que el árbol base vuelva a ser visible
             document.querySelectorAll('.ide-file-list > li').forEach(el => {
                 el.style.display = '';
             });
 
-            // 2. LANZAR EL ROBOT CON MICRO-RETRASO
             cfg.filepath = filepath;
 
-            // Le damos 50ms al navegador para que "pinte" el árbol original antes de expandirlo
             setTimeout(async () => {
                 if (typeof syncSidebarWithFile === 'function') {
                     await syncSidebarWithFile();
@@ -467,7 +461,7 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
             }, 50);
 
         } else {
-            // Comportamiento original para clics normales en el árbol
+
             document.querySelectorAll('.tree-item').forEach((el) => el.classList.remove('active'));
             const treeItem = link.closest('.tree-item');
             if (treeItem) {
@@ -485,8 +479,7 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
         url.searchParams.delete('ajax');
         window.history.pushState({}, '', url.toString());
 
-        const pathDisplay = document.getElementById('ide-filepath-display');
-        if (pathDisplay) pathDisplay.innerText = filepath;
+        updateBreadcrumbs(filepath);
 
     } catch (error) {
         console.error("Editor Error:", error);
@@ -521,7 +514,7 @@ if (homeBtn) {
                 rootLi.classList.add('open');
                 const rootUl = rootLi.querySelector('ul');
                 if (rootUl) {
-                    rootUl.style.display = 'block'; // Mostramos el contenido de la raíz
+                    rootUl.style.display = 'block';
                 }
             }
 
@@ -758,6 +751,121 @@ function hideSpinner() {
     const main = document.getElementById('spinner_main');
     if (main) main.innerHTML = '';
     if (window.editor) window.editor.layout();
+}
+
+// --- BREADCRUMBS BUILDER ---
+function updateBreadcrumbs(fullPath) {
+    const container = document.getElementById('ide-filepath-display');
+    if (!container) return;
+
+    let relPath = fullPath.replace(cfg.jailRoot, '').replace(/^\/+/, '');
+    const parts = relPath.split('/').filter(p => p !== '');
+
+    let currentPath = cfg.jailRoot.replace(/\/$/, '');
+
+    let html = `<span class="bc-part jail-name" data-path="${currentPath}">${cfg.jailname}</span>`;
+
+    parts.forEach((part, index) => {
+        currentPath += '/' + part;
+        html += `<span class="bc-sep">/</span>`;
+        const isLast = index === parts.length - 1;
+        html += `<span class="bc-part ${isLast ? 'bc-file' : ''}" data-path="${currentPath}">${part}</span>`;
+    });
+
+    container.innerHTML = html;
+    container.title = fullPath;
+}
+
+// --- BREADCRUMB CLICK LISTENER (SPA NAVIGATION) ---
+document.addEventListener('click', async function(e) {
+    const bcPart = e.target.closest('#ide-filepath-display .bc-part');
+    if (!bcPart) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const targetPath = bcPart.getAttribute('data-path');
+    if (!targetPath) return;
+
+    if (bcPart.classList.contains('bc-file')) {
+        if (typeof syncSidebarWithFile === 'function') await syncSidebarWithFile();
+        return;
+    }
+
+    await syncSidebarWithFolder(targetPath);
+
+}, true);
+
+async function syncSidebarWithFolder(targetPath) {
+    const searchInput = document.querySelector('.ide-search input');
+    if (searchInput && searchInput.value) {
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+        document.querySelectorAll('.is-recursive, .no-results').forEach(el => el.remove());
+        const fileList = document.getElementById('fileList');
+        if (fileList) Array.from(fileList.children).forEach(c => c.style.display = '');
+    }
+
+    let relativePath = targetPath.replace(cfg.jailRoot, '').replace(/^\/+/, '');
+    let segments = relativePath.split('/').filter(s => s !== '');
+
+    let currentPath = cfg.jailRoot.replace(/\/$/, '');
+    let $currentContainer = document.getElementById('fileList');
+    if (!$currentContainer) return;
+
+    let targetLi = null;
+
+    if (segments.length === 0) {
+        const rootFolder = $currentContainer.querySelector('li.folder-item');
+        if (rootFolder) {
+            if (!rootFolder.classList.contains('open')) {
+                await window.toggleFolder(rootFolder.querySelector('a'), currentPath);
+            }
+            targetLi = rootFolder;
+        }
+    } else {
+        for (const segment of segments) {
+            currentPath += '/' + segment;
+            const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
+                .find(a => {
+                    const span = a.querySelector('span:last-child');
+                    return span && span.innerText.trim() === segment;
+                });
+
+            if (folderLink) {
+                const li = folderLink.parentElement;
+                targetLi = li;
+                const subList = li.querySelector('ul');
+
+                if (subList && subList.style.display !== 'none' && li.classList.contains('open')) {
+                    $currentContainer = subList;
+                } else {
+                    await window.toggleFolder(folderLink, currentPath);
+                    const nextUl = li.querySelector('ul');
+                    if (nextUl) $currentContainer = nextUl;
+                    else break;
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    // Highlight the folder and scroll
+    if (targetLi) {
+            document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+
+            targetLi.classList.add('active');
+
+            const targetAnchor = targetLi.querySelector('a');
+            setTimeout(() => {
+                if (targetAnchor) {
+                    targetAnchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    targetLi.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 150);
+        }
 }
 
 // --- MONACO INIT ---

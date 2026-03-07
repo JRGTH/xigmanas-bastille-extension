@@ -85,12 +85,31 @@ window.IDE_CONFIG = {
                 <div class="ide-main">
                     <div class="ide-main-header lhetop">
                         <div class="ide-filepath-container">
-                            <?php if (!empty($filepath)): ?>
-                                <span id="ide-filepath-display" class="ide-filepath-display" title="Copy full path to clipboard">
-                                    <?=htmlspecialchars($filepath)?>
-                                </span>
+                            <?php if (!empty($filepath)):
+                                $rel_path = trim(str_replace($jail_root, "", $filepath), '/');
+                                $parts = explode('/', $rel_path);
+                                // Inicializamos la ruta acumulada con la raíz de la jail
+                                $accumulated_path = rtrim($jail_root, '/');
+                            ?>
+                                <div id="ide-filepath-display" class="ide-filepath-display" title="<?=htmlspecialchars($filepath)?>">
+                                    <span class="bc-part jail-name" data-path="<?=htmlspecialchars($accumulated_path)?>">
+                                        <?=htmlspecialchars($jailname)?>
+                                    </span>
+
+                                    <?php foreach ($parts as $index => $part):
+                                        $accumulated_path .= '/' . $part;
+                                        $is_last = ($index === count($parts) - 1);
+                                    ?>
+                                        <span class="bc-sep">/</span>
+                                        <span class="bc-part <?= $is_last ? 'bc-file' : '' ?>" data-path="<?=htmlspecialchars($accumulated_path)?>">
+                                            <?=htmlspecialchars($part)?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
                             <?php else: ?>
-                                <span id="ide-filepath-display" style="color: inherit;">Select a file to edit</span>
+                                <div id="ide-filepath-display" class="ide-filepath-display">
+                                    <span style="color: #888; font-style: italic;">Select a file to edit</span>
+                                </div>
                             <?php endif; ?>
                         </div>
 
