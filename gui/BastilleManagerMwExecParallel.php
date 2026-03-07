@@ -94,20 +94,21 @@ class BastilleManagerMwExecParallel
         while (!empty($readSet)) {
             $changed = $readSet;
             $write = $except = null;
-
             // Wait up to 1 second for activity
             if (stream_select($changed, $write, $except, 1) > 0) {
-                foreach ($changed as $key => $pipe) {
+                foreach ($changed as $pipe) {
+                    $key = array_search($pipe, $readSet, true);
+                    if ($key === false) {
+                         continue;
+                    }
                     $data = fread($pipe, 8192);
                     if ($data) {
                         $this->results[$key]['stdout'] .= $data;
                     } else {
-                        // Pipe is empty or closed
                         unset($readSet[$key]);
                     }
                 }
             } else {
-                // Timeout or no data
                 break;
             }
         }

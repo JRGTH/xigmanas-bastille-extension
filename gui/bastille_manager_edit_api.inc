@@ -92,29 +92,44 @@ if (isset($_GET['ajax_search'])) {
     }
 
     $search_term = escapeshellarg("*" . $filter . "*");
-    $search_path = escapeshellarg($jail_root);
+    $commands = [];
 
-    // El 'find' definitivo: busca en todos lados menos en .backups. Máximo 40 resultados.
-    $cmd = "find {$search_path} -path '*/.backups' -prune -o -type f -iname {$search_term} -print 2>/dev/null | head -n 40";
+    $commands['base_jail'] = "find " . escapeshellarg($jail_root) . " -maxdepth 1 -type f -iname {$search_term} 2>/dev/null";
 
-    $start = microtime(true);
-    exec($cmd, $lines);
+    $dirs = glob($jail_root . '/*', GLOB_ONLYDIR);
+    if (!empty($dirs)) {
+        foreach ($dirs as $dir) {
+            $base = basename($dir);
+            if ($base === '.backups') continue; // Ignoramos basura
+
+            $commands[$base] = "find " . escapeshellarg($dir) . " -type f -iname {$search_term} 2>/dev/null | head -n 20";
+        }
+    }
+
+    $searcher = new BastilleManagerMwExecParallel($commands);
+    $raw_results = $searcher->executeWithSelect();
+
     $final_items = [];
 
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if (empty($line) || !file_exists($line)) continue;
+    foreach ($raw_results as $source => $output) {
+        $stdout = trim($output['stdout'] ?? '');
+        if (empty($stdout)) continue;
 
-        $rel_path = str_replace($jail_root, "", dirname($line));
+        $lines = explode("\n", $stdout);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line) || !file_exists($line)) continue;
 
-        $display_path = ($rel_path === "" || $rel_path === false) ? "/" : $rel_path;
+            $rel_path = str_replace($jail_root, "", dirname($line));
+            $display_path = ($rel_path === "" || $rel_path === false) ? "/" : $rel_path;
 
-        $final_items[] = [
-            'full'      => $line,
-            'directory' => dirname($line),
-            'relative'  => $icon_folder . " " . $display_path,
-            'name'      => basename($line)
-        ];
+            $final_items[] = [
+                'full'      => $line,
+                'directory' => dirname($line),
+                'relative'  => $icon_folder . " " . $display_path,
+                'name'      => basename($line)
+            ];
+        }
     }
 
     usort($final_items, function ($a, $b) use ($filter) {
@@ -123,8 +138,10 @@ if (isset($_GET['ajax_search'])) {
         return strlen($a['name']) - strlen($b['name']);
     });
 
-    $ms = round((microtime(true) - $start) * 1000);
-    echo json_encode(['items' => $final_items, 'perf' => $ms . 'ms']);
+    echo json_encode([
+        'items' => array_slice($final_items, 0, 40),
+        'perf'  => $searcher->getMs() // Usamos el método nativo de tu clase
+    ]);
     exit;
 }
 
