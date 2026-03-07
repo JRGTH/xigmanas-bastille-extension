@@ -527,7 +527,7 @@
     }
     50% {
         opacity: 1;
-        transform: scale(1.1);
+        transform: scale(1.6);
     }
     100% {
         opacity: 0.6;
