@@ -170,6 +170,10 @@
     margin-top: 2px;
 }
 
+.qs-item-path .tree-icon {
+    margin-right: 0px;
+}
+
 /* Hover & Selected states integrating XigmaNAS theme */
 .qs-results li a:hover,
 .qs-results li.selected a {
