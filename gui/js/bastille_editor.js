@@ -669,7 +669,7 @@ window.executeSaved = async function () {
         }
     } finally {
         if (saveBtn) {
-            saveBtn.disabled = false;
+            saveBtn.disabled = !isDirty;
             saveBtn.value = 'Save File';
         }
         hideSpinner();
@@ -942,6 +942,10 @@ if (typeof require !== 'undefined') {
             if (isInjectingCode) return;
             if (!isDirty) {
                 isDirty = true;
+                const saveBtn = document.getElementById('btn_save');
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                }
                 const activeFileLink = document.querySelector('.tree-item.active > a');
                 if (activeFileLink && !activeFileLink.querySelector('.dirty-dot')) {
                     const dot = document.createElement('span');
