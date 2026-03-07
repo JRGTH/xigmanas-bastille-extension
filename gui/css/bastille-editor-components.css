@@ -250,9 +250,57 @@
     margin-left: auto;
 }
 
+/* --- BREADCRUMBS --- */
 .ide-filepath-display {
-    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px; /* Espacio entre palabas y barras */
+    font-family: monospace;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
+.bc-part {
+    color: #ffffff; /* Color gris suave para las carpetas */
+}
+
+.bc-part.jail-name {
+    color: #ffffff; /* Destacamos el nombre de la jail en verde/azul */
+    font-weight: bold;
+}
+
+.bc-sep {
+    color: #555; /* Barras separadoras muy sutiles */
+    font-size: 14px;
+}
+
+.bc-part.bc-file {
+    color: #ffffff; /* El archivo final destaca en blanco */
+    font-weight: bold;
+}
+
+/* Feedback visual al pasar el ratón por los breadcrumbs */
+.bc-part {
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.bc-part:hover {
+    color: var(--txc-a-link);
+    text-decoration: underline;
+}
+
+.bc-part.bc-file {
+    cursor: default; /* El archivo final no hace falta que parezca un link (opcional) */
+}
+.bc-part.bc-file:hover {
+    text-decoration: none;
+    color: #ffffff;
+}
+
+/* --- BREADCRUMBS --- */
 
 /* TOOLBAR BUTTONS: General styling for layout actions */
 .layout-btn {
