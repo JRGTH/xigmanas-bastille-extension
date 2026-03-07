@@ -179,8 +179,7 @@ function runQuickSearch() {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
         if (typeof spinner === 'function') spinner();
-        qsResultsList.innerHTML =
-            '<li style="padding: 15px; color:#888;">Searching recursively... 🚀</li>';
+        qsResultsList.innerHTML = '<li style="padding: 15px; color:#888;">Searching recursively...</li>';
 
         let url = new URL(window.location.origin + window.location.pathname);
         url.searchParams.set('jailname', cfg.jailname);
@@ -201,14 +200,28 @@ function runQuickSearch() {
                     let a = document.createElement('a');
                     a.href = `bastille_manager_editor_v2.php?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
                     a.innerHTML = `<span class="qs-item-title">${file.name}</span><span class="qs-item-path">${file.relative}</span>`;
-                    a.addEventListener('click', () => saveHistory(filter));
+                    a.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        saveHistory(filter);
+                        closeQuickSearch();
+                        const fakeLi = document.createElement('li');
+                        fakeLi.className = 'tree-item is-recursive';
+                        fakeLi.style.display = 'none';
+                        const fakeLink = document.createElement('a');
+                        fakeLink.href = a.href;
+
+                        fakeLi.appendChild(fakeLink);
+                        document.querySelector('.ide-file-list').appendChild(fakeLi);
+
+                        fakeLink.click();
+                        fakeLi.remove();
+                    });
                     li.appendChild(a);
                     qsResultsList.appendChild(li);
                 });
             })
             .catch((err) => {
-                qsResultsList.innerHTML =
-                    '<li style="padding: 15px; color:red;">Search engine offline.</li>';
+                qsResultsList.innerHTML = '<li style="padding: 15px; color:red;">Search engine offline.</li>';
             })
             .finally(() => {
                 hideSpinner();
@@ -226,14 +239,12 @@ document.addEventListener('keydown', function (e) {
     const isCtrl = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
 
-    // --- 1. ATAJOS GLOBALES (Interceptados antes que Monaco) ---
-
     // Ctrl + B: Sidebar
     if (isCtrl && key === 'b') {
         e.preventDefault();
         e.stopPropagation();
         toggleSidebar();
-        return; // Salimos para que no procese nada más
+        return;
     }
 
     // Ctrl + S: Guardar
@@ -244,15 +255,12 @@ document.addEventListener('keydown', function (e) {
         return;
     }
 
-    // Ctrl + K: Buscador rápido (reemplaza tu isCtrlK anterior)
     if (isCtrl && key === 'k') {
         e.preventDefault();
         e.stopPropagation();
         openQuickSearch();
         return;
     }
-
-    // --- 2. LÓGICA DE LA MODAL (Se mantiene intacta) ---
 
     if (qsModal && qsModal.style.display === 'block') {
         if (e.key === 'Escape') {
@@ -280,7 +288,7 @@ document.addEventListener('keydown', function (e) {
             }
         }
     }
-}, true); // <--- ESTE 'TRUE' ES EL QUE HACE LA MAGIA
+}, true);
 
 function updateSelection(items) {
     Array.from(items).forEach((li) => li.classList.remove('selected'));
@@ -336,14 +344,15 @@ function clearFilter() {
 //FIXME add a badged filters
 function fetchSearchRecursive(term) {
     const ul = document.getElementById('fileList');
-    let url = new URL(window.location.origin + window.location.pathname);
+    const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('jailname', cfg.jailname);
     url.searchParams.set('ajax_search', term);
 
     fetch(url)
         .then((res) => res.json())
         .then((data) => {
-            ul.querySelectorAll('.is-recursive .no-results').forEach((el) => el.remove());
+            ul.querySelectorAll('.is-recursive, .no-results').forEach((el) => el.remove());
+
             if (!data.items || data.items.length === 0) {
                 let li = document.createElement('li');
                 li.className = 'no-results';
@@ -351,17 +360,24 @@ function fetchSearchRecursive(term) {
                 ul.appendChild(li);
                 return;
             }
+
             data.items.forEach((file) => {
-                if (!ul.querySelector(`a[href*="${encodeURIComponent(file.full)}"]`)) {
+                if (!ul.querySelector(`li.is-recursive a[href*="${encodeURIComponent(file.full)}"]`)) {
                     let li = document.createElement('li');
                     li.className = 'tree-item is-recursive';
-                    let editUrl = `bastille_manager_editor_v2.php?jailname=${encodeURIComponent(cfg.jailname)}&filepath=${encodeURIComponent(file.full)}`;
-                    li.innerHTML = `<a href="${editUrl}" title="${file.full}"><strong>${file.name}</strong><span class="search-result-path">${file.relative}</span></a>`;
+
+                    const editUrl = `?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
+
+                    li.innerHTML = `
+                        <a href="${editUrl}" title="${file.full}">
+                            <strong>${file.name}</strong>
+                            <span class="search-result-path">${file.relative}</span>
+                        </a>`;
                     ul.appendChild(li);
                 }
             });
         })
-        .catch(err => console.error("Search Error: ", err));
+        .catch(err => console.error("Search Error:", err));
 }
 
 // --- SPA & TREE LOGIC ---
@@ -413,12 +429,50 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
         }
 
         // --- UI UPDATES (SPA MODE) ---
-
         // 1. Manage active state safely
-        document.querySelectorAll('.tree-item').forEach((el) => el.classList.remove('active'));
-        const treeItem = link.closest('.tree-item');
-        if (treeItem) {
-            treeItem.classList.add('active');
+        const isSearchResult = link.closest('.is-recursive');
+        if (isSearchResult) {
+            // --- RESTAURAR EL ÁRBOL ORIGINAL ---
+            const searchInput = document.querySelector('.ide-search input');
+            const clearBtn = document.querySelector('.ide-search-clear');
+
+            // 1a. Vaciamos el input y disparamos el evento para que tu JS original reaccione
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input')); // Simula que el usuario ha borrado el texto
+            }
+
+            // 1b. Hacemos clic en tu botón de limpiar (por si tiene lógica atada)
+            if (clearBtn) {
+                clearBtn.style.display = 'none';
+                clearBtn.click();
+            }
+
+            // 1c. Limpiamos a la fuerza los resultados inyectados
+            document.querySelectorAll('.is-recursive, .no-results').forEach((el) => el.remove());
+
+            // 1d. SEGURO DE VIDA: Forzamos a que el árbol base vuelva a ser visible
+            document.querySelectorAll('.ide-file-list > li').forEach(el => {
+                el.style.display = '';
+            });
+
+            // 2. LANZAR EL ROBOT CON MICRO-RETRASO
+            cfg.filepath = filepath;
+
+            // Le damos 50ms al navegador para que "pinte" el árbol original antes de expandirlo
+            setTimeout(async () => {
+                if (typeof syncSidebarWithFile === 'function') {
+                    await syncSidebarWithFile();
+                }
+            }, 50);
+
+        } else {
+            // Comportamiento original para clics normales en el árbol
+            document.querySelectorAll('.tree-item').forEach((el) => el.classList.remove('active'));
+            const treeItem = link.closest('.tree-item');
+            if (treeItem) {
+                treeItem.classList.add('active');
+            }
         }
 
         // 2. Sync hidden form inputs for Save button
@@ -462,10 +516,8 @@ async function syncSidebarWithFile() {
     segments.pop();
 
     let currentPath = cfg.jailRoot.replace(/\/$/, '');
-
     let $currentContainer = document.getElementById('fileList');
     if (!$currentContainer) {
-        console.warn("IDE: #fileList not found in DOM.");
         return;
     }
 
@@ -479,17 +531,21 @@ async function syncSidebarWithFile() {
             });
 
         if (folderLink) {
-            await window.toggleFolder(folderLink, currentPath);
+            const li = folderLink.parentElement;
+            const subList = li.querySelector('ul');
 
-            const nextUl = folderLink.parentElement.querySelector('ul');
-            if (nextUl) {
-                $currentContainer = nextUl;
+            if (subList && subList.style.display !== 'none' && li.classList.contains('open')) {
+                $currentContainer = subList;
             } else {
-                console.warn("IDE: Could not find sub-folder container for: " + segment);
-                break;
+                await window.toggleFolder(folderLink, currentPath);
+                const nextUl = li.querySelector('ul');
+                if (nextUl) {
+                    $currentContainer = nextUl;
+                } else {
+                    break;
+                }
             }
         } else {
-            console.log("IDE: Path segment not found in tree: " + segment);
             break;
         }
     }
@@ -508,6 +564,13 @@ async function syncSidebarWithFile() {
         if (targetLink) {
             const li = targetLink.closest('.tree-item');
 
+            let parent = li.parentElement;
+            while (parent && parent.id !== 'fileList') {
+                if (parent.tagName === 'UL') parent.style.display = 'block';
+                if (parent.tagName === 'LI') parent.classList.add('open');
+                parent = parent.parentElement;
+            }
+
             document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
             li.classList.add('active');
 
@@ -522,7 +585,7 @@ window.executeSaved = async function () {
 
     const filepath = document.querySelector('input[name="filepath"]')?.value;
     const content = window.editor.getValue();
-    const form = document.getElementById('iform'); // Tu formulario principal
+    const form = document.getElementById('iform');
 
     if (!filepath || filepath === 'Select a file' || !form) {
         showConfirmDialog('Error', 'No file selected to save or form missing.', 'error');
@@ -537,30 +600,22 @@ window.executeSaved = async function () {
         saveBtn.value = 'Saving...';
     }
 
-    // --- LA MAGIA ESTÁ AQUÍ ---
-    // En lugar de crear un FormData vacío, clonamos el formulario original
-    // Esto incluirá automáticamente cualquier token CSRF o variable oculta de XigmaNAS
     const formData = new FormData(form);
 
-    // Sobrescribimos o añadimos los datos que nos interesan para el AJAX
     formData.set('ajax_save', '1');
     formData.set('file_content', content);
     formData.set('filepath', filepath);
     formData.set('jailname', cfg.jailname);
-    // Aseguramos que el servidor sepa que es una petición de guardado
     formData.set('save', '1');
 
     try {
         const response = await fetch(window.location.href, {
             method: 'POST',
             body: formData,
-            // Importante: asegurar que mandamos las cookies de sesión
             credentials: 'same-origin'
         });
 
-        // Si el servidor devuelve un error HTTP (como el 401)
         if (!response.ok) {
-            // Intentamos leer el texto del error si no es JSON
             const errText = await response.text();
             throw new Error(`Server returned status ${response.status}. Details: ${errText.substring(0, 50)}...`);
         }
@@ -570,15 +625,13 @@ window.executeSaved = async function () {
         if (data.success) {
             isDirty = false;
             document.querySelectorAll('.dirty-dot').forEach((dot) => dot.remove());
-            showConfirmDialog('Saved', 'File saved successfully!', 'success');
+            showConfirmDialog('Saved', 'Saved file to ' + filepath, 'success');
         } else {
             throw new Error(data.error || 'Server rejected the save request.');
         }
 
     } catch (error) {
         console.error("Save Error:", error);
-
-        // Mensaje más amigable si es un problema de JSON/HTML
         if (error.message.includes('Unexpected token')) {
             showConfirmDialog('Session Error', 'Your session might have expired or a security token is missing. Try reloading the page.', 'error');
         } else {
