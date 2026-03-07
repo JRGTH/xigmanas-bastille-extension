@@ -73,7 +73,7 @@ if ($_POST && isset($_POST['save'])) {
     } else {
         if (isset($is_ajax) && $is_ajax) {
             echo json_encode(['success' => false, 'error' => 'Invalid file path.']);
-            exit; // ¡EL HACHAZO!
+            exit;
         } else {
             $input_errors[] = gtext('Invalid file path.');
         }
@@ -83,49 +83,44 @@ if ($_POST && isset($_POST['save'])) {
 // 2. PARALLEL RECURSIVE SEARCH ENGINE
 if (isset($_GET['ajax_search'])) {
     while (ob_get_level() > 0) ob_end_clean();
-    ini_set('display_errors', 0); error_reporting(0);
+    header('Content-Type: application/json; charset=utf-8');
 
     $filter = $_GET['ajax_search'];
-    $search_term = escapeshellarg("*" . $filter . "*");
-    $search_path = $jail_root;
-    $dirs = glob($search_path . '/*', GLOB_ONLYDIR);
-    $commands = [];
-
-    if (!empty($dirs)) {
-        foreach ($dirs as $dir) {
-            $commands[basename($dir)] = "find " . escapeshellarg($dir) . " -type f -iname $search_term 2>/dev/null | head -n 20";
-        }
+    if (strlen($filter) < 2) {
+        echo json_encode(['items' => []]);
+        exit;
     }
-    $commands['jail_root'] = "find " . escapeshellarg($search_path) . " -maxdepth 1 -type f -iname $search_term 2>/dev/null";
 
-    $searcher = new BastilleManagerMwExecParallel($commands);
-    $raw_results = $searcher->executeWithSelect();
+    $search_term = escapeshellarg("*" . $filter . "*");
+    $search_path = escapeshellarg($jail_root);
+
+    // El 'find' definitivo: busca en todos lados menos en .backups. Máximo 40 resultados.
+    $cmd = "find {$search_path} -path '*/.backups' -prune -o -type f -iname {$search_term} -print 2>/dev/null | head -n 40";
+
+    $start = microtime(true);
+    exec($cmd, $lines);
     $final_items = [];
 
-    foreach ($raw_results as $source => $output) {
-        $lines = explode("\n", trim($output['stdout']));
-        foreach ($lines as $line) {
-            if (empty($line)) continue;
-            $final_items[] = [
-                'full'      => $line,
-                'directory' => dirname($line),
-                'relative'  => $icon_folder . " " . str_replace($jail_root, "", dirname($line)),
-                'name'      => basename($line),
-                'source'    => $source
-            ];
-        }
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (empty($line) || !file_exists($line)) continue;
+
+        $final_items[] = [
+            'full'      => $line,
+            'directory' => dirname($line), // Mantenemos esto para que tu runQuickSearch no pete
+            'relative'  => $icon_folder . " " . str_replace($jail_root, "", dirname($line)) ?: "/",
+            'name'      => basename($line)
+        ];
     }
 
     usort($final_items, function ($a, $b) use ($filter) {
-        $exactA = (strcasecmp($a['name'], $filter) === 0);
-        $exactB = (strcasecmp($b['name'], $filter) === 0);
-        if ($exactA && !$exactB) return -1;
-        if (!$exactA && $exactB) return 1;
+        if (strcasecmp($a['name'], $filter) === 0) return -1;
+        if (strcasecmp($b['name'], $filter) === 0) return 1;
         return strlen($a['name']) - strlen($b['name']);
     });
 
-    header('Content-Type: application/json');
-    echo json_encode(['items' => array_slice($final_items, 0, 50), 'perf'  => $searcher->getMs()]);
+    $ms = round((microtime(true) - $start) * 1000);
+    echo json_encode(['items' => $final_items, 'perf' => $ms . 'ms']);
     exit;
 }
 
