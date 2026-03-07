@@ -517,34 +517,16 @@ async function syncSidebarWithFile() {
 }
 
 // --- EDITOR LOGIC & SAVING ---
-window.executeSaved = function () {
-    if (typeof window.editor === 'undefined') return;
+window.executeSaved = async function () {
+    if (typeof window.editor === 'undefined' || !isDirty) return;
 
-    const fileContentInput = document.getElementById('file_content');
-    if (fileContentInput) fileContentInput.value = window.editor.getValue();
+    const filepath = document.querySelector('input[name="filepath"]')?.value;
+    const content = window.editor.getValue();
+    const form = document.getElementById('iform'); // Tu formulario principal
 
-    const currentPathDisplay = document.getElementById('ide-filepath-display');
-    if (currentPathDisplay && currentPathDisplay.innerText.trim() !== 'Select a file') {
-        const activeFilepath = currentPathDisplay.innerText.trim();
-        const filepathInput = document.querySelector('input[name="filepath"]');
-        const dirInput = document.querySelector('input[name="dir"]');
-        if (filepathInput) filepathInput.value = activeFilepath;
-        if (dirInput) dirInput.value = activeFilepath.substring(0, activeFilepath.lastIndexOf('/'));
-
-        const form = document.getElementById('iform');
-        if (form) form.action = window.location.href;
-    }
-
-    const form = document.getElementById('iform');
-    if (!form) return;
-
-    if (!document.getElementById('hidden_save_trigger')) {
-        const hiddenSave = document.createElement('input');
-        hiddenSave.type = 'hidden';
-        hiddenSave.name = 'save';
-        hiddenSave.value = '1';
-        hiddenSave.id = 'hidden_save_trigger';
-        form.appendChild(hiddenSave);
+    if (!filepath || filepath === 'Select a file' || !form) {
+        showConfirmDialog('Error', 'No file selected to save or form missing.', 'error');
+        return;
     }
 
     if (typeof spinner === 'function') spinner();
@@ -555,8 +537,60 @@ window.executeSaved = function () {
         saveBtn.value = 'Saving...';
     }
 
-    if (typeof form.requestSubmit === 'function') form.requestSubmit();
-    else form.submit();
+    // --- LA MAGIA ESTÁ AQUÍ ---
+    // En lugar de crear un FormData vacío, clonamos el formulario original
+    // Esto incluirá automáticamente cualquier token CSRF o variable oculta de XigmaNAS
+    const formData = new FormData(form);
+
+    // Sobrescribimos o añadimos los datos que nos interesan para el AJAX
+    formData.set('ajax_save', '1');
+    formData.set('file_content', content);
+    formData.set('filepath', filepath);
+    formData.set('jailname', cfg.jailname);
+    // Aseguramos que el servidor sepa que es una petición de guardado
+    formData.set('save', '1');
+
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            // Importante: asegurar que mandamos las cookies de sesión
+            credentials: 'same-origin'
+        });
+
+        // Si el servidor devuelve un error HTTP (como el 401)
+        if (!response.ok) {
+            // Intentamos leer el texto del error si no es JSON
+            const errText = await response.text();
+            throw new Error(`Server returned status ${response.status}. Details: ${errText.substring(0, 50)}...`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            isDirty = false;
+            document.querySelectorAll('.dirty-dot').forEach((dot) => dot.remove());
+            showConfirmDialog('Saved', 'File saved successfully!', 'success');
+        } else {
+            throw new Error(data.error || 'Server rejected the save request.');
+        }
+
+    } catch (error) {
+        console.error("Save Error:", error);
+
+        // Mensaje más amigable si es un problema de JSON/HTML
+        if (error.message.includes('Unexpected token')) {
+            showConfirmDialog('Session Error', 'Your session might have expired or a security token is missing. Try reloading the page.', 'error');
+        } else {
+            showConfirmDialog('Save Error', error.message, 'error');
+        }
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.value = 'Save File';
+        }
+        hideSpinner();
+    }
 };
 
 window.toggleFolder = function (element, path) {
