@@ -497,6 +497,43 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
     }
 });
 
+// --- HOME ICON / RESET TREE (SPA MODE) ---
+const homeBtn = document.querySelector('.ide-sidebar-header a[title="Reset Tree"]');
+
+if (homeBtn) {
+    homeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const searchInput = document.querySelector('.ide-search input');
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input'));
+        }
+        document.querySelectorAll('.is-recursive, .no-results').forEach(el => el.remove());
+
+        const fileList = document.getElementById('fileList');
+        if (fileList) {
+            fileList.querySelectorAll('li.folder-item').forEach(li => li.classList.remove('open'));
+            fileList.querySelectorAll('ul').forEach(ul => ul.style.display = 'none');
+
+            const rootLi = fileList.querySelector('li.folder-item');
+            if (rootLi) {
+                rootLi.classList.add('open');
+                const rootUl = rootLi.querySelector('ul');
+                if (rootUl) {
+                    rootUl.style.display = 'block'; // Mostramos el contenido de la raíz
+                }
+            }
+
+            Array.from(fileList.children).forEach(child => {
+                child.style.display = '';
+            });
+        }
+
+        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+    });
+}
+
 document.addEventListener('DOMContentLoaded', async function () {
     if (cfg.filepath && cfg.filepath !== '') {
         await syncSidebarWithFile();
