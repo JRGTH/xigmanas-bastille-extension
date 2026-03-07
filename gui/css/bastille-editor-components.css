@@ -518,6 +518,7 @@
     margin-left: auto;
     line-height: 1;
     display: inline-block;
+    text-shadow: 0 0 5px rgba(255, 152, 0, 0.8), 0 0 10px rgba(255, 152, 0, 0.4);
     animation: pulse-dot 1.5s infinite;
 }
 
