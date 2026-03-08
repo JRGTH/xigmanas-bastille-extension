@@ -53,18 +53,26 @@ if (isset($_POST['delete_file'])) {
 
         if ($delete_success) {
             if ($is_ajax_delete) {
-                echo json_encode(['success' => true]);
+                echo json_encode([
+                    'success' => true
+                ]);
                 exit;
             }
         } else {
             if ($is_ajax_delete) {
-                echo json_encode(['success' => false, 'error' => 'Permission denied. System executor could not remove the item.']);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Permission denied. System executor could not remove the item.'
+                ]);
                 exit;
             }
         }
     } else {
         if ($is_ajax_delete) {
-            echo json_encode(['success' => false, 'error' => 'Invalid path or item not found.']);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Invalid path or item not found.'
+            ]);
             exit;
         }
     }
@@ -115,7 +123,10 @@ if ($_POST && isset($_POST['save'])) {
             }
         } else {
             if ($is_ajax) {
-                echo json_encode(['success' => false, 'error' => 'Failed to write to file: ' . $filename]);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Failed to write to file: ' . $filename
+                ]);
                 exit;
             } else {
                 $input_errors[] = sprintf('%s %s', gtext('Failed to write to file:'), $filepath);
@@ -123,7 +134,10 @@ if ($_POST && isset($_POST['save'])) {
         }
     } else {
         if (isset($is_ajax) && $is_ajax) {
-            echo json_encode(['success' => false, 'error' => 'Invalid file path.']);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Invalid file path.'
+            ]);
             exit;
         } else {
             $input_errors[] = gtext('Invalid file path.');
@@ -254,6 +268,62 @@ if (isset($_GET['ajax_get_dir'])) {
         'files' => array_values($files),
         'parent' => $real_path
     ]);
+    exit;
+}
+
+// --- CREATE NEW FILE OR FOLDER ---
+if (isset($_POST['create_item'])) {
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/json');
+
+    $parent_dir = $_POST['parent_dir'] ?? '';
+    $new_name = trim($_POST['new_name'] ?? '');
+    $type = $_POST['type'] ?? 'file'; // 'file' or 'folder'
+
+    $full_path = rtrim($parent_dir, '/') . '/' . $new_name;
+
+    // Security check
+    if (strpos($full_path, $jail_root) !== 0 || strpos($new_name, '..') !== false) {
+        echo json_encode(['success' => false, 'error' => 'Access denied']); exit;
+    }
+
+    conf_mount_rw();
+    $success = ($type === 'folder') ? @mkdir($full_path, 0755) : @touch($full_path);
+    conf_mount_ro();
+
+    echo json_encode([
+        'success' => $success,
+        'error' => $success
+            ? ''
+            : 'Could not create item. Check permissions.'
+    ]);
+    exit;
+}
+
+// --- UNLOCK FILES & FOLDERS (Clear FreeBSD Flags) ---
+if (isset($_POST['ajax_unlock'])) {
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/json; charset=utf-8');
+
+    $filepath = $_POST['filepath'] ?? '';
+    $filepath = trim($filepath);
+
+    if (!empty($filepath) && file_exists($filepath) && strpos($filepath, $jail_root) === 0) {
+        conf_mount_rw();
+        $cmd = "chflags -R 0 " . escapeshellarg($filepath);
+        $executor = new BastilleManagerMwExecParallel([
+            'unlock' => $cmd
+        ]);
+        $executor->executeWithSelect();
+        conf_mount_ro();
+        clearstatcache(true, $filepath);
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'error' => 'Invalid path for unlocking.'
+        ]);
+    }
     exit;
 }
 
