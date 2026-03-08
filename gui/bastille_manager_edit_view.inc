@@ -29,7 +29,7 @@ window.IDE_CONFIG = {
                 <div class="ide-sidebar">
                     <div class="ide-sidebar-header lhetop">
                         <a href="?jailname=<?=urlencode($jailname)?>&filepath=<?=urlencode($filepath)?>" title="Reset Tree">
-                            <img src="ext/bastille/images/home.svg" class="home-icon" alt="Home" width="18" height="18">
+                            <img src="images/fm_img/smallicons/house.png" class="home-icon" alt="Home" width="18" height="18">
                         </a>
                     </div>
 

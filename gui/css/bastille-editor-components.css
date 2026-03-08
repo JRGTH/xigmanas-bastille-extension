@@ -557,7 +557,7 @@ body.dark-theme #ide-context-menu {
 }
 
 .ide-cm-item {
-    padding: 8px 16px;
+    padding: 8px 10px;
     cursor: pointer;
     display: flex;
     align-items: center;
