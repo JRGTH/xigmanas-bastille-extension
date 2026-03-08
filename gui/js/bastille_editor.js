@@ -25,7 +25,7 @@ const MODAL_CONFIG = {
             btnClass: 'ide-btn-primary',
             btnText: 'Delete',
             showCancel: true,
-            svg: `<img src="images/fm_img/smallicons/cross-script.png" alt="Delete" style="width: 28px; height: 28px; display: block; margin: auto;">`,
+            svg: `<img src="ext/bastille/images/delete.svg" alt="Delete" style="width: 35px; height: 35px; display: block; margin: auto;">`,
     },
     error: {
         iconClass: 'icon-error',
@@ -845,7 +845,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="ide-cm-separator"></div>
         <div class="ide-cm-item cm-delete" id="cm-delete-file">
-            <img src="images/fm_img/smallicons/cross-script.png" class="delete-icon-img" alt="delete" style="width: 14px; height: 14px;"> Delete this file
+            <img src="ext/bastille/images/delete.svg" class="delete-icon-img" alt="delete" style="width: 20px; height: 20px;"> Delete
         </div>
     `;
     document.body.appendChild(contextMenu);
@@ -913,8 +913,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- DELETE LOGIC ENGINE ---
 window.executeDelete = async function(filepath, fileName, liElement) {
     const ok = await showConfirmDialog(
-        'Delete File',
-        `Are you sure you want to permanently delete "${fileName}"? This cannot be undone.`,
+        'Delete File "' + fileName + '" ?',
+        `Are you sure you want to delete "${fileName}"?`,
         'delete'
     );
     if (!ok) return;
