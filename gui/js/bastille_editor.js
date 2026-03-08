@@ -1238,6 +1238,90 @@ async function syncSidebarWithFolder(targetPath) {
         }
 }
 
+// --- FILE UPLOAD HANDLER ---
+document.addEventListener('DOMContentLoaded', () => {
+    const fileList = document.getElementById('fileList');
+    const uploadButton = document.getElementById('ide-upload-button');
+
+    uploadButton.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            const targetDir = window.IDE_CONFIG.currentDir || window.IDE_CONFIG.jailRoot;
+            handleFileUpload(this.files, targetDir);
+        }
+    });
+
+    // --- B. DRAG & DROP SIDEBAR ---
+    // Prevent default behavior (opening the file in the browser)
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        fileList.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    fileList.addEventListener('dragover', () => fileList.classList.add('drag-over'));
+    fileList.addEventListener('dragleave', () => fileList.classList.remove('drag-over'));
+
+    fileList.addEventListener('drop', (e) => {
+        fileList.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const folderItem = e.target.closest('.folder-item');
+            let targetDir = window.IDE_CONFIG.jailRoot;
+
+            if (folderItem) {
+                const link = folderItem.querySelector('a');
+                const match = link.getAttribute('onclick').match(/'([^']+)'/);
+                targetDir = match ? match[1] : targetDir;
+            }
+
+            handleFileUpload(files, targetDir);
+        }
+    });
+});
+
+// --- Upload function ---
+async function handleFileUpload(files, destination) {
+    const mainForm = document.getElementById('iform');
+    const formData = new FormData(mainForm);
+    formData.append('ajax_upload', '1');
+    formData.append('target_dir', destination);
+    formData.append('jailname', window.IDE_CONFIG.jailname);
+
+    for (let i = 0; i < files.length; i++) {
+        formData.append('files[]', files[i]);
+    }
+
+    if (typeof spinner === 'function') spinner();
+
+    try {
+         const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const result = await response.text();
+
+        if (result.trim().startsWith('<!DOCTYPE')) {
+            throw new Error("Security rejection: Token invalid or Session expired. Please refresh.");
+        }
+
+        const data = JSON.parse(result);
+
+        if (data.success) {
+            showConfirmDialog("Upload Complete", `${files.length} items uploaded to ${destination}`, "success");
+            document.querySelector('.ide-sidebar-header a[title="Reset Tree"]').click();
+        } else {
+            throw new Error(data.error || "Upload failed");
+        }
+    } catch (err) {
+        console.error("Upload Error: ", err);
+        showConfirmDialog("Upload Error", err.message, "error");
+    } finally {
+        hideSpinner();
+    }
+}
+
 // --- MONACO INIT ---
 const MONACO_NODE_MODULES = '/ext/bastille/js/vs';
 if (typeof require !== 'undefined') {
