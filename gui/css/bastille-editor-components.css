@@ -1,9 +1,23 @@
 /* FLEX ALIGNMENT FOR SYSTEM HEADERS */
 .ide-sidebar-header {
     display: flex;
-    flex-direction: column;
-    align-items: end;
+    flex-direction: row;
+    align-items: center;
+    justify-content: end;
+}
+
+.ide-sidebar-header a {
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
+    /*padding: 6px;*/
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    text-decoration: none;
+}
+
+.ide-sidebar-header a:hover {
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 .home-icon {
@@ -615,4 +629,13 @@ body.dark-theme .ide-cm-separator {
 .ide-cm-item.cm-unlock:hover {
     background: rgba(25, 118, 210, 0.1);
     color: #0d47a1;
+}
+
+.ide-file-list.drag-over {
+    background: rgba(0, 120, 215, 0.1);
+    border: 2px dashed #0078d7;
+}
+
+.ide-upload-button:hover {
+    background-color:rgba(0, 0, 0, 0.1);
 }

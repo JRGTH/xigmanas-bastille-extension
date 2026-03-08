@@ -332,6 +332,63 @@ if (isset($_POST['ajax_unlock'])) {
     exit;
 }
 
+// --- FILE UPLOAD HANDLER ---
+if (isset($_POST['ajax_upload'])) {
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/json');
+
+    // DEBUG: Vamos a ver si PHP recibió los archivos o si son demasiado grandes
+    if (empty($_FILES) && empty($_POST)) {
+        echo json_encode([
+            'success' => false,
+            'error' => 'Server received nothing. Maybe file is too big (check post_max_size in PHP.ini)'
+        ]);
+        exit;
+    }
+
+    $target = $_POST['target_dir'] ?? $jail_root;
+    $real_target = realpath($target);
+
+    if ($real_target === false || strpos($real_target, realpath($jail_root)) !== 0) {
+        echo json_encode([
+            'success' => false,
+             'error' => 'Access denied to ' . $target
+        ]);
+        exit;
+    }
+
+    conf_mount_rw();
+    $count = 0;
+    $errors = [];
+
+    if (!empty($_FILES['files'])) {
+        foreach ($_FILES['files']['name'] as $k => $name) {
+            $error_code = $_FILES['files']['error'][$k];
+            if ($error_code === UPLOAD_ERR_OK) {
+                $tmp = $_FILES['files']['tmp_name'][$k];
+                $save_to = $real_target . '/' . basename($name);
+                if (move_uploaded_file($tmp, $save_to)) {
+                    $count++;
+                } else {
+                    $errors[] = "Failed to move: " . $name;
+                }
+            } else {
+                $errors[] = "PHP Upload Error Code: " . $error_code . " for file " . $name;
+            }
+        }
+    }
+
+    conf_mount_ro();
+
+    echo json_encode([
+        'success' => $count > 0,
+        'count' => $count,
+        'errors' => $errors,
+        'received_target' => $target
+    ]);
+    exit;
+}
+
 function rrmdir($dir) {
     if (is_dir($dir)) {
         $objects = scandir($dir);

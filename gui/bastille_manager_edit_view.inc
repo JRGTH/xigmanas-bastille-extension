@@ -28,8 +28,13 @@ window.IDE_CONFIG = {
             <div class="ide-container">
                 <div class="ide-sidebar">
                     <div class="ide-sidebar-header lhetop">
+                        <input type="file" id="ide-upload-button" multiple style="display:none;">
+                        <a href="javascript:void(0)" title="Upload Files" onclick="document.getElementById('ide-upload-button').click();">
+                            <img src="ext/bastille/images/upload.svg" width="16px" height="16px">
+                        </a>
+
                         <a href="?jailname=<?=urlencode($jailname)?>&filepath=<?=urlencode($filepath)?>" title="Reset Tree">
-                            <img src="images/fm_img/smallicons/house.png" class="home-icon" alt="Home" width="18" height="18">
+                            <img src="images/fm_img/smallicons/house.png" class="home-icon" alt="Home" width="18px" height="18px">
                         </a>
                     </div>
 
