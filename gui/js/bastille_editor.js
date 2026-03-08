@@ -18,7 +18,7 @@ const MODAL_CONFIG = {
         btnClass: 'ide-btn-primary',
         btnText: 'OK',
         showCancel: true,
-        svg: `<div class="iconerr mbci-min" style="width: 32px; height: 32px; margin: auto; background-repeat: no-repeat; background-position: center; background-size: contain;"></div>`,
+        svg: `<img src="ext/bastille/images/delete.svg" alt="Delete" style="width: 35px; height: 35px; display: block; margin: auto;">`,
     },
     delete: {
             iconClass: 'icon-error',
@@ -853,19 +853,36 @@ document.addEventListener('DOMContentLoaded', () => {
     let cmTargetData = null;
 
     document.querySelector('.ide-file-list').addEventListener('contextmenu', function(e) {
-        const link = e.target.closest('.file-item a');
-        if (!link) return;
+        const link = e.target.closest('.tree-item a');
+        if (!link) {
+            return;
+        }
 
         e.preventDefault();
 
-        const url = new URL(link.href, window.location.origin);
-        const filepath = url.searchParams.get('filepath');
-        if (!filepath) return;
-
-        const filename = link.querySelector('span:last-child').innerText;
         const liElement = link.closest('.tree-item');
+        const isFolder = liElement.classList.contains('folder-item');
+        let filepath = '';
 
-        cmTargetData = { filepath, filename, liElement };
+        if (isFolder) {
+            const onclickAttr = link.getAttribute('onclick');
+            if (onclickAttr) {
+                // Extract path
+                const match = onclickAttr.match(/toggleFolder\(.*?,\s*'([^']+)'\)/);
+                if (match && match[1]) filepath = match[1];
+            }
+        } else {
+            const url = new URL(link.href, window.location.origin);
+            filepath = url.searchParams.get('filepath');
+        }
+
+        if (!filepath) {
+            return;
+        }
+
+        const filename = link.querySelector('span:last-child').innerText.trim();
+
+        cmTargetData = { filepath, filename, liElement, isFolder };
 
         contextMenu.style.display = 'block';
 
@@ -903,20 +920,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('cm-delete-file').addEventListener('click', () => {
-        if (!cmTargetData) return;
-        contextMenu.style.display = 'none'; // Ocultamos el menú al instante
-
-        executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement);
+        if (!cmTargetData) {
+            return;
+        }
+        contextMenu.style.display = 'none';
+        executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement, cmTargetData.isFolder);
     });
 });
 
 // --- DELETE LOGIC ENGINE ---
-window.executeDelete = async function(filepath, fileName, liElement) {
-    const ok = await showConfirmDialog(
-        'Delete File "' + fileName + '" ?',
-        `Are you sure you want to delete "${fileName}"?`,
-        'delete'
-    );
+window.executeDelete = async function(filepath, fileName, liElement, isFolder = false) {
+    let modalTitle = 'Delete File "' + fileName + '" ?';
+    let modalMessage = `Are you sure you want to delete "${fileName}" ?`;
+
+    if (isFolder) {
+        modalTitle = 'Delete';
+        modalMessage = `Delete directory "${fileName}"?\nAll files and subdirectories in "${fileName}" will be deleted.\nYou might not be able to fully undo this operation!`;
+    }
+
+    const ok = await showConfirmDialog(modalTitle, modalMessage, 'delete');
     if (!ok) return;
 
     if (typeof spinner === 'function') spinner();
@@ -954,20 +976,21 @@ window.executeDelete = async function(filepath, fileName, liElement) {
             setTimeout(() => liElement.remove(), 200);
 
             const currentOpenFile = document.querySelector('input[name="filepath"]')?.value;
-            if (currentOpenFile === filepath) {
+            if (currentOpenFile && currentOpenFile.startsWith(filepath)) {
                 if (window.editor) {
-                    window.editor.setValue("# File deleted.\n# Select another file from the sidebar.");
+                    window.editor.setValue("# Item deleted.\n# Select another file from the sidebar.");
                     window.editor.updateOptions({ readOnly: true });
                 }
                 if (typeof clearDirtyState === 'function') clearDirtyState();
                 const container = document.querySelector('.ide-filepath-display');
-                if (container) container.innerHTML = `<span style="color: #d32f2f; font-weight: bold;">File Deleted</span>`;
+                if (container) container.innerHTML = `<span style="color: #d32f2f; font-weight: bold;">Deleted</span>`;
             }
 
-            showConfirmDialog('File Deleted', `The file "${fileName}" was successfully removed.`, 'success');
+            const successType = isFolder ? 'Directory' : 'File';
+            showConfirmDialog(`${successType} Deleted`, `The ${successType.toLowerCase()} "${fileName}" was successfully removed.`, 'success');
 
         } else {
-            throw new Error(data.error || 'Failed to delete file.');
+            throw new Error(data.error || 'Failed to delete item.');
         }
     } catch (error) {
         console.error("Delete Error:", error);
