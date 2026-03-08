@@ -1,7 +1,7 @@
 <?php
 // bastille_manager_edit_api.inc
 
-// 1. FILE CONTENT LOAD (SPA)
+// FILE CONTENT LOAD (SPA)
 if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     while (ob_get_level() > 0) {
         ob_end_clean();
@@ -19,7 +19,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     exit;
 }
 
-// --- DELETE FILES & FOLDERS ---
+// DELETE FILES & FOLDERS
 if (isset($_POST['delete_file'])) {
     $is_ajax_delete = isset($_POST['ajax_delete']) && $_POST['ajax_delete'] === '1';
 
@@ -29,6 +29,7 @@ if (isset($_POST['delete_file'])) {
     }
 
     $filepath = $_POST['filepath'] ?? '';
+    $filepath = trim($filepath);
 
     if (!empty($filepath) && file_exists($filepath) && strpos($filepath, '..') === false) {
 
@@ -67,23 +68,6 @@ if (isset($_POST['delete_file'])) {
             exit;
         }
     }
-}
-
-function rrmdir($dir) {
-    if (is_dir($dir)) {
-        $objects = scandir($dir);
-        foreach ($objects as $object) {
-            if ($object != "." && $object != "..") {
-                if (is_dir($dir . DIRECTORY_SEPARATOR . $object) && !is_link($dir . "/" . $object)) {
-                    rrmdir($dir . DIRECTORY_SEPARATOR . $object);
-                } else {
-                    unlink($dir . DIRECTORY_SEPARATOR . $object);
-                }
-            }
-        }
-        return rmdir($dir);
-    }
-    return false;
 }
 
 // STORAGE AND BACKUPS
@@ -147,7 +131,7 @@ if ($_POST && isset($_POST['save'])) {
     }
 }
 
-// 2. PARALLEL RECURSIVE SEARCH ENGINE
+// PARALLEL RECURSIVE SEARCH ENGINE
 if (isset($_GET['ajax_search'])) {
     while (ob_get_level() > 0) ob_end_clean();
     header('Content-Type: application/json; charset=utf-8');
@@ -167,7 +151,7 @@ if (isset($_GET['ajax_search'])) {
     if (!empty($dirs)) {
         foreach ($dirs as $dir) {
             $base = basename($dir);
-            if ($base === '.backups') continue; // Ignoramos basura
+            if ($base === '.backups') continue;
 
             $commands[$base] = "find " . escapeshellarg($dir) . " -type f -iname {$search_term} 2>/dev/null | head -n 20";
         }
@@ -212,7 +196,7 @@ if (isset($_GET['ajax_search'])) {
     exit;
 }
 
-// 3. LAZY LOADING
+// LAZY LOADING
 if (isset($_GET['ajax_get_dir'])) {
     while (ob_get_level() > 0) ob_end_clean();
     ini_set('display_errors', 0); error_reporting(0);
@@ -220,27 +204,74 @@ if (isset($_GET['ajax_get_dir'])) {
     $dir_path = $_GET['ajax_get_dir'];
     $real_path = realpath($dir_path);
 
+    // Security check to ensure we are inside the jail
     if ($real_path === false || strpos($real_path, $jail_root) !== 0) {
         echo json_encode(['error' => 'Access denied']); exit;
     }
 
+    $file_flags = freeBsdFileFlags($real_path);
     $items = @scandir($real_path);
-    $folders = []; $files = [];
+
+    $folders = [];
+    $files = [];
 
     if ($items) {
         foreach ($items as $item) {
-            if ($item === '.' || $item === '..' || $item === '.backups') continue;
+            if ($item === '.' || $item === '..' || $item === '.backups') {
+                continue;
+            }
+
             $full = $real_path . '/' . $item;
+
+            $clean_name = trim($item);
+            $hasFlag = $file_flags[$clean_name] ?? null;
+
             clearstatcache(true, $full);
-            if (is_link($full)) continue;
-            if (is_dir($full)) $folders[] = $item; else $files[] = $item;
+
+            $itemData = [
+                'name' => $clean_name,
+                'flag' => $hasFlag
+            ];
+
+            if (is_link($full)) {
+                continue;
+            }
+
+            if (is_dir($full)) {
+                $folders[] = $itemData;
+            } else {
+                $files[] = $itemData;
+            }
         }
     }
-    natcasesort($folders); natcasesort($files);
+
+    natcasesort($folders);
+    natcasesort($files);
 
     header('Content-Type: application/json');
-    echo json_encode(['folders' => array_values($folders), 'files' => array_values($files), 'parent' => $real_path]);
+    echo json_encode([
+        'folders' => array_values($folders),
+        'files' => array_values($files),
+        'parent' => $real_path
+    ]);
     exit;
+}
+
+function rrmdir($dir) {
+    if (is_dir($dir)) {
+        $objects = scandir($dir);
+        foreach ($objects as $object) {
+            if ($object != "." && $object != "..") {
+                if (is_dir($dir . DIRECTORY_SEPARATOR . $object) && !is_link($dir . "/" . $object)) {
+                    rrmdir($dir . DIRECTORY_SEPARATOR . $object);
+                } else {
+                    unlink($dir . DIRECTORY_SEPARATOR . $object);
+                }
+            }
+        }
+        return rmdir($dir);
+    }
+    return false;
 }
 
 ?>
