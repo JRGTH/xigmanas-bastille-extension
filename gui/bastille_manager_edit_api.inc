@@ -19,6 +19,43 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     exit;
 }
 
+// --- DELETE FILES ---
+if ($_POST && isset($_POST['delete_file'])) {
+    $is_ajax_delete = isset($_POST['ajax_delete']) && $_POST['ajax_delete'] === '1';
+
+    if ($is_ajax_delete) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+    }
+
+    $filepath = $_POST['filepath'] ?? '';
+
+    if (!empty($filepath) && is_file($filepath) && strpos($filepath, '..') === false) {
+        conf_mount_rw();
+        $delete_success = unlink($filepath);
+        conf_mount_ro();
+
+        if ($delete_success) {
+            if ($is_ajax_delete) {
+                echo json_encode(['success' => true]);
+                exit; // <-- El salvador
+            }
+        } else {
+            if ($is_ajax_delete) {
+                echo json_encode(['success' => false, 'error' => 'Permission denied. Could not delete file.']);
+                exit;
+            }
+        }
+    } else {
+        if ($is_ajax_delete) {
+            echo json_encode(['success' => false, 'error' => 'Invalid file path or file not found.']);
+            exit;
+        }
+    }
+}
+
 // STORAGE AND BACKUPS
 if ($_POST && isset($_POST['save'])) {
     $is_ajax = isset($_POST['ajax_save']) && $_POST['ajax_save'] === '1';
@@ -173,41 +210,6 @@ if (isset($_GET['ajax_get_dir'])) {
 
     header('Content-Type: application/json');
     echo json_encode(['folders' => array_values($folders), 'files' => array_values($files), 'parent' => $real_path]);
-    exit;
-}
-
-// --- DELETE FILE API (bastille_manager_edit_api.inc) ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_delete'])) {
-    // Limpiamos cualquier output anterior y forzamos JSON
-    ob_clean();
-    header('Content-Type: application/json');
-
-    $filepath = $_POST['filepath'] ?? '';
-    $jailname = $_POST['jailname'] ?? '';
-
-    // 1. SEGURIDAD: Evitar que usen "../" para subir directorios y borrar el NAS
-    if (empty($filepath) || strpos($filepath, '..') !== false) {
-        echo json_encode(['success' => false, 'error' => 'Invalid or unsafe path detected.']);
-        exit;
-    }
-
-    // 2. SEGURIDAD (Opcional pero recomendada):
-    // Comprobar que el archivo realmente está dentro de /mnt/pool.../jails/
-    // if (strpos($filepath, '/mnt/') !== 0) { ... error ... }
-
-    // 3. EJECUCIÓN
-    if (file_exists($filepath)) {
-        if (is_dir($filepath)) {
-            echo json_encode(['success' => false, 'error' => 'Cannot delete directories with this action.']);
-        } else if (unlink($filepath)) {
-            echo json_encode(['success' => true]);
-        } else {
-            // Falla normalmente por permisos del usuario de PHP/Web server (www)
-            echo json_encode(['success' => false, 'error' => 'Permission denied. Check file ownership.']);
-        }
-    } else {
-        echo json_encode(['success' => false, 'error' => 'File not found on disk.']);
-    }
     exit;
 }
 
