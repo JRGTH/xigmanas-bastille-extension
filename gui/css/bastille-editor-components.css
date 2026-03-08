@@ -73,7 +73,7 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 10px 0;
+    padding: 0 0;
     margin: 0;
     list-style: none;
 }
@@ -595,4 +595,23 @@ body.dark-theme .ide-cm-separator {
 .ide-cm-item svg {
     width: 14px;
     height: 14px;
+}
+
+/* --- LOCK ICON FOR IMMUTABLE --- */
+.lock-icon {
+    width: 14px;
+    height: 14px;
+    margin-left: 6px;
+    vertical-align: middle;
+    display: inline-block;
+    pointer-events: none;
+}
+/* --- "UNLOCK" STYLE IN THE CONTEXTUAL MENU --- */
+.ide-cm-item.cm-unlock {
+    color: #1976d2;
+}
+
+.ide-cm-item.cm-unlock:hover {
+    background: rgba(25, 118, 210, 0.1);
+    color: #0d47a1;
 }

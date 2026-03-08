@@ -366,4 +366,34 @@ function get_jail_infos() {
 
 	return $result;
 }
+
+/**
+ * Detects FreeBSD flags for a given path.
+ * Moved here to be accessible by both API and View.
+ * - schg
+ */
+function freeBsdFileFlags($path) {
+    $ls_executor = new BastilleManagerMwExecParallel([
+        'flags_check' => "ls -loA " . escapeshellarg($path)
+    ]);
+    $results = $ls_executor->executeWithSelect();
+    $output = $results['flags_check']['stdout'] ?? '';
+
+    $file_flags = [];
+    $lines = explode("\n", trim($output));
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (empty($line) || strpos($line, 'total') === 0) continue;
+        if (strpos($line, 'schg') !== false) {
+            $parts = preg_split('/\s+/', $line);
+            $name = end($parts);
+            if (isset($parts[4])) {
+                $file_flags[$name] = $parts[4];
+            }
+        }
+    }
+    return $file_flags;
+}
+
 ?>

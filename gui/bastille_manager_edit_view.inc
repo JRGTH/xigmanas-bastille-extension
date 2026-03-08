@@ -38,44 +38,53 @@ window.IDE_CONFIG = {
                         <span class="ide-search-clear" id="clearFilterBtn" style="display:none;">&times;</span>
                     </div>
 
-                    <ul class="ide-file-list" id="fileList">
-                        <li class="tree-item folder-item open">
-                            <a href="javascript:void(0)" style="cursor:default; pointer-events:none;">
-                                <span class="tree-caret">▼</span>
-                                <?= $icon_folder ?> <span style="font-weight:bold;">/</span>
-                            </a>
+                   <ul class="ide-file-list" id="fileList">
+                       <li class="tree-item folder-item open">
+                           <a href="javascript:void(0)" style="cursor:default; pointer-events:none;">
+                               <span class="tree-caret">▼</span>
+                               <?= $icon_folder ?> <span style="font-weight:bold;">/</span>
+                           </a>
 
-                            <ul class="ide-file-list" style="display:block; padding-left:15px;">
-                                <?php
-                                $root_folders = scandir($jail_root);
-                                foreach ($root_folders as $folder):
-                                    if ($folder === '..' || $folder === '.') continue;
-                                    $full_path = rtrim($jail_root, '/') . '/' . $folder;
-                                    if (is_dir($full_path)): ?>
-                                        <li class="tree-item folder-item">
-                                            <a href="javascript:void(0)" onclick="toggleFolder(this, '<?= addslashes($full_path) ?>')">
-                                                <span class="tree-caret">▶</span>
-                                                <?= $icon_folder ?> <span><?= htmlspecialchars($folder) ?></span>
-                                            </a>
-                                        </li>
-                                    <?php endif;
-                                endforeach;
+                           <ul class="ide-file-list" style="display:block; padding-left:15px;">
+                               <?php
+                               $root_flags = freeBsdFileFlags($jail_root);
+                               $root_items = @scandir($jail_root);
+                               if ($root_items):
+                                   // Folder loop
+                                   foreach ($root_items as $folder):
+                                       if ($folder === '..' || $folder === '.' || $folder === '.backups') continue;
+                                       $full_path = rtrim($jail_root, '/') . '/' . $folder;
+                                       if (is_dir($full_path)):
+                                           $f_flag = isset($root_flags[$folder]) ? $root_flags[$folder] : '';
+                                           $lock_img = !empty($f_flag) ? "<img src='ext/bastille/images/lock.svg' class='lock-icon' style='width:14px;'>" : "";
+                                           ?>
+                                           <li class="tree-item folder-item" data-flag="<?= $f_flag ?>">
+                                               <a href="javascript:void(0)" onclick="toggleFolder(this, '<?= addslashes($full_path) ?>')">
+                                                   <span class="tree-caret">▶</span>
+                                                   <?= $icon_folder ?> <span><?= htmlspecialchars($folder) ?></span> <?= $lock_img ?>
+                                               </a>
+                                           </li>
+                                       <?php endif; endforeach;
 
-                                foreach ($root_folders as $file):
-                                    $full_file_path = rtrim($jail_root, '/') . '/' . $file;
-                                    if (is_file($full_file_path)):
-                                        $is_active = ($filepath === $full_file_path) ? 'active' : ''; ?>
-                                        <li class="tree-item file-item <?=$is_active?>">
-                                            <a href="?jailname=<?=$jailname?>&filepath=<?=urlencode($full_file_path)?>"
-                                                 onclick="if(typeof spinner === 'function') spinner();">
-                                                 <?= $icon_file ?> <span><?= htmlspecialchars($file) ?></span>
-                                            </a>
-                                        </li>
-                                    <?php endif;
-                                endforeach; ?>
-                            </ul>
-                        </li>
-                    </ul>
+                                   // Dir loop
+                                   foreach ($root_items as $file):
+                                       $full_file_path = rtrim($jail_root, '/') . '/' . $file;
+                                       if (is_file($full_file_path)):
+                                           $is_active = ($filepath === $full_file_path) ? 'active' : '';
+                                           $f_flag = isset($root_flags[$file]) ? $root_flags[$file] : '';
+                                           $lock_img = !empty($f_flag) ? "<img src='ext/bastille/images/lock.svg' class='lock-icon' style='width:14px;'>" : "";
+                                           ?>
+                                           <li class="tree-item file-item <?= $is_active ?>" data-flag="<?= $f_flag ?>">
+                                               <a href="?jailname=<?=$jailname?>&filepath=<?=urlencode($full_file_path)?>"
+                                                    onclick="if(typeof spinner === 'function') spinner();">
+                                                    <?= $icon_file ?> <span><?= htmlspecialchars($file) ?></span> <?= $lock_img ?>
+                                               </a>
+                                           </li>
+                                       <?php endif; endforeach;
+                               endif; ?>
+                           </ul>
+                       </li>
+                   </ul>
                 </div>
 
                 <div id="ide-resizer" class="ide-resizer"></div>

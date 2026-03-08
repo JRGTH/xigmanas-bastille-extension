@@ -32,7 +32,7 @@ const MODAL_CONFIG = {
         btnClass: 'ide-btn-primary',
         btnText: 'OK',
         showCancel: false,
-        svg: `<div class="iconerr mbci-min" style="width: 32px; height: 32px; margin: auto; background-repeat: no-repeat; background-position: center; background-size: contain;"></div>`,
+        svg: `<img src="ext/bastille/images/delete.svg" alt="Delete" style="width: 35px; height: 35px; display: block; margin: auto;">`,
     },
     success: {
         iconClass: 'icon-success',
@@ -694,16 +694,25 @@ function clearDirtyState() {
     }
 }
 
+/**
+ * Sidebar Lazy-Loading & Tree Renderer
+ *
+ * Fetches directory contents and renders items with FreeBSD flag detection.
+ * @param {HTMLElement} element - The clicked folder link.
+ * @param {string} path - Absolute path to the directory.
+ */
 window.toggleFolder = function (element, path) {
     const li = element.parentElement;
     let subList = li.querySelector('ul');
 
+    // If sub-items are already in DOM, just toggle visibility
     if (subList) {
         const isHidden = subList.style.display === 'none';
         subList.style.display = isHidden ? 'block' : 'none';
         isHidden ? li.classList.add('open') : li.classList.remove('open');
         return;
     }
+
     if (typeof spinner === 'function') spinner();
 
     const url = new URL(window.location.origin + window.location.pathname);
@@ -713,27 +722,56 @@ window.toggleFolder = function (element, path) {
     return fetch(url)
         .then((res) => res.json())
         .then((data) => {
+            if (data.error) throw new Error(data.error);
+
+            console.log("API Response for path: ", path, data); // Debugging info
+
             subList = document.createElement('ul');
             subList.className = 'ide-file-list';
             subList.style.paddingLeft = '15px';
 
+            // --- Render Folders ---
             data.folders.forEach((f) => {
-                if (f === '..' || f === '.') {
-                    return;
-                }
-                const fullP = path + '/' + f;
-                const safePath = fullP.replace(/'/g, "\\'");
-                subList.innerHTML += `<li class="tree-item folder-item"><a href="javascript:void(0)" onclick="toggleFolder(this, '${safePath}')">${cfg.icons.caret} ${cfg.icons.folder} <span>${f}</span></a></li>`;
+                const fullP = path + '/' + f.name;
+                const safePath = fullP.replace(/'/g, "\\'"); // Escape single quotes for JS
+
+                const hasFlag = f.flag && f.flag !== '' && f.flag !== '0';
+                const lockMarkup = hasFlag ? `<img src="ext/bastille/images/lock.svg" class="lock-icon" title="Flags: ${f.flag}">` : '';
+
+                subList.innerHTML += `
+                    <li class="tree-item folder-item" data-flag="${f.flag || ''}">
+                        <a href="javascript:void(0)" onclick="toggleFolder(this, '${safePath}')">
+                            ${cfg.icons.caret} ${cfg.icons.folder} <span>${f.name}</span> ${lockMarkup}
+                        </a>
+                    </li>`;
             });
+
+            // --- Render Files ---
             data.files.forEach((f) => {
-                const fullP = path + '/' + f;
+                const fullP = path + '/' + f.name;
                 const editUrl = `?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(path)}&filepath=${encodeURIComponent(fullP)}`;
-                subList.innerHTML += `<li class="tree-item file-item"><a href="${editUrl}" onclick="if(typeof spinner === 'function') spinner();">${cfg.icons.file} <span>${f}</span></a></li>`;
+
+                const hasFlag = f.flag && f.flag !== '' && f.flag !== '0';
+                const lockMarkup = hasFlag ? `<img src="ext/bastille/images/lock.svg" class="lock-icon" title="Flags: ${f.flag}">` : '';
+
+                // FIX: Added real editUrl and spinner call to files
+                subList.innerHTML += `
+                    <li class="tree-item file-item" data-flag="${f.flag || ''}">
+                        <a href="${editUrl}" onclick="if(typeof spinner === 'function') spinner();">
+                            ${cfg.icons.file} <span>${f.name}</span> ${lockMarkup}
+                        </a>
+                    </li>`;
             });
+
             li.appendChild(subList);
             li.classList.add('open');
         })
-        .finally(() => hideSpinner());
+        .catch(err => {
+            console.error("Tree Load Error:", err);
+        })
+        .finally(() => {
+            if (typeof hideSpinner === 'function') hideSpinner();
+        });
 };
 
 // --- RESIZER ---
@@ -837,21 +875,31 @@ document.addEventListener('click', async function(e) {
 // --- CONTEXT MENU SYSTEM ---
 document.addEventListener('DOMContentLoaded', () => {
 
+    // 1. Create and inject Context Menu
     const contextMenu = document.createElement('div');
     contextMenu.id = 'ide-context-menu';
     contextMenu.innerHTML = `
         <div class="ide-cm-item" id="cm-copy-path">
             <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy" style="margin-left: 0"> Copy Full Path
         </div>
+
+        <div class="ide-cm-item cm-unlock" id="cm-unlock-item" style="display: none;">
+            <img src="ext/bastille/images/lock.svg" class="lock-icon-img" alt="unlock" style="width: 18px; height: 18px; margin-right: 10px;">
+            Unlock (Clear Flags)
+        </div>
+
         <div class="ide-cm-separator"></div>
+
         <div class="ide-cm-item cm-delete" id="cm-delete-file">
             <img src="ext/bastille/images/delete.svg" class="delete-icon-img" alt="delete" style="width: 20px; height: 20px;"> Delete
         </div>
     `;
     document.body.appendChild(contextMenu);
 
+    // This variable stores the data of the item we clicked on
     let cmTargetData = null;
 
+    // 2. Right-Click Event (Context Menu detection)
     document.querySelector('.ide-file-list').addEventListener('contextmenu', function(e) {
         const link = e.target.closest('.tree-item a');
         if (!link) {
@@ -864,10 +912,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const isFolder = liElement.classList.contains('folder-item');
         let filepath = '';
 
+        // Extract path logic
         if (isFolder) {
             const onclickAttr = link.getAttribute('onclick');
             if (onclickAttr) {
-                // Extract path
                 const match = onclickAttr.match(/toggleFolder\(.*?,\s*'([^']+)'\)/);
                 if (match && match[1]) filepath = match[1];
             }
@@ -882,22 +930,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const filename = link.querySelector('span:last-child').innerText.trim();
 
-        cmTargetData = { filepath, filename, liElement, isFolder };
+        // --- LOGIC TO SHOW/HIDE UNLOCK BUTTON ---
+        const currentFlag = liElement.getAttribute('data-flag');
+        const unlockBtn = document.getElementById('cm-unlock-item');
 
+        if (currentFlag && currentFlag !== '' && currentFlag !== 'null' && currentFlag !== '0') {
+            unlockBtn.style.display = 'flex';
+        } else {
+            unlockBtn.style.display = 'none';
+        }
+
+        // Store target data for the button actions
+        cmTargetData = { filepath, filename, liElement, isFolder, flag: currentFlag };
+
+        // Position and display menu
         contextMenu.style.display = 'block';
-
-        const menuWidth = contextMenu.offsetWidth;
-        const menuHeight = contextMenu.offsetHeight;
         let left = e.pageX;
         let top = e.pageY;
 
-        if (left + menuWidth > window.innerWidth) left = window.innerWidth - menuWidth;
-        if (top + menuHeight > window.innerHeight) top = window.innerHeight - menuHeight;
+        // Boundary checks
+        if (left + contextMenu.offsetWidth > window.innerWidth) left = window.innerWidth - contextMenu.offsetWidth;
+        if (top + contextMenu.offsetHeight > window.innerHeight) top = window.innerHeight - contextMenu.offsetHeight;
 
         contextMenu.style.left = `${left}px`;
         contextMenu.style.top = `${top}px`;
     });
 
+    // 3. Global click and Escape listeners to hide menu
     document.addEventListener('click', (e) => {
         if (e.button !== 2) contextMenu.style.display = 'none';
     });
@@ -905,28 +964,84 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape') contextMenu.style.display = 'none';
     });
 
+    // 4. ACTION: Copy Path
     document.getElementById('cm-copy-path').addEventListener('click', () => {
         if (!cmTargetData) return;
-
         const textArea = document.createElement("textarea");
         textArea.value = cmTargetData.filepath;
         document.body.appendChild(textArea);
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-
         contextMenu.style.display = 'none';
-
     });
 
-    document.getElementById('cm-delete-file').addEventListener('click', () => {
-        if (!cmTargetData) {
-            return;
+    // 5. ACTION: Unlock (Clear Flags)
+    document.getElementById('cm-unlock-item').addEventListener('click', async () => {
+        if (!cmTargetData) return;
+        contextMenu.style.display = 'none';
+
+        const ok = await showConfirmDialog(
+            'Unlock Protection',
+            `The item "${cmTargetData.filename}" is protected with the flag: ${cmTargetData.flag}.\n\nDo you want to remove all protection flags now?`,
+            'warning'
+        );
+
+        if (ok) {
+            executeUnlock(cmTargetData.filepath, cmTargetData.liElement);
         }
+    });
+
+    // 6. ACTION: Delete
+    document.getElementById('cm-delete-file').addEventListener('click', () => {
+        if (!cmTargetData) return;
         contextMenu.style.display = 'none';
         executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement, cmTargetData.isFolder);
     });
 });
+
+/**
+ * Sends a request to the backend to remove FreeBSD chflags
+ *
+ * @param {string} filepath - Full path of the item
+ * @param {HTMLElement} liElement - The tree item element to update UI
+ */
+window.executeUnlock = async function(filepath, liElement) {
+    if (typeof spinner === 'function') {
+        spinner();
+    }
+    // Use the main form to inherit security tokens from XigmaNAS
+    const form = document.getElementById('iform');
+    const formData = new FormData(form);
+    formData.set('ajax_unlock', '1');
+    formData.set('filepath', filepath);
+    formData.set('jailname', cfg.jailname);
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const data = await response.json();
+        if (data.success) {
+            // Success: Remove the lock icon from the UI
+            const lock = liElement.querySelector('.lock-icon');
+            if (lock) {
+                lock.remove();
+            }
+            // Clear the flag data so the context menu doesn't show "Unlock" anymore
+            liElement.dataset.flag = '';
+            showConfirmDialog('Unlocked', 'Flags removed successfully. You can now edit or delete the item.', 'success');
+        } else {
+            throw new Error(data.error || 'Failed to remove flags.');
+        }
+    } catch (e) {
+        console.error("Unlock Error:", e);
+        showConfirmDialog('Error', 'Failed to unlock: ' + e.message, 'error');
+    } finally {
+        hideSpinner();
+    }
+};
 
 // --- DELETE LOGIC ENGINE ---
 window.executeDelete = async function(filepath, fileName, liElement, isFolder = false) {
