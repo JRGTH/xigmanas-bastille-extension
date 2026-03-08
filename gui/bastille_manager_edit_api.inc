@@ -175,4 +175,40 @@ if (isset($_GET['ajax_get_dir'])) {
     echo json_encode(['folders' => array_values($folders), 'files' => array_values($files), 'parent' => $real_path]);
     exit;
 }
+
+// --- DELETE FILE API (bastille_manager_edit_api.inc) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_delete'])) {
+    // Limpiamos cualquier output anterior y forzamos JSON
+    ob_clean();
+    header('Content-Type: application/json');
+
+    $filepath = $_POST['filepath'] ?? '';
+    $jailname = $_POST['jailname'] ?? '';
+
+    // 1. SEGURIDAD: Evitar que usen "../" para subir directorios y borrar el NAS
+    if (empty($filepath) || strpos($filepath, '..') !== false) {
+        echo json_encode(['success' => false, 'error' => 'Invalid or unsafe path detected.']);
+        exit;
+    }
+
+    // 2. SEGURIDAD (Opcional pero recomendada):
+    // Comprobar que el archivo realmente está dentro de /mnt/pool.../jails/
+    // if (strpos($filepath, '/mnt/') !== 0) { ... error ... }
+
+    // 3. EJECUCIÓN
+    if (file_exists($filepath)) {
+        if (is_dir($filepath)) {
+            echo json_encode(['success' => false, 'error' => 'Cannot delete directories with this action.']);
+        } else if (unlink($filepath)) {
+            echo json_encode(['success' => true]);
+        } else {
+            // Falla normalmente por permisos del usuario de PHP/Web server (www)
+            echo json_encode(['success' => false, 'error' => 'Permission denied. Check file ownership.']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'error' => 'File not found on disk.']);
+    }
+    exit;
+}
+
 ?>

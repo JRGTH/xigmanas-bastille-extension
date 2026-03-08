@@ -827,6 +827,148 @@ document.addEventListener('click', async function(e) {
 
 }, true);
 
+// --- CONTEXT MENU SYSTEM ---
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Inyectamos el menú en el body
+    const contextMenu = document.createElement('div');
+    contextMenu.id = 'ide-context-menu';
+    contextMenu.innerHTML = `
+        <div class="ide-cm-item" id="cm-copy-path">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Copy Full Path
+        </div>
+        <div class="ide-cm-separator"></div>
+        <div class="ide-cm-item cm-delete" id="cm-delete-file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Delete this file
+        </div>
+    `;
+    document.body.appendChild(contextMenu);
+
+    let cmTargetData = null; // Guarda los datos del archivo clickeado
+
+    // 2. Interceptar el clic derecho en el árbol
+    document.querySelector('.ide-file-list').addEventListener('contextmenu', function(e) {
+        // Solo abrimos el menú si hacen clic derecho en un archivo (no en carpetas por ahora)
+        const link = e.target.closest('.file-item a');
+        if (!link) return;
+
+        e.preventDefault(); // Evita el menú normal del navegador
+
+        // Recolectar datos del archivo
+        const url = new URL(link.href, window.location.origin);
+        const filepath = url.searchParams.get('filepath');
+        if (!filepath) return;
+
+        const filename = link.querySelector('span:last-child').innerText;
+        const liElement = link.closest('.tree-item');
+
+        cmTargetData = { filepath, filename, liElement };
+
+        // Mostrar menú en la posición del ratón
+        contextMenu.style.display = 'block';
+
+        // Pequeño ajuste para que no se salga de la pantalla si lo abres muy abajo
+        const menuWidth = contextMenu.offsetWidth;
+        const menuHeight = contextMenu.offsetHeight;
+        let left = e.pageX;
+        let top = e.pageY;
+
+        if (left + menuWidth > window.innerWidth) left = window.innerWidth - menuWidth;
+        if (top + menuHeight > window.innerHeight) top = window.innerHeight - menuHeight;
+
+        contextMenu.style.left = `${left}px`;
+        contextMenu.style.top = `${top}px`;
+    });
+
+    // 3. Cerrar el menú si haces clic izquierdo o le das a ESC
+    document.addEventListener('click', (e) => {
+        if (e.button !== 2) contextMenu.style.display = 'none';
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') contextMenu.style.display = 'none';
+    });
+
+    // 4. Acción: Copiar Ruta
+    document.getElementById('cm-copy-path').addEventListener('click', () => {
+        if (!cmTargetData) return;
+
+        const textArea = document.createElement("textarea");
+        textArea.value = cmTargetData.filepath;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        contextMenu.style.display = 'none';
+
+        // (Opcional) Un toast o feedback visual podría ir aquí
+    });
+
+    // 5. Acción: Eliminar Fichero
+    document.getElementById('cm-delete-file').addEventListener('click', () => {
+        if (!cmTargetData) return;
+        contextMenu.style.display = 'none'; // Ocultamos el menú al instante
+
+        // Llamamos a la función de borrado
+        executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement);
+    });
+});
+
+// --- DELETE LOGIC ENGINE ---
+window.executeDelete = async function(filepath, fileName, liElement) {
+    const ok = await showConfirmDialog(
+        'Delete File',
+        `Are you sure you want to permanently delete "${fileName}"? This cannot be undone.`,
+        'error'
+    );
+    if (!ok) return;
+
+    if (typeof spinner === 'function') spinner();
+
+    try {
+        const formData = new FormData();
+        formData.set('ajax_delete', '1');
+        formData.set('filepath', filepath);
+        formData.set('jailname', cfg.jailname);
+
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Animación suave de desaparición
+            liElement.style.transition = "opacity 0.2s, height 0.2s";
+            liElement.style.opacity = '0';
+            setTimeout(() => liElement.remove(), 200);
+
+            // Si el archivo estaba abierto en el editor, lo limpiamos
+            const currentOpenFile = document.querySelector('input[name="filepath"]')?.value;
+            if (currentOpenFile === filepath) {
+                if (window.editor) {
+                    window.editor.setValue("# File deleted.\n# Select another file from the sidebar.");
+                    window.editor.updateOptions({ readOnly: true });
+                }
+                clearDirtyState();
+                const container = document.querySelector('.ide-filepath-display');
+                if (container) container.innerHTML = `<span style="color: #d32f2f; font-weight: bold;">File Deleted</span>`;
+            }
+
+        } else {
+            throw new Error(data.error || 'Failed to delete file.');
+        }
+    } catch (error) {
+        console.error("Delete Error:", error);
+        showConfirmDialog('Error', error.message, 'error');
+    } finally {
+        hideSpinner();
+    }
+};
+
 async function syncSidebarWithFolder(targetPath) {
     const searchInput = document.querySelector('.ide-search input');
     if (searchInput && searchInput.value) {
