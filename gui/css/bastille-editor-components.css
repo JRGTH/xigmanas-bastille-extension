@@ -212,6 +212,7 @@
     background-color: var(--bgc-topic, #95a7c0);
     background-image: var(--bgi-topic);
     color: #fff; /* White text for contrast */
+    overflow: hidden;
 }
 /* --- PREVENT NATIVE CLICK SHIFT --- */
 /* Neutralize XigmaNAS default active styles that move the link */
