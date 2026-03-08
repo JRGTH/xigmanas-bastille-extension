@@ -213,14 +213,19 @@ if (isset($_GET['ajax_search'])) {
 // LAZY LOADING
 if (isset($_GET['ajax_get_dir'])) {
     while (ob_get_level() > 0) ob_end_clean();
-    ini_set('display_errors', 0); error_reporting(0);
+    //ini_set('display_errors', 0); error_reporting(0);
 
     $dir_path = $_GET['ajax_get_dir'];
     $real_path = realpath($dir_path);
+    $root_path = realpath($jail_root);
 
-    // Security check to ensure we are inside the jail
-    if ($real_path === false || strpos($real_path, $jail_root) !== 0) {
-        echo json_encode(['error' => 'Access denied']); exit;
+    if ($real_path === false || strpos($real_path, $root_path) !== 0) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'error' => 'Access denied',
+            'debug' => "Path: $real_path | Root: $root_path"
+        ]);
+        exit;
     }
 
     $file_flags = freeBsdFileFlags($real_path);

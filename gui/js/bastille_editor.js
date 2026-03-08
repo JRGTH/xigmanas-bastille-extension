@@ -508,31 +508,77 @@ if (homeBtn) {
         const searchInput = document.querySelector('.ide-search input');
         if (searchInput) {
             searchInput.value = '';
-            searchInput.dispatchEvent(new Event('input'));
         }
         document.querySelectorAll('.is-recursive, .no-results').forEach(el => el.remove());
 
         const fileList = document.getElementById('fileList');
-        if (fileList) {
-            fileList.querySelectorAll('li.folder-item').forEach(li => li.classList.remove('open'));
-            fileList.querySelectorAll('ul').forEach(ul => ul.style.display = 'none');
-
+        if (!fileList) return;
             const rootLi = fileList.querySelector('li.folder-item');
-            if (rootLi) {
-                rootLi.classList.add('open');
-                const rootUl = rootLi.querySelector('ul');
-                if (rootUl) {
-                    rootUl.style.display = 'block';
-                }
+            const rootUl = rootLi ? rootLi.querySelector('ul') : null;
+
+            if (rootUl) {
+                rootUl.innerHTML = '<li class="tree-item" style="padding-left:20px; opacity:0.5;">Updating tree...</li>';
+
+                const params = new URLSearchParams({
+                    'ajax_get_dir': window.IDE_CONFIG.jailRoot,
+                    'jailname': window.IDE_CONFIG.jailname
+                });
+
+                fetch(`${window.location.pathname}?${params.toString()}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+
+                        rootUl.innerHTML = '';
+
+                        // --- RENDER folders ---
+                        data.folders.forEach(folder => {
+                            const isLocked = folder.flag && folder.flag.includes('schg');
+                            const lockIcon = isLocked ? `<img src="ext/bastille/images/lock.svg" class="lock-icon" style="width:14px; margin-left:5px;">` : '';
+
+                            const li = document.createElement('li');
+                            li.className = 'tree-item folder-item';
+                            li.dataset.flag = folder.flag || '';
+                            li.innerHTML = `
+                                <a href="javascript:void(0)" onclick="toggleFolder(this, '${data.parent}/${folder.name}')">
+                                    <span class="tree-caret">▶</span>
+                                    ${cfg.icons.folder} <span>${folder.name}</span> ${lockIcon}
+                                </a>
+                            `;
+                            rootUl.appendChild(li);
+                        });
+
+                        // --- RENDER files ---
+                        data.files.forEach(file => {
+                            const isLocked = file.flag && file.flag.includes('schg');
+                            const lockIcon = isLocked ? `<img src="ext/bastille/images/lock.svg" class="lock-icon" style="width:14px; margin-left:5px;">` : '';
+                            const editUrl = `?jailname=${encodeURIComponent(cfg.jailname)}&filepath=${encodeURIComponent(data.parent + '/' + file.name)}`;
+
+                            const li = document.createElement('li');
+                            li.className = 'tree-item file-item';
+                            li.dataset.flag = file.flag || '';
+                            li.innerHTML = `
+                                <a href="${editUrl}" onclick="if(typeof spinner === 'function') spinner();">
+                                    ${cfg.icons.file} <span>${file.name}</span> ${lockIcon}
+                                </a>
+                            `;
+                            rootUl.appendChild(li);
+                        });
+                    })
+                    .catch(err => {
+                        console.error("Reset Tree Error:", err);
+                        rootUl.innerHTML = '<li class="tree-item" style="color:red; padding-left:20px;">Error updating.</li>';
+                    });
             }
 
-            Array.from(fileList.children).forEach(child => {
-                child.style.display = '';
-            });
+            document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active', 'open'));
+            if (rootLi) {
+                rootLi.classList.add('open');
+            }
         }
-
-        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
-    });
+    );
 }
 
 document.addEventListener('DOMContentLoaded', async function () {
