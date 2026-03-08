@@ -19,41 +19,71 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     exit;
 }
 
-// --- DELETE FILES ---
-if ($_POST && isset($_POST['delete_file'])) {
+// --- DELETE FILES & FOLDERS ---
+if (isset($_POST['delete_file'])) {
     $is_ajax_delete = isset($_POST['ajax_delete']) && $_POST['ajax_delete'] === '1';
 
     if ($is_ajax_delete) {
-        while (ob_get_level() > 0) {
-            ob_end_clean();
-        }
+        while (ob_get_level() > 0) ob_end_clean();
         header('Content-Type: application/json; charset=utf-8');
     }
 
     $filepath = $_POST['filepath'] ?? '';
 
-    if (!empty($filepath) && is_file($filepath) && strpos($filepath, '..') === false) {
+    if (!empty($filepath) && file_exists($filepath) && strpos($filepath, '..') === false) {
+
         conf_mount_rw();
-        $delete_success = unlink($filepath);
+
+        $delete_success = is_dir($filepath) ? rrmdir($filepath) : @unlink($filepath);
+
+        if (!$delete_success) {
+            $cmd = (is_dir($filepath) ? "rm -rf " : "rm -f ") . escapeshellarg($filepath);
+
+            $executor = new BastilleManagerMwExecParallel([
+                'force_delete' => $cmd
+            ]);
+            $executor->executeWithSelect();
+
+            clearstatcache(true, $filepath);
+            $delete_success = !file_exists($filepath);
+        }
+
         conf_mount_ro();
 
         if ($delete_success) {
             if ($is_ajax_delete) {
                 echo json_encode(['success' => true]);
-                exit; // <-- El salvador
+                exit;
             }
         } else {
             if ($is_ajax_delete) {
-                echo json_encode(['success' => false, 'error' => 'Permission denied. Could not delete file.']);
+                echo json_encode(['success' => false, 'error' => 'Permission denied. System executor could not remove the item.']);
                 exit;
             }
         }
     } else {
         if ($is_ajax_delete) {
-            echo json_encode(['success' => false, 'error' => 'Invalid file path or file not found.']);
+            echo json_encode(['success' => false, 'error' => 'Invalid path or item not found.']);
             exit;
         }
     }
+}
+
+function rrmdir($dir) {
+    if (is_dir($dir)) {
+        $objects = scandir($dir);
+        foreach ($objects as $object) {
+            if ($object != "." && $object != "..") {
+                if (is_dir($dir . DIRECTORY_SEPARATOR . $object) && !is_link($dir . "/" . $object)) {
+                    rrmdir($dir . DIRECTORY_SEPARATOR . $object);
+                } else {
+                    unlink($dir . DIRECTORY_SEPARATOR . $object);
+                }
+            }
+        }
+        return rmdir($dir);
+    }
+    return false;
 }
 
 // STORAGE AND BACKUPS
