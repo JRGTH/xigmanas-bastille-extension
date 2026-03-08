@@ -18,7 +18,21 @@ const MODAL_CONFIG = {
         btnClass: 'ide-btn-primary',
         btnText: 'OK',
         showCancel: true,
-        svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+        svg: `<div class="iconerr mbci-min" style="width: 32px; height: 32px; margin: auto; background-repeat: no-repeat; background-position: center; background-size: contain;"></div>`,
+    },
+    delete: {
+            iconClass: 'icon-error',
+            btnClass: 'ide-btn-primary',
+            btnText: 'Delete',
+            showCancel: true,
+            svg: `<img src="images/fm_img/smallicons/cross-script.png" alt="Delete" style="width: 28px; height: 28px; display: block; margin: auto;">`,
+    },
+    error: {
+        iconClass: 'icon-error',
+        btnClass: 'ide-btn-primary',
+        btnText: 'OK',
+        showCancel: false,
+        svg: `<div class="iconerr mbci-min" style="width: 32px; height: 32px; margin: auto; background-repeat: no-repeat; background-position: center; background-size: contain;"></div>`,
     },
     success: {
         iconClass: 'icon-success',
@@ -26,13 +40,6 @@ const MODAL_CONFIG = {
         btnText: 'OK',
         showCancel: false,
         svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
-    },
-    error: {
-        iconClass: 'icon-error',
-        btnClass: 'ide-btn-primary',
-        btnText: 'OK',
-        showCancel: false,
-        svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
     },
 };
 
@@ -829,7 +836,7 @@ document.addEventListener('click', async function(e) {
 
 // --- CONTEXT MENU SYSTEM ---
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Inyectamos el menú en el body
+
     const contextMenu = document.createElement('div');
     contextMenu.id = 'ide-context-menu';
     contextMenu.innerHTML = `
@@ -843,17 +850,14 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(contextMenu);
 
-    let cmTargetData = null; // Guarda los datos del archivo clickeado
+    let cmTargetData = null;
 
-    // 2. Interceptar el clic derecho en el árbol
     document.querySelector('.ide-file-list').addEventListener('contextmenu', function(e) {
-        // Solo abrimos el menú si hacen clic derecho en un archivo (no en carpetas por ahora)
         const link = e.target.closest('.file-item a');
         if (!link) return;
 
-        e.preventDefault(); // Evita el menú normal del navegador
+        e.preventDefault();
 
-        // Recolectar datos del archivo
         const url = new URL(link.href, window.location.origin);
         const filepath = url.searchParams.get('filepath');
         if (!filepath) return;
@@ -863,10 +867,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cmTargetData = { filepath, filename, liElement };
 
-        // Mostrar menú en la posición del ratón
         contextMenu.style.display = 'block';
 
-        // Pequeño ajuste para que no se salga de la pantalla si lo abres muy abajo
         const menuWidth = contextMenu.offsetWidth;
         const menuHeight = contextMenu.offsetHeight;
         let left = e.pageX;
@@ -879,7 +881,6 @@ document.addEventListener('DOMContentLoaded', () => {
         contextMenu.style.top = `${top}px`;
     });
 
-    // 3. Cerrar el menú si haces clic izquierdo o le das a ESC
     document.addEventListener('click', (e) => {
         if (e.button !== 2) contextMenu.style.display = 'none';
     });
@@ -887,7 +888,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape') contextMenu.style.display = 'none';
     });
 
-    // 4. Acción: Copiar Ruta
     document.getElementById('cm-copy-path').addEventListener('click', () => {
         if (!cmTargetData) return;
 
@@ -900,15 +900,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         contextMenu.style.display = 'none';
 
-        // (Opcional) Un toast o feedback visual podría ir aquí
     });
 
-    // 5. Acción: Eliminar Fichero
     document.getElementById('cm-delete-file').addEventListener('click', () => {
         if (!cmTargetData) return;
         contextMenu.style.display = 'none'; // Ocultamos el menú al instante
 
-        // Llamamos a la función de borrado
         executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement);
     });
 });
@@ -918,43 +915,56 @@ window.executeDelete = async function(filepath, fileName, liElement) {
     const ok = await showConfirmDialog(
         'Delete File',
         `Are you sure you want to permanently delete "${fileName}"? This cannot be undone.`,
-        'error'
+        'delete'
     );
     if (!ok) return;
 
     if (typeof spinner === 'function') spinner();
 
-    try {
-        const formData = new FormData();
-        formData.set('ajax_delete', '1');
-        formData.set('filepath', filepath);
-        formData.set('jailname', cfg.jailname);
+    const form = document.getElementById('iform');
+    if (!form) {
+        console.error("Critical: #iform not found. Cannot bypass NAS security.");
+        hideSpinner();
+        return;
+    }
 
+    const formData = new FormData(form);
+
+    formData.set('ajax_delete', '1');
+    formData.set('delete_file', '1');
+    formData.set('filepath', filepath);
+    formData.set('jailname', cfg.jailname);
+
+    try {
         const response = await fetch(window.location.href, {
             method: 'POST',
             body: formData,
             credentials: 'same-origin'
         });
 
+        if (!response.ok) {
+            throw new Error(`Server returned status ${response.status}`);
+        }
+
         const data = await response.json();
 
         if (data.success) {
-            // Animación suave de desaparición
             liElement.style.transition = "opacity 0.2s, height 0.2s";
             liElement.style.opacity = '0';
             setTimeout(() => liElement.remove(), 200);
 
-            // Si el archivo estaba abierto en el editor, lo limpiamos
             const currentOpenFile = document.querySelector('input[name="filepath"]')?.value;
             if (currentOpenFile === filepath) {
                 if (window.editor) {
                     window.editor.setValue("# File deleted.\n# Select another file from the sidebar.");
                     window.editor.updateOptions({ readOnly: true });
                 }
-                clearDirtyState();
+                if (typeof clearDirtyState === 'function') clearDirtyState();
                 const container = document.querySelector('.ide-filepath-display');
                 if (container) container.innerHTML = `<span style="color: #d32f2f; font-weight: bold;">File Deleted</span>`;
             }
+
+            showConfirmDialog('File Deleted', `The file "${fileName}" was successfully removed.`, 'success');
 
         } else {
             throw new Error(data.error || 'Failed to delete file.');
