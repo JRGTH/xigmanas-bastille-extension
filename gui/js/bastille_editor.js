@@ -880,11 +880,11 @@ document.addEventListener('DOMContentLoaded', () => {
     contextMenu.id = 'ide-context-menu';
     contextMenu.innerHTML = `
         <div class="ide-cm-item" id="cm-copy-path">
-            <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy" style="margin-left: 0"> Copy Full Path
+            <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy" style="margin: 0"> Copy Full Path
         </div>
 
         <div class="ide-cm-item cm-unlock" id="cm-unlock-item" style="display: none;">
-            <img src="ext/bastille/images/lock.svg" class="lock-icon-img" alt="unlock" style="width: 18px; height: 18px; margin-right: 10px;">
+            <img src="ext/bastille/images/lock.svg" class="lock-icon" alt="unlock" style="width: 18px; height: 18px; margin: 0px;">
             Unlock (Clear Flags)
         </div>
 
@@ -928,16 +928,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const filename = link.querySelector('span:last-child').innerText.trim();
+        const filenameElement = link.querySelector('span:not(.tree-caret)');
+        const filename = filenameElement ? filenameElement.innerText.trim() : 'Unknown';
 
         // --- LOGIC TO SHOW/HIDE UNLOCK BUTTON ---
         const currentFlag = liElement.getAttribute('data-flag');
         const unlockBtn = document.getElementById('cm-unlock-item');
+        const deleteBtn = document.getElementById('cm-delete-file');
+        const isImmutable = currentFlag && currentFlag.includes('schg');
 
-        if (currentFlag && currentFlag !== '' && currentFlag !== 'null' && currentFlag !== '0') {
+        if (isImmutable) {
             unlockBtn.style.display = 'flex';
+            deleteBtn.style.display = 'none';
         } else {
             unlockBtn.style.display = 'none';
+            deleteBtn.style.display = 'flex';
         }
 
         // Store target data for the button actions
