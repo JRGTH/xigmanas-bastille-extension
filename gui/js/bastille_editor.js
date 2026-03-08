@@ -1244,27 +1244,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.querySelector('.ide-sidebar');
     let dragCounter = 0;
 
+    // --- 1. MANUAL DESTINATION SELECTION ---
     document.addEventListener('click', (e) => {
-        // We check whether you clicked on an item (folder or file)
-        const item = e.target.closest('.tree-item');
-        if (item) {
-            document.querySelectorAll('.is-selected-target').forEach(el => el.classList.remove('is-selected-target'));
+        // Ensure we only trigger when clicking exactly on the link text/icon
+        const link = e.target.closest('.tree-item a');
+
+        if (link) {
+            const item = link.closest('.tree-item');
+
+            // FULL CLEANUP: Remove both is-selected-target and active from ALL tree items
+            document.querySelectorAll('.tree-item').forEach(el => {
+                el.classList.remove('is-selected-target', 'active');
+            });
+
+            // Mark ONLY the item we just clicked
             item.classList.add('is-selected-target');
+            item.classList.add('active');
 
             let path = window.IDE_CONFIG.jailRoot;
 
             if (item.classList.contains('folder-item')) {
-                const match = item.querySelector('a').getAttribute('onclick')?.match(/'([^']+)'/);
+                // Extract path from folder onclick attribute
+                const match = link.getAttribute('onclick')?.match(/'([^']+)'/);
                 if (match) path = match[1];
             } else if (item.classList.contains('file-item')) {
-                const href = item.querySelector('a').href;
-                const url = new URL(href, window.location.origin);
+                // Extract parent directory path from file URL
+                const url = new URL(link.href, window.location.origin);
                 const filepath = url.searchParams.get('filepath');
                 if (filepath) path = filepath.substring(0, filepath.lastIndexOf('/'));
             }
 
             window.IDE_CONFIG.lastSelectedDir = path;
-            console.log("Destino fijado en:", path);
+            console.log("Destination set to:", path);
         }
     });
 
