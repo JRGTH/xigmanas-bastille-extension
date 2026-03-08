@@ -1240,42 +1240,99 @@ async function syncSidebarWithFolder(targetPath) {
 
 // --- FILE UPLOAD HANDLER ---
 document.addEventListener('DOMContentLoaded', () => {
-    const fileList = document.getElementById('fileList');
     const uploadButton = document.getElementById('ide-upload-button');
+    const sidebar = document.querySelector('.ide-sidebar');
+    let dragCounter = 0;
 
-    uploadButton.addEventListener('change', function() {
-        if (this.files.length > 0) {
-            const targetDir = window.IDE_CONFIG.currentDir || window.IDE_CONFIG.jailRoot;
-            handleFileUpload(this.files, targetDir);
+    document.addEventListener('click', (e) => {
+        // We check whether you clicked on an item (folder or file)
+        const item = e.target.closest('.tree-item');
+        if (item) {
+            document.querySelectorAll('.is-selected-target').forEach(el => el.classList.remove('is-selected-target'));
+            item.classList.add('is-selected-target');
+
+            let path = window.IDE_CONFIG.jailRoot;
+
+            if (item.classList.contains('folder-item')) {
+                const match = item.querySelector('a').getAttribute('onclick')?.match(/'([^']+)'/);
+                if (match) path = match[1];
+            } else if (item.classList.contains('file-item')) {
+                const href = item.querySelector('a').href;
+                const url = new URL(href, window.location.origin);
+                const filepath = url.searchParams.get('filepath');
+                if (filepath) path = filepath.substring(0, filepath.lastIndexOf('/'));
+            }
+
+            window.IDE_CONFIG.lastSelectedDir = path;
+            console.log("Destino fijado en:", path);
         }
     });
 
-    // --- B. DRAG & DROP SIDEBAR ---
-    // Prevent default behavior (opening the file in the browser)
+    // --- 2. EL BOTÓN UPLOAD ---
+    if (uploadButton) {
+        uploadButton.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const dest = window.IDE_CONFIG.lastSelectedDir
+                             || window.IDE_CONFIG.currentDir
+                             || window.IDE_CONFIG.jailRoot;
+
+                console.log("Subiendo manual a:", dest);
+                handleFileUpload(this.files, dest);
+                this.value = '';
+            }
+        });
+    }
+
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        fileList.addEventListener(eventName, e => {
+        document.addEventListener(eventName, e => {
             e.preventDefault();
-            e.stopPropagation();
         }, false);
     });
 
-    fileList.addEventListener('dragover', () => fileList.classList.add('drag-over'));
-    fileList.addEventListener('dragleave', () => fileList.classList.remove('drag-over'));
+    document.addEventListener('dragenter', () => {
+        dragCounter++;
+        sidebar.classList.add('drag-over-active');
+        document.body.classList.add('is-dragging');
+    });
 
-    fileList.addEventListener('drop', (e) => {
-        fileList.classList.remove('drag-over');
+    sidebar.addEventListener('dragover', (e) => {
+        document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+
+        const folder = e.target.closest('.folder-item');
+        if (folder) {
+            folder.classList.add('drag-target');
+        }
+    });
+
+    sidebar.addEventListener('drop', (e) => {
+        dragCounter = 0;
+        sidebar.classList.remove('drag-over-active');
+        document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+        document.body.classList.remove('is-dragging');
+
+        const targetFolder = e.target.closest('.folder-item');
         const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            const folderItem = e.target.closest('.folder-item');
-            let targetDir = window.IDE_CONFIG.jailRoot;
+        if (files.length === 0) return;
 
-            if (folderItem) {
-                const link = folderItem.querySelector('a');
-                const match = link.getAttribute('onclick').match(/'([^']+)'/);
-                targetDir = match ? match[1] : targetDir;
-            }
+        let destination = window.IDE_CONFIG.jailRoot;
 
-            handleFileUpload(files, targetDir);
+        if (targetFolder) {
+            const match = targetFolder.querySelector('a').getAttribute('onclick')?.match(/'([^']+)'/);
+            if (match) destination = match[1];
+        } else {
+            destination = window.IDE_CONFIG.lastSelectedDir || window.IDE_CONFIG.currentDir || window.IDE_CONFIG.jailRoot;
+        }
+
+        console.log("Drag & Drop destino:", destination);
+        handleFileUpload(files, destination);
+    });
+
+    document.addEventListener('dragleave', (e) => {
+        if (!e.relatedTarget) {
+            dragCounter = 0;
+            sidebar.classList.remove('drag-over-active');
+            document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+            document.body.classList.remove('is-dragging');
         }
     });
 });
