@@ -649,7 +649,7 @@ async function syncSidebarWithFile() {
         const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
             .find(a => {
                 const span = a.querySelectorAll('span');
-                return Array.from(spans)
+                return Array.from(span)
                     .some(span => span.innerText.trim() === segment);
             });
 
@@ -700,6 +700,86 @@ async function syncSidebarWithFile() {
             li.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }, 150);
+}
+
+/**
+ * Navigate to a specific folder by opening the tree
+ * FIXED: Restore the original HTML before traveling so that it does not remain blank.
+ */
+async function syncSidebarWithFolder(targetPath) {
+    const fileFilterInput = document.getElementById('fileFilter');
+
+    // FIX: Limpiamos la búsqueda restaurando el árbol original correctamente
+    if (fileFilterInput && fileFilterInput.value !== '') {
+        if (typeof clearFilter === 'function') {
+            clearFilter(); // Esto devuelve el DOM a su estado original (quita el blanco)
+        } else {
+            fileFilterInput.value = '';
+        }
+    }
+
+    let relativePath = targetPath.replace(cfg.jailRoot, '').replace(/^\/+/, '');
+    let segments = relativePath.split('/').filter(s => s !== '');
+
+    let currentPath = cfg.jailRoot.replace(/\/$/, '');
+    let $currentContainer = document.getElementById('fileList');
+    if (!$currentContainer) return;
+
+    let targetLi = null;
+
+    if (segments.length === 0) {
+        const rootFolder = $currentContainer.querySelector('li.folder-item');
+        if (rootFolder) {
+            if (!rootFolder.classList.contains('open')) {
+                await window.toggleFolder(rootFolder.querySelector('a'), currentPath);
+            }
+            targetLi = rootFolder;
+        }
+    } else {
+        for (const segment of segments) {
+            currentPath += '/' + segment;
+            const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
+                .find(a => {
+                    // FIX: Compatibilidad con candados también aquí
+                    const spans = a.querySelectorAll('span');
+                    return Array.from(spans)
+                        .some(span => span.innerText.trim() === segment);
+                });
+
+            if (folderLink) {
+                const li = folderLink.parentElement;
+                targetLi = li;
+                const subList = li.querySelector('ul');
+
+                if (subList && subList.style.display !== 'none' && li.classList.contains('open')) {
+                    $currentContainer = subList;
+                } else {
+                    await window.toggleFolder(folderLink, currentPath);
+                    const nextUl = li.querySelector('ul');
+                    if (nextUl) $currentContainer = nextUl;
+                    else break;
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    // Highlight the folder and scroll
+    if (targetLi) {
+        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+
+        targetLi.classList.add('active');
+
+        const targetAnchor = targetLi.querySelector('a');
+        setTimeout(() => {
+            if (targetAnchor) {
+                targetAnchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                targetLi.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 150);
+    }
 }
 
 // --- EDITOR LOGIC & SAVING ---
@@ -1306,85 +1386,6 @@ window.executeDelete = async function(filepath, fileName, liElement, isFolder = 
         hideSpinner();
     }
 };
-
-/**
- * Navigate to a specific folder by opening the tree
- * FIXED: Restore the original HTML before traveling so that it does not remain blank.
- */
-async function syncSidebarWithFolder(targetPath) {
-    const fileFilterInput = document.getElementById('fileFilter');
-
-    // FIX: Limpiamos la búsqueda restaurando el árbol original correctamente
-    if (fileFilterInput && fileFilterInput.value !== '') {
-        if (typeof clearFilter === 'function') {
-            clearFilter(); // Esto devuelve el DOM a su estado original (quita el blanco)
-        } else {
-            fileFilterInput.value = '';
-        }
-    }
-
-    let relativePath = targetPath.replace(cfg.jailRoot, '').replace(/^\/+/, '');
-    let segments = relativePath.split('/').filter(s => s !== '');
-
-    let currentPath = cfg.jailRoot.replace(/\/$/, '');
-    let $currentContainer = document.getElementById('fileList');
-    if (!$currentContainer) return;
-
-    let targetLi = null;
-
-    if (segments.length === 0) {
-        const rootFolder = $currentContainer.querySelector('li.folder-item');
-        if (rootFolder) {
-            if (!rootFolder.classList.contains('open')) {
-                await window.toggleFolder(rootFolder.querySelector('a'), currentPath);
-            }
-            targetLi = rootFolder;
-        }
-    } else {
-        for (const segment of segments) {
-            currentPath += '/' + segment;
-            const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
-                .find(a => {
-                    // FIX: Compatibilidad con candados también aquí
-                    const spans = a.querySelectorAll('span');
-                    return Array.from(spans).some(span => span.innerText.trim() === segment);
-                });
-
-            if (folderLink) {
-                const li = folderLink.parentElement;
-                targetLi = li;
-                const subList = li.querySelector('ul');
-
-                if (subList && subList.style.display !== 'none' && li.classList.contains('open')) {
-                    $currentContainer = subList;
-                } else {
-                    await window.toggleFolder(folderLink, currentPath);
-                    const nextUl = li.querySelector('ul');
-                    if (nextUl) $currentContainer = nextUl;
-                    else break;
-                }
-            } else {
-                break;
-            }
-        }
-    }
-
-    // Highlight the folder and scroll
-    if (targetLi) {
-        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
-
-        targetLi.classList.add('active');
-
-        const targetAnchor = targetLi.querySelector('a');
-        setTimeout(() => {
-            if (targetAnchor) {
-                targetAnchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else {
-                targetLi.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }, 150);
-    }
-}
 
 // --- FILE UPLOAD HANDLER ---
 document.addEventListener('DOMContentLoaded', () => {
