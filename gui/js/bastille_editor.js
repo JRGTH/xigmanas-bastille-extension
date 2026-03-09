@@ -1096,12 +1096,17 @@ window.executeUnlock = async function(filepath, liElement) {
 
 // --- DELETE LOGIC ENGINE ---
 window.executeDelete = async function(filepath, fileName, liElement, isFolder = false) {
-    let modalTitle = 'Delete File "' + fileName + '" ?';
-    let modalMessage = `Are you sure you want to delete "${fileName}" ?`;
+    let shortName = fileName;
+    if (fileName.length > 35) {
+        shortName = fileName.substring(0, 18) + '...' + fileName.substring(fileName.length - 12);
+    }
+
+    let modalTitle = 'Delete "' + shortName + '"?';
+    let modalMessage = `Are you sure you want to delete "${shortName}"?`;
 
     if (isFolder) {
-        modalTitle = 'Delete';
-        modalMessage = `Delete directory "${fileName}"?\nAll files and subdirectories in "${fileName}" will be deleted.\nYou might not be able to fully undo this operation!`;
+        modalTitle = 'Delete Directory';
+        modalMessage = `Delete directory "${shortName}"?\nAll files and subdirectories in "${fileName}" will be deleted.\nYou might not be able to fully undo this operation!`;
     }
 
     const ok = await showConfirmDialog(modalTitle, modalMessage, 'delete');
