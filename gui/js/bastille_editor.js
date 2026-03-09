@@ -1153,7 +1153,7 @@ window.executeDelete = async function(filepath, fileName, liElement, isFolder = 
             }
 
             const successType = isFolder ? 'Directory' : 'File';
-            showConfirmDialog(`${successType} Deleted`, `The ${successType.toLowerCase()} "${fileName}" was successfully removed.`, 'success');
+            //showConfirmDialog(`${successType} Deleted`, `The ${successType.toLowerCase()} "${fileName}" was successfully removed.`, 'success');
 
         } else {
             throw new Error(data.error || 'Failed to delete item.');
@@ -1275,7 +1275,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             window.IDE_CONFIG.lastSelectedDir = path;
-            console.log("Destination set to:", path);
+            //console.log("Destination set to:", path);
         }
     });
 
@@ -1378,7 +1378,9 @@ async function handleFileUpload(files, destination) {
 
         if (data.success) {
             showConfirmDialog("Upload Complete", `${files.length} items uploaded to ${destination}`, "success");
-            document.querySelector('.ide-sidebar-header a[title="Reset Tree"]').click();
+            for (let i = 0; i < files.length; i++) {
+                injectItemIntoTree(destination, files[i].name, false);
+            }
         } else {
             throw new Error(data.error || "Upload failed");
         }
@@ -1388,6 +1390,69 @@ async function handleFileUpload(files, destination) {
     } finally {
         hideSpinner();
     }
+}
+
+// --- OPTIMISTIC UI: INJECT NEW FILE ---
+function injectItemIntoTree(destination, itemName, isFolder = false) {
+    let parentLi = null;
+
+    // We search for the parent folder in the tree
+    if (destination === window.IDE_CONFIG.jailRoot) {
+        parentLi = document.querySelector('#fileList > li.folder-item');
+    } else {
+        const links = document.querySelectorAll('.folder-item > a');
+        for (let a of links) {
+            if (a.getAttribute('onclick')?.includes(`'${destination}'`)) {
+                parentLi = a.closest('li');
+                break;
+            }
+        }
+    }
+
+    if (!parentLi) {
+        return;
+    }
+
+    const ul = parentLi.querySelector('ul');
+    if (!ul) {
+        return;
+    }
+
+    const li = document.createElement('li');
+    li.className = isFolder ? 'tree-item folder-item' : 'tree-item file-item';
+    li.dataset.flag = '';
+
+    li.style.opacity = '0';
+    li.style.transition = 'opacity 0.5s ease-in, background-color 0.5s';
+
+    const fullPath = destination + '/' + itemName;
+
+    if (isFolder) {
+        const safePath = fullPath.replace(/'/g, "\\'");
+        li.innerHTML = `
+            <a href="javascript:void(0)" onclick="toggleFolder(this, '${safePath}')">
+                ${window.IDE_CONFIG.icons.caret} ${window.IDE_CONFIG.icons.folder} <span>${itemName}</span>
+            </a>
+        `;
+    } else {
+        const editUrl = `?jailname=${encodeURIComponent(window.IDE_CONFIG.jailname)}&dir=${encodeURIComponent(destination)}&filepath=${encodeURIComponent(fullPath)}`;
+        li.innerHTML = `
+            <a href="${editUrl}" onclick="if(typeof spinner === 'function') spinner();">
+                ${window.IDE_CONFIG.icons.file} <span>${itemName}</span>
+            </a>
+        `;
+    }
+
+    ul.appendChild(li);
+
+    requestAnimationFrame(() => {
+        li.style.opacity = '1';
+        li.querySelector('a').style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+
+        setTimeout(() => {
+            li.querySelector('a').style.backgroundColor = '';
+        }, 1000);
+    });
 }
 
 // --- MONACO INIT ---
