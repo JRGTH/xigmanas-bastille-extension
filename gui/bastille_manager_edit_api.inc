@@ -159,15 +159,16 @@ if (isset($_GET['ajax_search'])) {
     $search_term = escapeshellarg("*" . $filter . "*");
     $commands = [];
 
-    $commands['base_jail'] = "find " . escapeshellarg($jail_root) . " -maxdepth 1 -type f -iname {$search_term} 2>/dev/null";
+    // Removed '-type f' so it finds both files and directories
+    $commands['base_jail'] = "find " . escapeshellarg($jail_root) . " -maxdepth 1 -iname {$search_term} 2>/dev/null";
 
     $dirs = glob($jail_root . '/*', GLOB_ONLYDIR);
     if (!empty($dirs)) {
         foreach ($dirs as $dir) {
             $base = basename($dir);
             if ($base === '.backups') continue;
-
-            $commands[$base] = "find " . escapeshellarg($dir) . " -type f -iname {$search_term} 2>/dev/null | head -n 20";
+            // Removed '-type f' here too
+            $commands[$base] = "find " . escapeshellarg($dir) . " -iname {$search_term} 2>/dev/null | head -n 20";
         }
     }
 
@@ -185,6 +186,9 @@ if (isset($_GET['ajax_search'])) {
             $line = trim($line);
             if (empty($line) || !file_exists($line)) continue;
 
+            // Detect if the item is a folder or a file
+            $is_folder = is_dir($line);
+
             $rel_path = str_replace($jail_root, "", dirname($line));
             $display_path = ($rel_path === "" || $rel_path === false) ? "/" : $rel_path;
 
@@ -192,7 +196,8 @@ if (isset($_GET['ajax_search'])) {
                 'full'      => $line,
                 'directory' => dirname($line),
                 'relative'  => $icon_folder . " " . $display_path,
-                'name'      => basename($line)
+                'name'      => basename($line),
+                'type'      => $is_folder ? 'folder' : 'file' // Inject the type into JSON
             ];
         }
     }

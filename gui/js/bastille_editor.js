@@ -205,26 +205,48 @@ function runQuickSearch() {
                 data.items.forEach((file) => {
                     let li = document.createElement('li');
                     let a = document.createElement('a');
-                    a.href = `bastille_manager_editor_v2.php?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
-                    a.innerHTML = `<span class="qs-item-title">${file.name}</span><span class="qs-item-path">${file.relative}</span>`;
-                    a.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        saveHistory(filter);
-                        closeQuickSearch();
-                        const fakeLi = document.createElement('li');
-                        fakeLi.className = 'tree-item is-recursive';
-                        fakeLi.style.display = 'none';
-                        const fakeLink = document.createElement('a');
-                        fakeLink.href = a.href;
+                    let iconSVG = file.type === 'folder'
+                    ? '<img src="ext/bastille/images/folder.svg" style="width:16px; margin-right:8px; vertical-align:middle;">'
+                    : '<img src="ext/bastille/images/file.svg" style="width:16px; margin-right:8px; vertical-align:middle;">';
 
-                        fakeLi.appendChild(fakeLink);
-                        document.querySelector('.ide-file-list').appendChild(fakeLi);
+                   a.innerHTML = `<span class="qs-item-title">${iconSVG}${file.name}</span><span class="qs-item-path">${file.relative}</span>`;
 
-                        fakeLink.click();
-                        fakeLi.remove();
-                    });
-                    li.appendChild(a);
-                    qsResultsList.appendChild(li);
+                   if (file.type === 'folder') {
+                       // Route for folders
+                       a.href = "#";
+                       a.addEventListener('click', async (e) => {
+                           e.preventDefault();
+                           saveHistory(filter);
+                           closeQuickSearch();
+                           // Fly to the folder in the sidebar
+                           if (typeof syncSidebarWithFolder === 'function') {
+                               await syncSidebarWithFolder(file.full);
+                           }
+                       });
+                   } else {
+                       // Route for files (Existing SPA Logic)
+                       a.href = `bastille_manager_editor_v2.php?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
+                       a.addEventListener('click', (e) => {
+                           e.preventDefault();
+                           saveHistory(filter);
+                           closeQuickSearch();
+
+                           const fakeLi = document.createElement('li');
+                           fakeLi.className = 'tree-item is-recursive';
+                           fakeLi.style.display = 'none';
+                           const fakeLink = document.createElement('a');
+                           fakeLink.href = a.href;
+
+                           fakeLi.appendChild(fakeLink);
+                           document.querySelector('.ide-file-list').appendChild(fakeLi);
+
+                           fakeLink.click();
+                           fakeLi.remove();
+                       });
+                   }
+
+                   li.appendChild(a);
+                   qsResultsList.appendChild(li);
                 });
             })
             .catch((err) => {
@@ -371,15 +393,27 @@ function fetchSearchRecursive(term) {
             data.items.forEach((file) => {
                 if (!ul.querySelector(`li.is-recursive a[href*="${encodeURIComponent(file.full)}"]`)) {
                     let li = document.createElement('li');
-                    li.className = 'tree-item is-recursive';
+                    // Add the correct class based on type
+                    li.className = 'tree-item is-recursive ' + (file.type === 'folder' ? 'folder-item' : 'file-item');
 
+                    const safePath = file.full.replace(/'/g, "\\'");
                     const editUrl = `?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
 
-                    li.innerHTML = `
-                        <a href="${editUrl}" title="${file.full}">
-                            <strong>${file.name}</strong>
-                            <span class="search-result-path">${file.relative}</span>
-                        </a>`;
+                    if (file.type === 'folder') {
+                        // Folder logic: Click travels to the actual folder in the tree
+                        li.innerHTML = `
+                            <a href="javascript:void(0)" onclick="syncSidebarWithFolder('${safePath}')" title="${file.full}">
+                                <strong>${cfg.icons.folder} ${file.name}</strong>
+                                <span class="search-result-path">${file.relative}</span>
+                            </a>`;
+                    } else {
+                        // File logic: Click loads file into Monaco
+                        li.innerHTML = `
+                            <a href="${editUrl}" title="${file.full}">
+                                <strong>${cfg.icons.file} ${file.name}</strong>
+                                <span class="search-result-path">${file.relative}</span>
+                            </a>`;
+                    }
                     ul.appendChild(li);
                 }
             });
