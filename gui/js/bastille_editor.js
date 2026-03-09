@@ -474,6 +474,9 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
         // 1. Manage active state safely
         const isSearchResult = link.closest('.is-recursive');
         if (isSearchResult) {
+            if (typeof clearFilter === 'function') {
+                clearFilter();
+            }
 
             const searchInput = document.querySelector('.ide-search input');
             const clearBtn = document.querySelector('.ide-search-clear');
@@ -624,6 +627,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 /**
  * Synchronizes the sidebar tree with the current filepath on page load (F5)
  * Refactored to handle the Persistent Root structure and null-safety.
+ - FIXED: Compatible with padlocks (schg) searching in all spans.
  */
 async function syncSidebarWithFile() {
     const targetFile = cfg.filepath;
@@ -644,8 +648,9 @@ async function syncSidebarWithFile() {
 
         const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
             .find(a => {
-                const span = a.querySelector('span:last-child');
-                return span && span.innerText.trim() === segment;
+                const span = a.querySelectorAll('span');
+                return Array.from(spans)
+                    .some(span => span.innerText.trim() === segment);
             });
 
         if (folderLink) {
@@ -1302,14 +1307,20 @@ window.executeDelete = async function(filepath, fileName, liElement, isFolder = 
     }
 };
 
+/**
+ * Navigate to a specific folder by opening the tree
+ * FIXED: Restore the original HTML before traveling so that it does not remain blank.
+ */
 async function syncSidebarWithFolder(targetPath) {
-    const searchInput = document.querySelector('.ide-search input');
-    if (searchInput && searchInput.value) {
-        searchInput.value = '';
-        searchInput.dispatchEvent(new Event('input'));
-        document.querySelectorAll('.is-recursive, .no-results').forEach(el => el.remove());
-        const fileList = document.getElementById('fileList');
-        if (fileList) Array.from(fileList.children).forEach(c => c.style.display = '');
+    const fileFilterInput = document.getElementById('fileFilter');
+
+    // FIX: Limpiamos la búsqueda restaurando el árbol original correctamente
+    if (fileFilterInput && fileFilterInput.value !== '') {
+        if (typeof clearFilter === 'function') {
+            clearFilter(); // Esto devuelve el DOM a su estado original (quita el blanco)
+        } else {
+            fileFilterInput.value = '';
+        }
     }
 
     let relativePath = targetPath.replace(cfg.jailRoot, '').replace(/^\/+/, '');
@@ -1334,8 +1345,9 @@ async function syncSidebarWithFolder(targetPath) {
             currentPath += '/' + segment;
             const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
                 .find(a => {
-                    const span = a.querySelector('span:last-child');
-                    return span && span.innerText.trim() === segment;
+                    // FIX: Compatibilidad con candados también aquí
+                    const spans = a.querySelectorAll('span');
+                    return Array.from(spans).some(span => span.innerText.trim() === segment);
                 });
 
             if (folderLink) {
@@ -1359,19 +1371,19 @@ async function syncSidebarWithFolder(targetPath) {
 
     // Highlight the folder and scroll
     if (targetLi) {
-            document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
 
-            targetLi.classList.add('active');
+        targetLi.classList.add('active');
 
-            const targetAnchor = targetLi.querySelector('a');
-            setTimeout(() => {
-                if (targetAnchor) {
-                    targetAnchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } else {
-                    targetLi.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 150);
-        }
+        const targetAnchor = targetLi.querySelector('a');
+        setTimeout(() => {
+            if (targetAnchor) {
+                targetAnchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                targetLi.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 150);
+    }
 }
 
 // --- FILE UPLOAD HANDLER ---
