@@ -978,13 +978,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const filename = filenameElement ? filenameElement.innerText.trim() : 'Unknown';
 
         // --- LOGIC TO SHOW/HIDE UNLOCK BUTTON ---
-        const currentFlag = liElement.getAttribute('data-flag');
+        const currentFlag = liElement.getAttribute('data-flag') || '';
+        const isImmutable = currentFlag.includes('schg');
+
+        let isParentImmutable = false;
+        const parentUl = liElement.closest('ul.ide-file-list');
+        if (parentUl) {
+            const parentFolderItem = parentUl.closest('.folder-item');
+            if (parentFolderItem) {
+                const parentFlag = parentFolderItem.getAttribute('data-flag') || '';
+                isParentImmutable = parentFlag.includes('schg');
+            }
+        }
+
         const unlockBtn = document.getElementById('cm-unlock-item');
         const deleteBtn = document.getElementById('cm-delete-file');
-        const isImmutable = currentFlag && currentFlag.includes('schg');
 
         if (isImmutable) {
             unlockBtn.style.display = 'flex';
+            deleteBtn.style.display = 'none';
+        } else if (isParentImmutable) {
+            unlockBtn.style.display = 'none';
             deleteBtn.style.display = 'none';
         } else {
             unlockBtn.style.display = 'none';
