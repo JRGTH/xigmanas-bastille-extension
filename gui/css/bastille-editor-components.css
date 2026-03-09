@@ -3,7 +3,16 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: end;
+    justify-content: flex-end;
+}
+
+.ide-sidebar-header.lhetop {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    overflow: visible !important;
+    position: relative;
 }
 
 .ide-sidebar-header a {
@@ -678,14 +687,14 @@ body.is-dragging .ide-sidebar .tree-item a * {
     align-items: center;
 }
 
-/* El contenedor del submenú (oculto por defecto) */
+/* The submenu container (hidden by default) */
 .ide-cm-submenu {
     display: none;
     position: absolute;
-    top: -5px; /* Alineado con el padre */
-    left: 100%; /* Desplazado a la derecha */
-    background-color: #ffffff; /* Ajusta al color de fondo de tu menú */
-    border: 1px solid #ccc; /* Ajusta al borde de tu menú */
+    top: -5px;
+    left: 100%;
+    background-color: #ffffff;
+    border: 1px solid #ccc;
     box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
     min-width: 130px;
     z-index: 1000;
@@ -693,15 +702,10 @@ body.is-dragging .ide-sidebar .tree-item a * {
     padding: 4px 0;
 }
 
-/* Modo oscuro (opcional, si usas colores oscuros en tu XigmaNAS) */
-/* .ide-cm-submenu { background-color: #2b2b2b; border-color: #444; } */
-
-/* Mostrar al pasar el ratón */
 .ide-cm-item.has-submenu:hover .ide-cm-submenu {
     display: block;
 }
 
-/* La flechita indicadora */
 .cm-arrow {
    width: 20px;
    height: 20px;
@@ -717,7 +721,6 @@ body.is-dragging .ide-sidebar .tree-item a * {
     display: none;
     justify-content: center;
     align-items: center;
-    /*padding-top: 15vh;*/
 }
 
 .ide-new-item-content {
@@ -754,4 +757,91 @@ body.is-dragging .ide-sidebar .tree-item a * {
 
 #ide-new-item-input::placeholder {
     color: #aaa;
+}
+
+/* Hide actions by default */
+.sidebar-header-actions {
+   display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 5px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    overflow: visible !important;
+}
+
+/* Show actions when hovering over the header */
+.ide-sidebar-header:hover .sidebar-header-actions,
+.ide-sidebar-header.menu-open .sidebar-header-actions {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.header-action-btn {
+    cursor: pointer;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    color: inherit;
+}
+
+/* Estilo para el "+" */
+.header-plus-container {
+    position: relative !important;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 2px 5px;
+}
+
+.plus-icon {
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 1;
+    color: inherit;
+}
+
+.header-plus-container .header-action-btn {
+    font-size: 18px;
+    font-weight: bold;
+    padding: 0 4px;
+}
+
+/* Submenú del Header */
+.header-plus-submenu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #bcbcbc;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    min-width: 150px;
+    z-index: 99999 !important;
+    border-radius: 4px;
+    padding: 5px 0;
+    margin-top: 5px;
+}
+
+.header-plus-submenu.show {
+    display: block !important;
+}
+
+.header-plus-container.active .plus-icon {
+    color: #3875d6;
+}
+
+.header-plus-submenu .ide-cm-item {
+    padding: 8px 12px;
+    color: #333 !important;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    background: transparent;
+}
+
+.header-plus-submenu .ide-cm-item:hover {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    color: #333 !important;
 }

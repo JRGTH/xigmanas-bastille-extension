@@ -1265,6 +1265,66 @@ document.addEventListener('DOMContentLoaded', () => {
         contextMenu.style.display = 'none';
         executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement, cmTargetData.isFolder);
     });
+
+    // --- Lógica del Menú "+" por Click ---
+    const handleHeaderCreate = async (type) => {
+        const targetPath = window.IDE_CONFIG.lastSelectedDir || window.IDE_CONFIG.jailRoot;
+        const name = await showNewItemModal(type);
+        if (name) {
+            const mockTargetData = { filepath: targetPath, isFolder: true };
+            if (typeof executeCreateItem === 'function') {
+                executeCreateItem(name, type, mockTargetData);
+            }
+        }
+    };
+
+    // // 2. Referenciamos los elementos del submenú
+    const headerMain = document.querySelector('.ide-sidebar-header');
+    const plusBtn = document.querySelector('.plus-icon');
+    const plusMenu = document.querySelector('.header-plus-submenu');
+
+    if (plusBtn && plusMenu && headerMain) {
+
+        // // 1. Click en el "+" para abrir/cerrar
+        plusBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const isNowOpen = plusMenu.classList.toggle('show');
+
+            // // AGREGAMOS ESTO: Si el menú está abierto, bloqueamos el header para que sea visible
+            if (isNowOpen) {
+                headerMain.classList.add('menu-open');
+            } else {
+                headerMain.classList.remove('menu-open');
+            }
+        });
+
+        // // 2. Click fuera para cerrar TODO
+        document.addEventListener('click', (e) => {
+            if (!plusMenu.contains(e.target) && !plusBtn.contains(e.target)) {
+                plusMenu.classList.remove('show');
+                headerMain.classList.remove('menu-open');
+            }
+        });
+
+        // // 3. Al elegir una opción, limpiamos clases
+        const resetHeader = () => {
+            plusMenu.classList.remove('show');
+            headerMain.classList.remove('menu-open');
+        };
+
+        document.getElementById('header-new-file')?.addEventListener('click', () => {
+            resetHeader();
+            handleHeaderCreate('file');
+        });
+
+        document.getElementById('header-new-folder')?.addEventListener('click', () => {
+            resetHeader();
+            handleHeaderCreate('folder');
+        });
+    }
+
 });
 
 /**
