@@ -389,6 +389,47 @@ if (isset($_POST['ajax_upload'])) {
     exit;
 }
 
+// --- CREATE ITEM (File/Folder) ---
+if (isset($_POST['ajax_create_item'])) {
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/json');
+
+    $parent = $_POST['parent_dir'] ?? '';
+    $name = basename($_POST['new_name'] ?? '');
+    $type = $_POST['type'] ?? 'file';
+    $full_path = rtrim($parent, '/') . '/' . $name;
+
+    // Basic safety measures to keep us from leaving the cage
+    if (empty($name) || strpos(realpath($parent), realpath($jail_root)) !== 0) {
+        echo json_encode([
+            'success' => false,
+            'error' => 'Invalid path or name'
+        ]);
+        exit;
+    }
+
+    // Check if it already exists
+    if (file_exists($full_path)) {
+        echo json_encode([
+            'success' => false,
+            'error' => 'An item with that name already exists.'
+        ]);
+        exit;
+    }
+
+    conf_mount_rw();
+    $success = ($type === 'folder') ? @mkdir($full_path, 0755) : @touch($full_path);
+    conf_mount_ro();
+
+    echo json_encode([
+        'success' => $success,
+        'error' => $success
+        ? ''
+        : 'Could not create item: System error (Check permissions)'
+    ]);
+    exit;
+}
+
 function rrmdir($dir) {
     if (is_dir($dir)) {
         $objects = scandir($dir);
