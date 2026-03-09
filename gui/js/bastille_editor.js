@@ -543,7 +543,7 @@ if (homeBtn) {
                             li.dataset.flag = folder.flag || '';
                             li.innerHTML = `
                                 <a href="javascript:void(0)" onclick="toggleFolder(this, '${data.parent}/${folder.name}')">
-                                    <span class="tree-caret">▶</span>
+                                    <span class="tree-caret"><img src="ext/bastille/images/right-arrow.svg" style="width: 20px;"></span>
                                     ${cfg.icons.folder} <span>${folder.name}</span> ${lockIcon}
                                 </a>
                             `;
@@ -925,6 +925,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const contextMenu = document.createElement('div');
     contextMenu.id = 'ide-context-menu';
     contextMenu.innerHTML = `
+        <div class="ide-cm-item has-submenu" id="cm-new-menu">
+            <span>New</span>
+            <img src="ext/bastille/images/right-arrow.svg" class="cm-arrow" alt="arrow">
+            <div class="ide-cm-submenu">
+                    <div class="ide-cm-item" id="cm-new-file">
+                        <img src="ext/bastille/images/file.svg" width="16" style="margin: 0;"> File
+                    </div>
+                    <div class="ide-cm-item" id="cm-new-folder">
+                        <img src="ext/bastille/images/folder.svg" width="16" style="margin: 0px;"> Directory
+                    </div>
+                </div>
+            </div>
+        <div class="ide-cm-separator"></div>
+
         <div class="ide-cm-item" id="cm-copy-path">
             <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy" style="margin: 0"> Copy Full Path
         </div>
@@ -941,6 +955,59 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     `;
     document.body.appendChild(contextMenu);
+
+    const newItemModal = document.createElement('div');
+    newItemModal.id = 'ide-new-item-modal';
+    newItemModal.innerHTML = `
+        <div class="ide-new-item-content">
+            <div id="ide-new-item-title" class="ide-new-item-title lhetop">New File TEST</div>
+            <input type="text" id="ide-new-item-input" placeholder="Name" autocomplete="off" spellcheck="false">
+        </div>
+    `;
+    document.body.appendChild(newItemModal);
+
+    window.showNewItemModal = function(type) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('ide-new-item-modal');
+            const titleEl = document.getElementById('ide-new-item-title');
+            const input = document.getElementById('ide-new-item-input');
+
+            titleEl.innerText = type === 'folder' ? 'New Directory' : 'New File';
+            input.value = '';
+            modal.style.display = 'flex';
+
+            // Automatic focus on input
+            setTimeout(() => input.focus(), 50);
+
+            // Cleaning functions
+            const cleanup = () => {
+                modal.style.display = 'none';
+                input.removeEventListener('keydown', handleKey);
+                modal.removeEventListener('click', handleClickOutside);
+            };
+
+            const handleKey = (e) => {
+                if (e.key === 'Enter') {
+                    const val = input.value.trim();
+                    cleanup();
+                    resolve(val || null);
+                } else if (e.key === 'Escape') {
+                    cleanup();
+                    resolve(null);
+                }
+            };
+
+            const handleClickOutside = (e) => {
+                if (e.target === modal) {
+                    cleanup();
+                    resolve(null);
+                }
+            };
+
+            input.addEventListener('keydown', handleKey);
+            modal.addEventListener('click', handleClickOutside);
+        });
+    };
 
     // This variable stores the data of the item we clicked on
     let cmTargetData = null;
@@ -1029,7 +1096,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape') contextMenu.style.display = 'none';
     });
 
-    // 4. ACTION: Copy Path
+    // ACTION: Create New File ---
+    document.getElementById('cm-new-file').addEventListener('click', async () => {
+        if (!cmTargetData) return;
+        contextMenu.style.display = 'none';
+
+        const name = await showNewItemModal('file');
+        if (name) executeCreateItem(name, 'file', cmTargetData);
+    });
+
+    // ACTION: Create New Folder ---
+    document.getElementById('cm-new-folder').addEventListener('click', async () => {
+        if (!cmTargetData) return;
+        contextMenu.style.display = 'none';
+
+        const name = await showNewItemModal('folder');
+        if (name) executeCreateItem(name, 'folder', cmTargetData);
+    });
+
+    // ACTION: Copy Path
     document.getElementById('cm-copy-path').addEventListener('click', () => {
         if (!cmTargetData) return;
         const textArea = document.createElement("textarea");
@@ -1041,7 +1126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         contextMenu.style.display = 'none';
     });
 
-    // 5. ACTION: Unlock (Clear Flags)
+    // ACTION: Unlock (Clear Flags)
     document.getElementById('cm-unlock-item').addEventListener('click', async () => {
         if (!cmTargetData) return;
         contextMenu.style.display = 'none';
@@ -1473,6 +1558,48 @@ function injectItemIntoTree(destination, itemName, isFolder = false) {
         }, 1000);
     });
 }
+
+// --- CREATE ITEM LOGIC ---
+window.executeCreateItem = async function(name, type, targetData) {
+    if (typeof spinner === 'function') {
+        spinner();
+    }
+
+    let parentPath = targetData.filepath;
+    if (!targetData.isFolder) {
+        parentPath = targetData.filepath.substring(0, targetData.filepath.lastIndexOf('/'));
+    }
+
+    const form = document.getElementById('iform');
+    const formData = new FormData(form);
+
+    formData.set('ajax_create_item', '1');
+    formData.set('parent_dir', parentPath);
+    formData.set('new_name', name);
+    formData.set('type', type);
+    formData.set('jailname', window.IDE_CONFIG.jailname);
+
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            injectItemIntoTree(parentPath, name, type === 'folder');
+        } else {
+            throw new Error(data.error || 'Failed to create item.');
+        }
+    } catch (e) {
+        console.error("Create Error:", e);
+        showConfirmDialog('Error', e.message, 'error');
+    } finally {
+        hideSpinner();
+    }
+};
 
 // --- MONACO INIT ---
 const MONACO_NODE_MODULES = '/ext/bastille/js/vs';

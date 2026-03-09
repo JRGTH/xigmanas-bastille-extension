@@ -9,7 +9,7 @@ window.IDE_CONFIG = {
     icons: {
         folder: <?= json_encode($icon_folder) ?>,
         file: <?= json_encode($icon_file) ?>,
-        caret: '<span class="tree-caret">▶</span>'
+        caret: '<span class="tree-caret"><img src="ext/bastille/images/right-arrow.svg" style="width: 20px;"></span>'
     }
 };
 </script>
@@ -46,7 +46,7 @@ window.IDE_CONFIG = {
                    <ul class="ide-file-list" id="fileList">
                        <li class="tree-item folder-item open">
                            <a href="javascript:void(0)" style="cursor:default; pointer-events:none;">
-                               <span class="tree-caret">▼</span>
+                               <span class="tree-caret"><img src="ext/bastille/images/right-arrow.svg" style="width: 20px;"></span>
                                <?= $icon_folder ?> <span style="font-weight:bold;">/</span>
                            </a>
 
@@ -65,7 +65,7 @@ window.IDE_CONFIG = {
                                            ?>
                                            <li class="tree-item folder-item" data-flag="<?= $f_flag ?>">
                                                <a href="javascript:void(0)" onclick="toggleFolder(this, '<?= addslashes($full_path) ?>')">
-                                                   <span class="tree-caret">▶</span>
+                                                   <span class="tree-caret"><img src="ext/bastille/images/right-arrow.svg" style="width: 20px;"></span>
                                                    <?= $icon_folder ?> <span><?= htmlspecialchars($folder) ?></span> <?= $lock_img ?>
                                                </a>
                                            </li>
