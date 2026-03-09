@@ -1474,7 +1474,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (item.classList.contains('folder-item')) {
                 // Extract path from folder onclick attribute
-                const match = link.getAttribute('onclick')?.match(/'([^']+)'/);
+                const match = link.getAttribute('onclick')?.match(/['"]([^'"]+)['"]/);
                 if (match) path = match[1];
             } else if (item.classList.contains('file-item')) {
                 // Extract parent directory path from file URL
@@ -1482,22 +1482,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 const filepath = url.searchParams.get('filepath');
                 if (filepath) path = filepath.substring(0, filepath.lastIndexOf('/'));
             }
-
             window.IDE_CONFIG.lastSelectedDir = path;
             //console.log("Destination set to:", path);
         }
     });
 
-    // --- 2. EL BOTÓN UPLOAD ---
+    // --- 2. UPLOAD button ---
     if (uploadButton) {
-        uploadButton.addEventListener('change', function() {
+        uploadButton.addEventListener('change', async function() {
             if (this.files.length > 0) {
                 const dest = window.IDE_CONFIG.lastSelectedDir
                              || window.IDE_CONFIG.currentDir
                              || window.IDE_CONFIG.jailRoot;
 
-                console.log("Subiendo manual a:", dest);
-                handleFileUpload(this.files, dest);
+                const filesToUpload = Array.from(this.files);
+                //console.log("Subiendo manual a:", dest);
+                await handleFileUpload(filesToUpload, dest);
                 this.value = '';
             }
         });
