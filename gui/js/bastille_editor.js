@@ -803,9 +803,7 @@ window.toggleFolder = function (element, path) {
         .then((res) => res.json())
         .then((data) => {
             if (data.error) throw new Error(data.error);
-
-            console.log("API Response for path: ", path, data); // Debugging info
-
+            //console.log("API Response for path: ", path, data); // Debugging info
             subList = document.createElement('ul');
             subList.className = 'ide-file-list';
             subList.style.paddingLeft = '15px';
