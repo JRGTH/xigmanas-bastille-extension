@@ -435,6 +435,252 @@ if (isset($_POST['ajax_create_item'])) {
     exit;
 }
 
+// --- 1. CHUNKED UPLOAD HANDLER (The Tank Engine) ---
+if (isset($_POST['ajax_upload_chunk'])) {
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/json');
+
+    $target_dir = $_POST['target_dir'] ?? '';
+    $rel_path = $_POST['relative_path'] ?? '';
+    $chunk_idx = (int)($_POST['chunk_index'] ?? 0);
+
+    $final_path = rtrim($target_dir, '/') . '/' . ltrim($rel_path, '/');
+    $dir = dirname($final_path);
+
+    if (!is_dir($dir)) { mkdir($dir, 0755, true); }
+
+    $mode = ($chunk_idx === 0) ? "wb" : "ab";
+    $out = fopen($final_path, $mode);
+    $in = fopen($_FILES['file_chunk']['tmp_name'], "rb");
+
+    if ($out && $in) {
+        while ($buff = fread($in, 8192)) { fwrite($out, $buff); }
+        fclose($in); fclose($out);
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Disk write error']);
+    }
+    exit;
+}
+
+// --- 2. REMOTE DOWNLOAD HANDLER (Import via URL) ---
+if (isset($_POST['ajax_remote_download'])) {
+    // // Clear buffers
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/json');
+
+    $url = $_POST['remote_url'] ?? '';
+    $target_dir = $_POST['target_dir'] ?? '';
+
+    if (empty($url) || empty($target_dir)) {
+        echo json_encode([
+            'success' => false,
+            'error' => 'Missing URL or target directory'
+        ]);
+        exit;
+    }
+
+    // // Extract filename from URL (fallback to timestamp if missing)
+    $fileName = basename(parse_url($url, PHP_URL_PATH));
+    if (empty($fileName)) {
+        $fileName = 'downloaded_file_' . time();
+    }
+
+    $save_to = rtrim($target_dir, '/') . '/' . $fileName;
+
+    // // Open file for writing
+    $fp = fopen($save_to, 'w+');
+    if (!$fp) {
+        echo json_encode([
+            'success' => false,
+            'error' => 'Cannot open file for writing on server'
+        ]);
+        exit;
+    }
+
+    // // Use cURL to download directly to the server's disk
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_FILE, $fp);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_FAILONERROR, true); // // Throw error if 404
+
+    $success = curl_exec($ch);
+    $error = curl_error($ch);
+
+    curl_close($ch);
+    fclose($fp);
+
+    if ($success) {
+        echo json_encode([
+            'success' => true,
+            'fileName' => $fileName
+        ]);
+    } else {
+        // // Clean up the empty/broken file if download failed
+        unlink($save_to);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Download failed: ' . $error
+        ]);
+    }
+    exit;
+}
+
+// --- GET FILE INFO HANDLER ---
+if (isset($_POST['ajax_get_info'])) {
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/json');
+
+    $target_path = $_POST['target_path'] ?? '';
+
+    // // 1. Seguridad: Validar existencia y que no se salga de la jaula
+    if (empty($target_path) || !file_exists($target_path)) {
+        echo json_encode(['success' => false, 'error' => 'Item not found']);
+        exit;
+    }
+
+    // // 2. Obtener estadísticas básicas
+    $stat = stat($target_path);
+    $is_dir = is_dir($target_path);
+
+    // // 3. Cálculo de tamaño e impacto en disco (FIXED FOR DIRECTORIES)
+    if ($is_dir) {
+        // Ejecutamos du -sk (en KB). Redirigimos errores a /dev/null por si hay carpetas sin permiso.
+        $io = popen("du -sk " . escapeshellarg($target_path) . " 2>/dev/null", 'r');
+        $line = fgets($io, 256);
+        pclose($io);
+
+        // Extraemos solo el número (du devuelve: "1234  /ruta/...")
+        $size_kb = (int)strtok($line, "\t ");
+        $bytes = $size_kb * 1024;
+        $formatted_size = formatBytes($bytes);
+    } else {
+        $bytes = $stat['size'];
+        $formatted_size = formatBytes($bytes);
+    }
+
+    // // Cálculo para ApexCharts (Ahora $bytes ya tiene valor real sea archivo o carpeta)
+    $disk_total = disk_total_space(dirname($target_path));
+    $usage_percent = ($disk_total > 0) ? round(($bytes / $disk_total) * 100, 2) : 0;
+
+    // Mínimo visual: si existe, que se vea al menos un 0.1% en la gráfica
+    if ($usage_percent < 0.1 && $bytes > 0) $usage_percent = 0.1;
+
+    // // Cálculo para ApexCharts: ¿Cuánto ocupa respecto al total del disco/jail?
+    $disk_total = disk_total_space(dirname($target_path));
+    $usage_percent = ($disk_total > 0) ? round(($bytes / $disk_total) * 100, 2) : 0;
+    if ($usage_percent < 0.1 && $bytes > 0) $usage_percent = 0.1; // // Mínimo visual
+
+    // // 4. Información de Usuarios (POSIX)
+    $owner_info = function_exists('posix_getpwuid') ? posix_getpwuid($stat['uid']) : ['name' => $stat['uid']];
+    $group_info = function_exists('posix_getgrgid') ? posix_getgrgid($stat['gid']) : ['name' => $stat['gid']];
+
+    // // 5. Permisos
+    $perms = $stat['mode'];
+    $octal = substr(sprintf('%o', $perms), -4);
+    $symbolic = formatPermissions($perms);
+
+    $info = [
+        'success'    => true,
+        'name'       => basename($target_path),
+        'path'       => $target_path,
+        'is_dir'     => $is_dir,
+        'type'       => $is_dir ? 'Folder' : 'File (' . strtoupper(pathinfo($target_path, PATHINFO_EXTENSION)) . ')',
+        'size'       => $formatted_size,
+        'bytes'      => $bytes,
+        'modified'   => date("Y-m-d H:i:s", $stat['mtime']),
+        'permissions' => $symbolic,
+        'octal'      => $octal,
+        'owner'      => $owner_info['name'] ?? $stat['uid'],
+        'group'      => $group_info['name'] ?? $stat['gid'],
+        'chart'      => [
+            'usage'  => $usage_percent,
+            'others' => 100 - $usage_percent
+        ]
+    ];
+
+    echo json_encode($info);
+    exit;
+}
+
+/**
+ * Convierte bytes en formato legible (KB, MB, GB...)
+ */
+function formatBytes($bytes, $precision = 2) {
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    $bytes /= pow(1024, $pow);
+    return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
+/**
+ * Convierte el bitmask de permisos en cadena simbólica (drwxr-xr-x)
+ */
+function formatPermissions($perms) {
+    if (($perms & 0xC000) == 0xC000) $info = 's';
+    elseif (($perms & 0xA000) == 0xA000) $info = 'l';
+    elseif (($perms & 0x8000) == 0x8000) $info = '-';
+    elseif (($perms & 0x6000) == 0x6000) $info = 'b';
+    elseif (($perms & 0x4000) == 0x4000) $info = 'd';
+    elseif (($perms & 0x2000) == 0x2000) $info = 'c';
+    elseif (($perms & 0x1000) == 0x1000) $info = 'p';
+    else $info = 'u';
+
+    // Owner
+    $info .= (($perms & 0x0100) ? 'r' : '-');
+    $info .= (($perms & 0x0080) ? 'w' : '-');
+    $info .= (($perms & 0x0040) ? (($perms & 0x0800) ? 's' : 'x' ) : (($perms & 0x0800) ? 'S' : '-'));
+
+    // Group
+    $info .= (($perms & 0x0020) ? 'r' : '-');
+    $info .= (($perms & 0x0010) ? 'w' : '-');
+    $info .= (($perms & 0x0008) ? (($perms & 0x0400) ? 's' : 'x' ) : (($perms & 0x0400) ? 'S' : '-'));
+
+    // World
+    $info .= (($perms & 0x0004) ? 'r' : '-');
+    $info .= (($perms & 0x0002) ? 'w' : '-');
+    $info .= (($perms & 0x0001) ? (($perms & 0x0200) ? 't' : 'x' ) : (($perms & 0x0200) ? 'T' : '-'));
+
+    return $info;
+}
+
+// --- 2. HASH VERIFICATION (The Auditor) ---
+// // Este es el que recibe el "signal" con el hash calculado por el JS al principio.
+if (isset($_POST['ajax_verify_hash'])) {
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/json');
+
+    $target_dir = $_POST['target_dir'] ?? '';
+    $rel_path = $_POST['relative_path'] ?? '';
+    $expected_hash = $_POST['expected_hash'] ?? ''; // // La señal del JS
+
+    $final_path = rtrim($target_dir, '/') . '/' . ltrim($rel_path, '/');
+
+    if (!file_exists($final_path)) {
+        echo json_encode(['success' => false, 'error' => 'File not found on server']);
+        exit;
+    }
+
+    // // Calculamos el SHA-256 del archivo completo que acabamos de montar
+    $server_hash = hash_file('sha256', $final_path);
+
+    if ($server_hash === $expected_hash) {
+        // // OPCIONAL: Aquí podrías añadir el ítem al árbol o cambiar permisos finales
+        echo json_encode(['success' => true]);
+    } else {
+        // // Si falló, es que algo se corrompió. Podrías borrarlo si quieres ser estricto.
+        // unlink($final_path);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Integrity fail',
+            'debug' => ['server' => $server_hash, 'client' => $expected_hash]
+        ]);
+    }
+    exit;
+}
+
 function rrmdir($dir) {
     if (is_dir($dir)) {
         $objects = scandir($dir);

@@ -8,7 +8,7 @@ let isDirty = false;
 let isInjectingCode = false;
 let sidebarTimer;
 let originalSidebarHTML = '';
-
+let currentFileData = null; // // Guardamos los datos para no re-peticionar al cambiar pestaña
 // Read the configuration injected by PHP
 const cfg = window.IDE_CONFIG;
 
@@ -1043,32 +1043,41 @@ document.addEventListener('DOMContentLoaded', () => {
     contextMenu.id = 'ide-context-menu';
     contextMenu.innerHTML = `
         <div class="ide-cm-item has-submenu" id="cm-new-menu">
-            <span>New</span>
+            <span class="ide-cm-item-text" style="margin-left: 28px;">New</span>
             <img src="ext/bastille/images/right-arrow.svg" class="cm-arrow" alt="arrow">
             <div class="ide-cm-submenu">
                     <div class="ide-cm-item" id="cm-new-file">
-                        <img src="ext/bastille/images/file.svg" width="16" style="margin: 0;"> File
+                        <img src="ext/bastille/images/file.svg" width="16" style="margin: 0;">
+                        <span class="ide-cm-item-text" style="">File</span>
                     </div>
                     <div class="ide-cm-item" id="cm-new-folder">
-                        <img src="ext/bastille/images/folder.svg" width="16" style="margin: 0px;"> Directory
+                        <img src="ext/bastille/images/folder.svg" width="16" style="margin: 0px;">
+                         <span class="ide-cm-item-text" style="">Directory</span>
                     </div>
                 </div>
             </div>
         <div class="ide-cm-separator"></div>
 
         <div class="ide-cm-item" id="cm-copy-path">
-            <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy" style="margin: 0"> Copy Full Path
+            <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy" style="margin: 0">
+            <span class="ide-cm-item-text" style="margin-left: -1px">Copy Full Path</span>
         </div>
 
         <div class="ide-cm-item cm-unlock" id="cm-unlock-item" style="display: none;">
             <img src="ext/bastille/images/lock.svg" class="lock-icon" alt="unlock" style="width: 18px; height: 18px; margin: 0px;">
-            Unlock (Clear Flags)
+            <span class="ide-cm-item-text" style="">Unlock (Clear Flags)</span>
+        </div>
+
+        <div class="ide-cm-item" id="cm-info-item">
+            <img src="ext/bastille/images/info-ssl.svg" alt="info" style="width: 18px; height: 18px; margin: 0px;">
+            <span class="ide-cm-item-text" style="">Information</span>
         </div>
 
         <div class="ide-cm-separator"></div>
 
         <div class="ide-cm-item cm-delete" id="cm-delete-file">
-            <img src="ext/bastille/images/delete.svg" class="delete-icon-img" alt="delete" style="width: 20px; height: 20px;"> Delete
+            <img src="ext/bastille/images/delete.svg" class="delete-icon-img" alt="delete" style="width: 20px; height: 20px;">
+            <span class="ide-cm-item-text" style="">Delete</span>
         </div>
     `;
     document.body.appendChild(contextMenu);
@@ -1257,6 +1266,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ok) {
             executeUnlock(cmTargetData.filepath, cmTargetData.liElement);
         }
+    });
+
+    // // NEW ACTION: Show File Information Sidebar
+    document.getElementById('cm-info-item').addEventListener('click', () => {
+        if (!cmTargetData) return;
+        contextMenu.style.display = 'none';
+        // // Call your function passing the REAL absolute path
+        showFileInfo(cmTargetData.filepath);
     });
 
     // 6. ACTION: Delete
@@ -1705,6 +1722,472 @@ window.executeCreateItem = async function(name, type, targetData) {
         hideSpinner();
     }
 };
+
+// // --- HYBRID UPLOAD MODAL CONTROLLER ---
+
+// // 1. Global state for uploads
+window.isUploading = false;
+window.cancelUpload = false;
+
+// // 2. UI State Management
+function openUploadModal() {
+    // // Make sure the contextual menu from "+" is closed
+    const plusSubmenu = document.querySelector('.header-plus-submenu');
+    if (plusSubmenu) plusSubmenu.classList.remove('show');
+
+    // // Reset UI and open
+    setUploadState('selector');
+    document.getElementById('upload-modal-overlay').style.display = 'flex';
+}
+
+function closeUploadModal() {
+    if (window.isUploading) {
+        if (!confirm("Upload in progress. Are you sure you want to cancel?")) return;
+        window.cancelUpload = true;
+        if (window.uploadController) {
+            window.uploadController.abort(); //cut http connection
+        }
+    } else {
+        document.getElementById('upload-modal-overlay').style.display = 'none';
+        // // Clear inputs to allow re-selection
+        document.getElementById('up-file-input').value = '';
+        document.getElementById('up-folder-input').value = '';
+        document.getElementById('up-remote-url').value = '';
+    }
+}
+
+function setUploadState(state) {
+    const selector = document.getElementById('up-state-selector');
+    const progress = document.getElementById('up-state-progress');
+    const cancelBtn = document.getElementById('up-cancel-btn');
+
+    if (state === 'selector') {
+        selector.style.display = 'block';
+        progress.style.display = 'none';
+        cancelBtn.innerText = 'Close';
+    } else if (state === 'progress') {
+        selector.style.display = 'none';
+        progress.style.display = 'block';
+        cancelBtn.innerText = 'Cancel Upload';
+    }
+}
+
+// // 3. Handle Native Inputs (Buttons from MEGA style)
+function handleNativeUpload(inputElement, isFolder) {
+    if (!inputElement.files || inputElement.files.length === 0) return;
+
+    const destination = window.IDE_CONFIG.lastSelectedDir || window.IDE_CONFIG.jailRoot;
+    const filesArray = Array.from(inputElement.files);
+
+    // // Start the engine
+    runChunkedUpload(filesArray, destination);
+}
+
+// // 4. Handle Remote URL Import
+async function handleRemoteDownload() {
+    const urlInput = document.getElementById('up-remote-url');
+    const url = urlInput.value.trim();
+    if (!url) {
+        alert("Please enter a valid URL.");
+        return;
+    }
+
+    const destination = window.IDE_CONFIG.lastSelectedDir || window.IDE_CONFIG.jailRoot;
+
+    // // Prepare UI
+    setUploadState('progress');
+    document.getElementById('up-current-filename').innerText = "Downloading from remote URL...";
+    document.getElementById('up-progress-fill').style.width = '100%';
+    document.getElementById('up-progress-percent').innerText = "Processing...";
+    document.getElementById('up-progress-info').innerText = url;
+    window.isUploading = true;
+
+    const formData = new FormData(document.getElementById('iform'));
+    formData.append('ajax_remote_download', '1');
+    formData.append('remote_url', url);
+    formData.append('target_dir', destination);
+
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            showConfirmDialog("Success", "File imported from URL successfully.", "success");
+            if (typeof injectItemIntoTree === 'function') injectItemIntoTree(destination, data.fileName, false);
+            closeUploadModal();
+        } else {
+            throw new Error(data.error || "Failed to download.");
+        }
+    } catch (err) {
+        showConfirmDialog("Error", err.message, "error");
+        setUploadState('selector');
+    } finally {
+        window.isUploading = false;
+        urlInput.value = '';
+    }
+}
+
+// 5 --- THE CHUNKING ENGINE (with SHA-256 Armor) ---
+async function runChunkedUpload(files, destination) {
+    const CHUNK_SIZE = 100 * 1024 * 1024; // // 100MB chunks
+    window.isUploading = true;
+    window.cancelUpload = false;
+    window.uploadController = new AbortController();
+
+    setUploadState('progress');
+
+    const bar = document.getElementById('up-progress-fill');
+    const pText = document.getElementById('up-progress-percent');
+    const fName = document.getElementById('up-current-filename');
+    const fHash = document.getElementById('up-file-hash'); // // El nuevo slot
+
+    for (let i = 0; i < files.length; i++) {
+        if (window.cancelUpload) break;
+        const file = files[i];
+
+        // // STEP 1: PRE-CALCULATE HASH
+        fName.innerText = `[${i+1}/${files.length}] Calculating signature...`;
+        fHash.innerText = "Processing SHA-256...";
+        bar.style.width = '0%';
+        bar.style.background = "#9c27b0"; // // Color lila para "Calculando"
+
+        const fullFileHash = await calculateFileHash(file, (p) => {
+            pText.innerText = `Hashing: ${p}%`;
+            bar.style.width = p + '%';
+        });
+
+        if (window.cancelUpload) break;
+
+        fHash.innerText = `Hash: ${fullFileHash}`;
+        bar.style.background = "#3875d6"; // // Volver al azul para subir
+
+        // // STEP 2: CHUNKED UPLOAD (Normal speed)
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const relPath = file.customRelativePath || file.webkitRelativePath || file.name;
+
+        for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+            if (window.cancelUpload) break;
+
+            const start = chunkIdx * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+
+            const formData = new FormData(document.getElementById('iform'));
+            formData.append('ajax_upload_chunk', '1');
+            formData.append('chunk_index', chunkIdx);
+            formData.append('total_chunks', totalChunks);
+            formData.append('file_name', file.name);
+            formData.append('relative_path', relPath);
+            formData.append('target_dir', destination);
+            formData.append('file_chunk', chunk);
+
+            try {
+                await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    signal: window.uploadController.signal
+                });
+
+                const percent = Math.round(((chunkIdx + 1) / totalChunks) * 100);
+                bar.style.width = percent + '%';
+                pText.innerText = `${percent}%`;
+                fName.innerText = `[${i+1}/${files.length}] Uploading: ${file.name}`;
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                break;
+            }
+        }
+
+        // // STEP 3: FINAL VERIFICATION
+        if (!window.cancelUpload) {
+            pText.innerText = "Verifying on server...";
+            bar.style.background = "#ff9800"; // // Naranja para verificar
+
+            const verifyData = new FormData(document.getElementById('iform'));
+            verifyData.append('ajax_verify_hash', '1');
+            verifyData.append('target_dir', destination);
+            verifyData.append('relative_path', relPath);
+            verifyData.append('expected_hash', fullFileHash); // // El hash que calculamos al principio
+
+            const vRes = await fetch(window.location.href, { method: 'POST', body: verifyData });
+            const vJson = await vRes.json();
+
+            if (vJson.success) {
+                bar.style.background = "#4caf50"; // // Verde: ¡Éxito!
+            } else {
+                showConfirmDialog("Error", "Integrity fail on server!", "error");
+            }
+        }
+    }
+    window.isUploading = false;
+}
+
+async function calculateFileHash(file, onProgress) {
+    const hasher = sha256.create();
+    const size = file.size;
+    const sliceSize = 50 * 1024 * 1024; // // Leemos de 50 en 50MB para el hash
+    let offset = 0;
+
+    while (offset < size) {
+        if (window.cancelUpload) {
+            return null;
+        }
+        const slice = file.slice(offset, offset + sliceSize);
+        const buffer = await slice.arrayBuffer();
+        hasher.update(buffer);
+        offset += sliceSize;
+
+        const percent = Math.round((offset / size) * 100);
+        onProgress(Math.min(percent, 100));
+    }
+    return hasher.hex();
+}
+
+// // --- RECURSIVE DIRECTORY SCANNER ---
+// // This function reads dropped items. If it's a file, it adds it.
+// // If it's a folder, it opens it and reads inside recursively.
+
+async function scanFiles(item, container, path = "") {
+    if (item.isFile) {
+        // // It's a file, we extract it using a Promise
+        const file = await new Promise((resolve) => item.file(resolve));
+
+        // // CRITICAL: We save the relative path so PHP knows where to put it
+        // // Example: "movies/action/matrix.mkv" instead of just "matrix.mkv"
+        file.customRelativePath = path + file.name;
+
+        container.push(file);
+    } else if (item.isDirectory) {
+        // // It's a directory, we need to read its contents
+        let directoryReader = item.createReader();
+
+        // // Read all entries inside the folder
+        let entries = await new Promise((resolve) => {
+            directoryReader.readEntries(resolve);
+        });
+
+        // // Loop through entries and scan them recursively
+        for (let entry of entries) {
+            await scanFiles(entry, container, path + item.name + "/");
+        }
+    }
+}
+
+// // 6. Hook up the Drop Zone inside the Modal
+const dropZone = document.querySelector('.up-drop-zone');
+if (dropZone) {
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.style.borderColor = '#3875d6', false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.style.borderColor = 'transparent', false);
+    });
+
+    dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.style.borderColor = 'transparent';
+
+        const destination = window.IDE_CONFIG.lastSelectedDir || window.IDE_CONFIG.jailRoot;
+        const items = e.dataTransfer.items;
+        if (!items) return;
+
+        let filesToUpload = [];
+        let entries = []; // // NEW: Safe array to store entries
+
+        // // 1. Synchronously extract all entries FIRST before any 'await'
+        for (let i = 0; i < items.length; i++) {
+            const entry = items[i].webkitGetAsEntry();
+            if (entry) {
+                entries.push(entry);
+            }
+        }
+
+        // // 2. Now we can safely use 'await' because 'entries' won't be deleted by the browser
+        for (let i = 0; i < entries.length; i++) {
+            await scanFiles(entries[i], filesToUpload);
+        }
+
+        // // 3. Start the upload engine
+        if (filesToUpload.length > 0) {
+            runChunkedUpload(filesToUpload, destination);
+        }
+    });
+}
+
+// // --- FILE INFO SIDEBAR LOGIC ---
+
+function closeInfoSidebar() {
+    document.getElementById('ide-info-sidebar').classList.remove('open');
+}
+
+async function showFileInfo(filePath) {
+    console.log("Ruta enviada a PHP:", filePath);
+    // // 1. Open the sidebar and show loading
+    const sidebar = document.getElementById('ide-info-sidebar');
+    const content = document.getElementById('info-sidebar-content');
+    sidebar.classList.add('open');
+    content.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">Cargando detalles...</div>';
+
+    // // 2. Request data from PHP
+    const formData = new FormData(document.getElementById('iform'));
+    formData.append('ajax_get_info', '1');
+    formData.append('target_path', filePath);
+
+    try {
+        const response = await fetch(window.location.href, { method: 'POST', body: formData });
+        const data = await response.json();
+
+        if (data.success) {
+            // // 3. Build the UI with the file info
+            let html = `
+                <div style="text-align:center; margin-bottom:20px;">
+                    <img src="ext/bastille/images/${data.is_dir ? 'folder.svg' : 'file.svg'}" width="60">
+                    <h4 style="margin:10px 0 0 0; color:#333; word-break:break-all;">${data.name}</h4>
+                </div>
+                <div class="info-row"><div class="info-label">Type</div><div class="info-value">${data.type}</div></div>
+                <div class="info-row"><div class="info-label">Size</div><div class="info-value">${data.size}</div></div>
+                <div class="info-row"><div class="info-label">Modified</div><div class="info-value">${data.modified}</div></div>
+                <div class="info-row"><div class="info-label">Permissions</div><div class="info-value">${data.permissions} (${data.octal})</div></div>
+                <div class="info-row"><div class="info-label">Owner</div><div class="info-value">${data.owner}:${data.group}</div></div>
+                <div class="info-row"><div class="info-label">Full Path</div><div class="info-value" style="font-size:12px; color:#555;">${data.path}</div></div>
+            `;
+            content.innerHTML = html;
+        } else {
+            content.innerHTML = `<div style="color:red; text-align:center;">Error: ${data.error}</div>`;
+        }
+    } catch (e) {
+        content.innerHTML = `<div style="color:red; text-align:center;">Connection error</div>`;
+    }
+}
+
+async function showFileInfo(filePath) {
+    const sidebar = document.getElementById('ide-info-sidebar');
+    const content = document.getElementById('info-sidebar-content');
+
+    sidebar.classList.add('open');
+    content.innerHTML = '<div style="text-align:center; padding-top:50px; color:#adb5bd;">Loading...</div>';
+
+    const formData = new FormData(document.getElementById('iform'));
+    formData.append('ajax_get_info', '1');
+    formData.append('target_path', filePath);
+
+    try {
+        const response = await fetch(window.location.href, { method: 'POST', body: formData });
+        currentFileData = await response.json();
+
+        if (currentFileData.success) {
+            // // Actualizar Header
+            document.getElementById('sidebar-filename').innerText = currentFileData.name;
+            // // Forzamos pestaña Overview al abrir
+            switchTab('overview', document.querySelector('.tab-link'));
+        }
+    } catch (e) {
+        content.innerHTML = '<div class="modern-card" style="color:red">Connection error</div>';
+    }
+}
+
+function switchTab(tabName, element) {
+    if (!currentFileData) return;
+
+    // // UI: Gestionar clases activas
+    if (element) {
+        document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
+        element.classList.add('active');
+    }
+
+    const content = document.getElementById('info-sidebar-content');
+    let html = '';
+
+    if (tabName === 'overview') {
+        html = `
+            <div class="modern-card">
+                <div class="card-label">Item Type</div>
+                <div class="card-value">${currentFileData.type}</div>
+            </div>
+            <div class="modern-card">
+                <div class="card-label">Last Modified</div>
+                <div class="card-value">${currentFileData.modified}</div>
+            </div>
+            <div class="modern-card">
+                <div class="card-label">Full Path</div>
+                <div class="card-value" style="font-size:11px; color:#6c757d;">${currentFileData.path}</div>
+            </div>
+        `;
+    } else if (tabName === 'security') {
+        html = `
+            <div class="modern-card">
+                <div class="card-label">Permissions</div>
+                <div class="card-value">${currentFileData.permissions} (${currentFileData.octal})</div>
+            </div>
+            <div class="modern-card">
+                <div class="card-label">Ownership</div>
+                <div class="card-value">${currentFileData.owner}:${currentFileData.group}</div>
+            </div>
+        `;
+    } else if (tabName === 'storage') {
+        html = `
+            <div class="modern-card">
+                <div class="card-label">Actual Size</div>
+                <div class="card-value">${currentFileData.size}</div>
+            </div>
+            <div class="modern-card">
+                <div class="card-label">Volume Impact</div>
+                <div id="storage-chart-container" style="min-height: 220px;"></div>
+            </div>
+        `;
+    }
+
+    content.innerHTML = html;
+
+    // // Render de la gráfica
+    if (tabName === 'storage') {
+        setTimeout(() => {
+            renderStorageChart();
+        }, 100);
+    }
+}
+
+function renderStorageChart() {
+    const options = {
+        series: [currentFileData.chart.usage, currentFileData.chart.others],
+        chart: { type: 'donut', height: 220 },
+        colors: ['#3875d6', '#f1f3f5'],
+        labels: ['This File', 'Free Space'],
+        dataLabels: { enabled: false },
+        stroke: { show: false },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '75%',
+                    labels: {
+                        show: true,
+                        total: {
+                            show: true,
+                            label: 'Size',
+                            color: '#adb5bd',
+                            formatter: () => currentFileData.size
+                        }
+                    }
+                }
+            }
+        },
+        legend: { position: 'bottom', fontSize: '12px' }
+    };
+
+    const chart = new ApexCharts(document.querySelector("#storage-chart-container"), options);
+    chart.render();
+}
 
 // --- MONACO INIT ---
 const MONACO_NODE_MODULES = '/ext/bastille/js/vs';

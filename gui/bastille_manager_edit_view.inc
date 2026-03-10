@@ -35,18 +35,25 @@ window.IDE_CONFIG = {
                                 <span class="plus-icon">+</span>
 
                                 <div class="header-plus-submenu">
+
                                     <div class="ide-cm-item" id="header-new-file">
-                                        <img src="ext/bastille/images/file.svg" width="14" style="margin-right:8px;"> New File
+                                        <img src="ext/bastille/images/file.svg" width="14">
+                                        <span class="ide-cm-item-text" style="">New File</span>
                                     </div>
                                     <div class="ide-cm-item" id="header-new-folder">
-                                        <img src="ext/bastille/images/folder.svg" width="14" style="margin-right:8px;"> New Directory
+                                        <img src="ext/bastille/images/folder.svg" width="14">
+                                        <span class="ide-cm-item-text" style="">New Directory</span>
                                     </div>
+
+                                    <div class="ide-cm-separator" style="height:1px; background:#eee; margin:4px 0;"></div>
+
+                                    <div class="ide-cm-item" onclick="openUploadModal()">
+                                        <img src="ext/bastille/images/upload-cloud.svg" width="14">
+                                        <span class="ide-cm-item-text" style="">Upload Manager</span>
+                                     </div>
+
                                 </div>
                             </div>
-
-                            <a href="javascript:void(0)" class="header-action-btn" title="Upload Files" onclick="document.getElementById('ide-upload-button').click();">
-                                <img src="ext/bastille/images/upload.svg" width="16" height="16">
-                            </a>
 
                             <a href="?jailname=<?=urlencode($jailname)?>&filepath=<?=urlencode($filepath)?>" class="header-action-btn" title="Reset Tree">
                                 <img src="images/fm_img/smallicons/house.png" alt="Home" width="18" height="18">
@@ -203,10 +210,87 @@ window.IDE_CONFIG = {
     </div>
 </div>
 
+<div id="upload-modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(5px); z-index:99999; align-items:center; justify-content:center;">
+    <div class="upload-modal-box">
+        <div class="up-modal-header lhetop">
+            <span class="up-modal-title">Upload Manager</span>
+            <span class="up-modal-close" onclick="document.getElementById('upload-modal-overlay').style.display='none'">&times;</span>
+        </div>
+
+        <div id="up-state-selector" class="up-modal-content">
+            <div class="up-drop-zone">
+                <div class="up-icon-circle">
+                    <img src="ext/bastille/images/upload-cloud.svg" alt="Upload" width="60">
+                </div>
+                <p class="up-main-text">Drag and drop files or folders to upload</p>
+                <p class="up-sub-text">Items will be saved to the selected directory</p>
+
+                <div class="up-action-buttons">
+                    <button class="up-btn up-btn-primary" onclick="document.getElementById('up-file-input').click()">
+                        <img src="ext/bastille/images/file.svg" width="14">
+                        <span style="">Upload Files</span>
+                    </button>
+                    <button class="up-btn up-btn-secondary" onclick="document.getElementById('up-folder-input').click()">
+                        <img src="ext/bastille/images/folder.svg" width="14">
+                        <span style="">Upload Folder</span>
+                    </button>
+                </div>
+
+                <div class="up-import-link-box">
+                    <input type="text" id="up-remote-url" placeholder="Paste direct download link (http/https)...">
+                    <button class="up-btn-link" onclick="handleRemoteDownload()">Import</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="up-state-progress" class="up-modal-content" style="display:none;">
+            <div class="up-progress-wrapper">
+                <div id="up-current-filename">Preparing...</div>
+                <div id="up-file-hash" style="font-family: monospace; font-size: 10px; color: #999; margin-top: 5px; word-break: break-all;"></div>
+                <div class="up-progress-container">
+                    <div id="up-progress-fill"></div>
+                </div>
+
+                <div class="up-progress-stats">
+                    <span id="up-progress-percent">0% completed</span>
+                    <span id="up-progress-info">Calculating...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="up-modal-footer">
+            <button id="up-cancel-btn" class="up-btn-cancel" onclick="document.getElementById('upload-modal-overlay').style.display='none'">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="ide-info-sidebar" class="ide-info-sidebar">
+    <div class="info-sidebar-header lhetop">
+        <div class="header-main-title">
+            <img id="sidebar-icon" src="ext/bastille/images/file.svg" width="20">
+            <h3 id="sidebar-filename">Details</h3>
+        </div>
+        <span onclick="closeInfoSidebar()" class="close-sidebar-btn">&times;</span>
+    </div>
+
+    <div class="modern-tabs">
+        <div class="tab-link active" onclick="switchTab('overview', this)">Overview</div>
+        <div class="tab-link" onclick="switchTab('security', this)">Security</div>
+        <div class="tab-link" onclick="switchTab('storage', this)">Storage</div>
+    </div>
+
+    <div id="info-sidebar-content" class="info-sidebar-content"></div>
+</div>
+
+<input type="file" id="up-file-input" style="display:none" multiple onchange="handleNativeUpload(this, false)">
+<input type="file" id="up-folder-input" style="display:none" webkitdirectory directory onchange="handleNativeUpload(this, true)">
+
 <script src="ext/bastille/js/bastille_editor_clipboard.js?v=<?=time();?>"></script>
-<script src="ext/bastille/js/vs/loader.js"></script>
+<script src="ext/bastille/js/sha256.min.js"></script>
+<script src="ext/bastille/js/apexcharts.v5.10.3.js"></script>
 <script src="js/spin.min.js"></script>
 
+<script src="ext/bastille/js/vs/loader.js"></script>
 <script src="ext/bastille/js/bastille_editor.js?v=<?=time();?>"></script>
 
 <?php if (!empty($input_errors)): ?>
