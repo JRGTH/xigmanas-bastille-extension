@@ -9,5 +9,11 @@
 @import url('bastille-editor-info-right-sidebar.css');
 
 :root {
+  --icon-file-item-width: 13px;
+  --icon-file-item-height: 18px;
+  --padding-item-menu: 4px 10px;
+  --font-size-item: 12px;
   --text-color-secondary: #1b2b41b0;
+  --icon-size-container: 20px;
+  --icon-color: #777777;
 }
