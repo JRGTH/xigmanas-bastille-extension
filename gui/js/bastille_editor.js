@@ -1005,7 +1005,7 @@ function updateBreadcrumbs(fullPath) {
             html += `
                 <span class="bc-part bc-file" ${titleAttr}>
                     ${part}
-                    <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy">
+                    <img src="ext/bastille/images/copy.svg" class="copy-icon-img" style="filter: brightness(2);" alt="copy">
                 </span>`;
         } else {
             html += `<span class="bc-part bc-folder" data-path="${currentPath}">${part}</span>`;
@@ -1039,45 +1039,59 @@ document.addEventListener('click', async function(e) {
 document.addEventListener('DOMContentLoaded', () => {
 
     // 1. Create and inject Context Menu
+  // 1. Create and inject Context Menu
     const contextMenu = document.createElement('div');
     contextMenu.id = 'ide-context-menu';
     contextMenu.innerHTML = `
         <div class="ide-cm-item has-submenu" id="cm-new-menu">
-            <span class="ide-cm-item-text" style="margin-left: 28px;">New</span>
+            <div class="icon-wrapper"></div> <span class="ide-cm-item-text">New</span>
             <img src="ext/bastille/images/right-arrow.svg" class="cm-arrow" alt="arrow">
             <div class="ide-cm-submenu">
-                    <div class="ide-cm-item" id="cm-new-file">
-                        <img src="ext/bastille/images/file.svg" width="16" style="margin: 0;">
-                        <span class="ide-cm-item-text" style="">File</span>
+                <div class="ide-cm-item" id="cm-new-file">
+                    <div class="icon-wrapper">
+                        <img src="ext/bastille/images/file.svg" class="ide-cm-item-svg">
                     </div>
-                    <div class="ide-cm-item" id="cm-new-folder">
-                        <img src="ext/bastille/images/folder.svg" width="16" style="margin: 0px;">
-                         <span class="ide-cm-item-text" style="">Directory</span>
+                    <span class="ide-cm-item-text">File</span>
+                </div>
+                <div class="ide-cm-item" id="cm-new-folder">
+                    <div class="icon-wrapper">
+                        <img src="ext/bastille/images/folder.svg" class="ide-cm-item-svg">
                     </div>
+                    <span class="ide-cm-item-text">Directory</span>
                 </div>
             </div>
+        </div>
+
         <div class="ide-cm-separator"></div>
 
         <div class="ide-cm-item" id="cm-copy-path">
-            <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy" style="margin: 0">
-            <span class="ide-cm-item-text" style="margin-left: -1px">Copy Full Path</span>
+            <div class="icon-wrapper">
+                <img src="ext/bastille/images/copy.svg" class="ide-cm-item-svg" alt="copy">
+            </div>
+            <span class="ide-cm-item-text">Copy Full Path</span>
         </div>
 
         <div class="ide-cm-item cm-unlock" id="cm-unlock-item" style="display: none;">
-            <img src="ext/bastille/images/lock.svg" class="lock-icon" alt="unlock" style="width: 18px; height: 18px; margin: 0px;">
-            <span class="ide-cm-item-text" style="">Unlock (Clear Flags)</span>
+            <div class="icon-wrapper">
+                <img src="ext/bastille/images/lock.svg" class="ide-cm-item-svg" alt="unlock">
+            </div>
+            <span class="ide-cm-item-text">Unlock (Clear Flags)</span>
         </div>
 
         <div class="ide-cm-item" id="cm-info-item">
-            <img src="ext/bastille/images/info-ssl.svg" alt="info" style="width: 18px; height: 18px; margin: 0px;">
-            <span class="ide-cm-item-text" style="">Information</span>
+            <div class="icon-wrapper">
+                <img src="ext/bastille/images/info-ssl.svg" class="ide-cm-item-svg" alt="info">
+            </div>
+            <span class="ide-cm-item-text">Information</span>
         </div>
 
         <div class="ide-cm-separator"></div>
 
         <div class="ide-cm-item cm-delete" id="cm-delete-file">
-            <img src="ext/bastille/images/delete.svg" class="delete-icon-img" alt="delete" style="width: 20px; height: 20px;">
-            <span class="ide-cm-item-text" style="">Delete</span>
+            <div class="icon-wrapper">
+                <img src="ext/bastille/images/delete.svg" class="ide-cm-item-svg" alt="delete">
+            </div>
+            <span class="ide-cm-item-text">Delete</span>
         </div>
     `;
     document.body.appendChild(contextMenu);

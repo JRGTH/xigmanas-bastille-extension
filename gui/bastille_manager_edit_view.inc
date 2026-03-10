@@ -37,18 +37,25 @@ window.IDE_CONFIG = {
                                 <div class="header-plus-submenu">
 
                                     <div class="ide-cm-item" id="header-new-file">
-                                        <img src="ext/bastille/images/file.svg" width="14">
-                                        <span class="ide-cm-item-text" style="">New File</span>
+                                        <div class="icon-wrapper">
+                                            <img src="ext/bastille/images/file.svg" class="ide-cm-item-svg">
+                                        </div>
+                                        <span class="ide-cm-item-text">New File</span>
                                     </div>
+
                                     <div class="ide-cm-item" id="header-new-folder">
-                                        <img src="ext/bastille/images/folder.svg" width="14">
-                                        <span class="ide-cm-item-text" style="">New Directory</span>
+                                        <div class="icon-wrapper">
+                                            <img src="ext/bastille/images/folder.svg" class="ide-cm-item-svg">
+                                        </div>
+                                        <span class="ide-cm-item-text">New Directory</span>
                                     </div>
 
                                     <div class="ide-cm-separator" style="height:1px; background:#eee; margin:4px 0;"></div>
 
-                                    <div class="ide-cm-item" onclick="openUploadModal()">
-                                        <img src="ext/bastille/images/upload-cloud.svg" width="14">
+                                    <div class="ide-cm-item" id="cm-upload-icon" onclick="openUploadModal()">
+                                         <div class="icon-wrapper">
+                                            <img src="ext/bastille/images/upload-cloud.svg" class="ide-cm-item-svg">
+                                        </div>
                                         <span class="ide-cm-item-text" style="">Upload Manager</span>
                                      </div>
 
