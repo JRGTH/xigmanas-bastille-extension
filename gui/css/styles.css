@@ -5,3 +5,9 @@
 @import url('bastille-header-refresh.css');
 @import url('bastille-table.css');
 @import url('bastille-web-terminal-modal.css');
+@import url('bastille-editor-upload-modal.css');
+@import url('bastille-editor-info-right-sidebar.css');
+
+:root {
+  --text-color-secondary: #1b2b41b0;
+}
