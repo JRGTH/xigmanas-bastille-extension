@@ -17,3 +17,44 @@
   --icon-size-container: 20px;
   --icon-color: #777777;
 }
+
+/* 1. La caja principal del Tooltip */
+.apexcharts-tooltip {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important; /* Borde gris muy sutil */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important; /* Sombra elegante */
+    border-radius: 8px !important; /* Bordes redondeados modernos */
+    font-family: inherit !important; /* Hereda la fuente de tu app */
+    overflow: hidden; /* Para que el título no se salga de las curvas */
+}
+
+/* 2. El título del tooltip (Si decides mostrarlo) */
+.apexcharts-tooltip-title {
+    background: #f8f9fa !important; /* Un fondo gris clarito para diferenciar */
+    border-bottom: 1px solid #e2e8f0 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #6c757d !important;
+    padding: 6px 12px !important;
+    font-family: inherit !important;
+}
+
+/* 3. La fila donde sale el punto de color y el texto */
+.apexcharts-tooltip-series-group {
+    padding: 6px 12px !important;
+}
+
+/* 4. Ajuste del texto y los números */
+.apexcharts-tooltip-text {
+    font-size: 13px !important;
+    color: #1a1d21 !important;
+    font-family: inherit !important;
+}
+
+/* 5. El puntito de color (Marker) */
+.apexcharts-tooltip-marker {
+    width: 10px !important;
+    height: 10px !important;
+    border-radius: 50% !important;
+    margin-right: 8px !important;
+}
