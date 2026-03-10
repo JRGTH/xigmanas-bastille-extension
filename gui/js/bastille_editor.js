@@ -2173,36 +2173,91 @@ function switchTab(tabName, element) {
 }
 
 function renderStorageChart() {
+    if (!currentFileData || !currentFileData.chart) {
+        return;
+    }
+
+    let realUsage = currentFileData.chart.usage;
+
+    let visualUsage = (realUsage > 0 && realUsage < 1) ? 1 : realUsage;
+    let visualOthers = 100 - visualUsage;
+
+    const chartColor = realUsage > 50 ? '#e74c3c' : '#3875d6';
+
     const options = {
-        series: [currentFileData.chart.usage, currentFileData.chart.others],
-        chart: { type: 'donut', height: 220 },
-        colors: ['#3875d6', '#f1f3f5'],
-        labels: ['This File', 'Free Space'],
+        series: [visualUsage, visualOthers],
+        chart: {
+            type: 'donut',
+            height: 220,
+            fontFamily: 'Inter, sans-serif'
+        },
+        colors: [chartColor, '#e2e8f0'],
+        labels: ['This Item', 'Free Space'],
+        stroke: { show: true, colors: '#ffffff', width: 2 },
         dataLabels: { enabled: false },
-        stroke: { show: false },
+        fill: { type: 'gradient'},
+        tooltip: {
+            theme: 'dark',
+            fillSeriesColor: false,
+            y: {
+                formatter: function (val, opts) {
+                    if (opts.seriesIndex === 0) return realUsage + "% of total volume";
+                    return (100 - realUsage).toFixed(2) + "% of total volume";
+                }
+            }
+        },
+
         plotOptions: {
             pie: {
                 donut: {
-                    size: '75%',
+                    size: '78%',
                     labels: {
                         show: true,
+                        name: {
+                            show: true,
+                            color: '#adb5bd',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            offsetY: -10
+                        },
+
+                        value: {
+                            show: true,
+                            color: '#1a1e23',
+                            fontSize: '18px',
+                            fontWeight: 700,
+                            offsetY: 5,
+                            formatter: function (val) {
+                                if (val === visualUsage) return realUsage + "%";
+                                return val.toFixed(2) + "%";
+                            }
+                        },
                         total: {
                             show: true,
-                            label: 'Size',
+                            showAlways: true,
+                            label: 'ITEM SIZE',
                             color: '#adb5bd',
-                            formatter: () => currentFileData.size
+                            formatter: function () {
+                                return currentFileData.size;
+                            }
                         }
                     }
                 }
             }
         },
-        legend: { position: 'bottom', fontSize: '12px' }
+        legend: {
+            position: 'bottom',
+            fontSize: '12px',
+            markers: { radius: 12 }
+        }
     };
 
-    const chart = new ApexCharts(document.querySelector("#storage-chart-container"), options);
+    const chartContainer = document.querySelector("#storage-chart-container");
+    chartContainer.innerHTML = '';
+
+    const chart = new ApexCharts(chartContainer, options);
     chart.render();
 }
-
 // --- MONACO INIT ---
 const MONACO_NODE_MODULES = '/ext/bastille/js/vs';
 if (typeof require !== 'undefined') {
