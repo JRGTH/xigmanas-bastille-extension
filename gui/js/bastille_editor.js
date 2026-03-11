@@ -1646,6 +1646,10 @@ async function handleFileUpload(files, destination) {
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         const relPath = file.customRelativePath || file.webkitRelativePath || file.name;
 
+        // Variables for calculating speed
+        let startTime = Date.now();
+        let lastLoaded = 0;
+
         for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
             if (window.cancelUpload) break;
 
@@ -1662,17 +1666,56 @@ async function handleFileUpload(files, destination) {
             formData.append('target_dir', destination);
             formData.append('file_chunk', chunk);
 
+            // --- THE XHR ENGINE FOR REAL-TIME PROGRESS & SPEED ---
             try {
-                await fetch(window.location.href, {
-                    method: 'POST',
-                    body: formData,
-                    signal: window.uploadController.signal
+                await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', window.location.href, true);
+
+                    // Signal abort handling
+                    window.uploadController.signal.addEventListener('abort', () => {
+                        xhr.abort();
+                        reject(new DOMException('Aborted', 'AbortError'));
+                    });
+
+                    // Track upload progress of THIS specific chunk
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const totalUploadedSoFar = (chunkIdx * CHUNK_SIZE) + e.loaded;
+                            const percent = Math.min(Math.round((totalUploadedSoFar / file.size) * 100), 100);
+
+                            if (bar) bar.style.width = percent + '%';
+                            if (pText) pText.innerText = `${percent}%`;
+
+                            // Speed Calculation (MB/s)
+                            const now = Date.now();
+                            const timeDiff = (now - startTime) / 1000; // in seconds
+                            if (timeDiff > 0.5) { // Update speed every 500ms
+                                const bytesLoaded = totalUploadedSoFar - lastLoaded;
+                                const speedBps = bytesLoaded / timeDiff;
+                                const speedMBps = (speedBps / (1024 * 1024)).toFixed(1);
+
+                                if (fName) fName.innerText = `[${i+1}/${files.length}] Uploading: ${file.name} (${speedMBps} MB/s)`;
+
+                                startTime = now;
+                                lastLoaded = totalUploadedSoFar;
+                            }
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(xhr.responseText);
+                        } else {
+                            reject(new Error(`Server Error: ${xhr.status}`));
+                        }
+                    };
+
+                    xhr.onerror = () => reject(new Error('Network error during upload'));
+
+                    xhr.send(formData);
                 });
 
-                const percent = Math.round(((chunkIdx + 1) / totalChunks) * 100);
-                if (bar) bar.style.width = percent + '%';
-                if (pText) pText.innerText = `${percent}%`;
-                if (fName) fName.innerText = `[${i+1}/${files.length}] Uploading: ${file.name}`;
             } catch (err) {
                 if (err.name === 'AbortError') return;
                 console.error("Chunk upload error:", err);
@@ -1684,6 +1727,7 @@ async function handleFileUpload(files, destination) {
         if (!window.cancelUpload) {
             if (pText) pText.innerText = "Verifying on server...";
             if (bar) bar.style.background = "#ff9800";
+            if (fName) fName.innerText = `[${i+1}/${files.length}] Checking integrity...`;
 
             const verifyData = new FormData(document.getElementById('iform'));
             verifyData.append('ajax_verify_hash', '1');
@@ -2024,7 +2068,7 @@ if (dropZone) {
 
         // // 3. Start the upload engine
         if (filesToUpload.length > 0) {
-            runChunkedUpload(filesToUpload, destination);
+            handleFileUpload(filesToUpload, destination);
         }
     });
 }
