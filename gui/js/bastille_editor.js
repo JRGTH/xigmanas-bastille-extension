@@ -1568,7 +1568,7 @@ document.addEventListener('DOMContentLoaded', () => {
             destination = window.IDE_CONFIG.lastSelectedDir || window.IDE_CONFIG.currentDir || window.IDE_CONFIG.jailRoot;
         }
 
-        console.log("Drag & Drop destino:", destination);
+        console.log("Drag & Drop target:", destination);
         handleFileUpload(files, destination);
     });
 
@@ -1582,47 +1582,118 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// --- Upload function ---
+// --- Upload function UNIFIED HIGH-SPEED CHUNKED UPLOADER ---
 async function handleFileUpload(files, destination) {
-    const mainForm = document.getElementById('iform');
-    const formData = new FormData(mainForm);
-    formData.append('ajax_upload', '1');
-    formData.append('target_dir', destination);
-    formData.append('jailname', window.IDE_CONFIG.jailname);
+    // 200MB chunks for maximum network throughput
+    const CHUNK_SIZE = 200 * 1024 * 1024;
+
+    window.isUploading = true;
+    window.cancelUpload = false;
+    window.uploadController = new AbortController();
+
+    // Ensure upload modal/UI is visible
+    const overlay = document.getElementById('upload-modal-overlay');
+    if (overlay) overlay.style.display = 'flex';
+    if (typeof setUploadState === 'function') setUploadState('progress');
+
+    const bar = document.getElementById('up-progress-fill');
+    const pText = document.getElementById('up-progress-percent');
+    const fName = document.getElementById('up-current-filename');
+    const fHash = document.getElementById('up-file-hash');
 
     for (let i = 0; i < files.length; i++) {
-        formData.append('files[]', files[i]);
+        if (window.cancelUpload) break;
+        const file = files[i];
+
+        // STEP 1: PRE-CALCULATE HASH
+        if (fName) fName.innerText = `[${i+1}/${files.length}] Calculating signature...`;
+        if (fHash) fHash.innerText = "Processing SHA-256...";
+        if (bar) { bar.style.width = '0%'; bar.style.background = "#9c27b0"; }
+
+        const fullFileHash = await calculateFileHash(file, (p) => {
+            if (pText) pText.innerText = `Hashing: ${p}%`;
+            if (bar) bar.style.width = p + '%';
+        });
+
+        if (window.cancelUpload) break;
+
+        if (fHash) fHash.innerText = `Hash: ${fullFileHash}`;
+        if (bar) bar.style.background = "#3875d6";
+
+        // STEP 2: CHUNKED UPLOAD
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const relPath = file.customRelativePath || file.webkitRelativePath || file.name;
+
+        for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+            if (window.cancelUpload) break;
+
+            const start = chunkIdx * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+
+            const formData = new FormData(document.getElementById('iform'));
+            formData.append('ajax_upload_chunk', '1');
+            formData.append('chunk_index', chunkIdx);
+            formData.append('total_chunks', totalChunks);
+            formData.append('file_name', file.name);
+            formData.append('relative_path', relPath);
+            formData.append('target_dir', destination);
+            formData.append('file_chunk', chunk);
+
+            try {
+                await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    signal: window.uploadController.signal
+                });
+
+                const percent = Math.round(((chunkIdx + 1) / totalChunks) * 100);
+                if (bar) bar.style.width = percent + '%';
+                if (pText) pText.innerText = `${percent}%`;
+                if (fName) fName.innerText = `[${i+1}/${files.length}] Uploading: ${file.name}`;
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                console.error("Chunk upload error:", err);
+                break;
+            }
+        }
+
+        // STEP 3: FINAL VERIFICATION
+        if (!window.cancelUpload) {
+            if (pText) pText.innerText = "Verifying on server...";
+            if (bar) bar.style.background = "#ff9800";
+
+            const verifyData = new FormData(document.getElementById('iform'));
+            verifyData.append('ajax_verify_hash', '1');
+            verifyData.append('target_dir', destination);
+            verifyData.append('relative_path', relPath);
+            verifyData.append('expected_hash', fullFileHash);
+
+            try {
+                const vRes = await fetch(window.location.href, { method: 'POST', body: verifyData });
+                const vJson = await vRes.json();
+
+                if (vJson.success) {
+                    if (bar) bar.style.background = "#4caf50";
+                    if (typeof injectItemIntoTree === 'function') {
+                        injectItemIntoTree(destination, file.name, false);
+                    }
+                } else {
+                    showConfirmDialog("Error", `Integrity fail for ${file.name}!`, "error");
+                }
+            } catch (e) {
+                console.error("Verification error:", e);
+            }
+        }
     }
 
-    if (typeof spinner === 'function') spinner();
+    window.isUploading = false;
 
-    try {
-         const response = await fetch(window.location.href, {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        });
-        const result = await response.text();
-
-        if (result.trim().startsWith('<!DOCTYPE')) {
-            throw new Error("Security rejection: Token invalid or Session expired. Please refresh.");
-        }
-
-        const data = JSON.parse(result);
-
-        if (data.success) {
-            showConfirmDialog("Upload Complete", `${files.length} items uploaded to ${destination}`, "success");
-            for (let i = 0; i < files.length; i++) {
-                injectItemIntoTree(destination, files[i].name, false);
-            }
-        } else {
-            throw new Error(data.error || "Upload failed");
-        }
-    } catch (err) {
-        console.error("Upload Error: ", err);
-        showConfirmDialog("Upload Error", err.message, "error");
-    } finally {
-        hideSpinner();
+    // Auto-close modal after 2 seconds if successful
+    if (!window.cancelUpload) {
+        setTimeout(() => {
+            if (typeof closeUploadModal === 'function') closeUploadModal();
+        }, 2000);
     }
 }
 
@@ -1779,17 +1850,6 @@ function setUploadState(state) {
     }
 }
 
-// // 3. Handle Native Inputs (Buttons from MEGA style)
-function handleNativeUpload(inputElement, isFolder) {
-    if (!inputElement.files || inputElement.files.length === 0) return;
-
-    const destination = window.IDE_CONFIG.lastSelectedDir || window.IDE_CONFIG.jailRoot;
-    const filesArray = Array.from(inputElement.files);
-
-    // // Start the engine
-    runChunkedUpload(filesArray, destination);
-}
-
 // // 4. Handle Remote URL Import
 async function handleRemoteDownload() {
     const urlInput = document.getElementById('up-remote-url');
@@ -1835,100 +1895,6 @@ async function handleRemoteDownload() {
         window.isUploading = false;
         urlInput.value = '';
     }
-}
-
-// 5 --- THE CHUNKING ENGINE (with SHA-256 Armor) ---
-async function runChunkedUpload(files, destination) {
-    const CHUNK_SIZE = 512 * 1024 * 1024; // // 512MB chunks
-    window.isUploading = true;
-    window.cancelUpload = false;
-    window.uploadController = new AbortController();
-
-    setUploadState('progress');
-
-    const bar = document.getElementById('up-progress-fill');
-    const pText = document.getElementById('up-progress-percent');
-    const fName = document.getElementById('up-current-filename');
-    const fHash = document.getElementById('up-file-hash'); // // El nuevo slot
-
-    for (let i = 0; i < files.length; i++) {
-        if (window.cancelUpload) break;
-        const file = files[i];
-
-        // // STEP 1: PRE-CALCULATE HASH
-        fName.innerText = `[${i+1}/${files.length}] Calculating signature...`;
-        fHash.innerText = "Processing SHA-256...";
-        bar.style.width = '0%';
-        bar.style.background = "#9c27b0";
-
-        const fullFileHash = await calculateFileHash(file, (p) => {
-            pText.innerText = `Hashing: ${p}%`;
-            bar.style.width = p + '%';
-        });
-
-        if (window.cancelUpload) break;
-
-        fHash.innerText = `Hash: ${fullFileHash}`;
-        bar.style.background = "#3875d6";
-
-        // // STEP 2: CHUNKED UPLOAD (Normal speed)
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        const relPath = file.customRelativePath || file.webkitRelativePath || file.name;
-
-        for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
-            if (window.cancelUpload) break;
-
-            const start = chunkIdx * CHUNK_SIZE;
-            const end = Math.min(start + CHUNK_SIZE, file.size);
-            const chunk = file.slice(start, end);
-
-            const formData = new FormData(document.getElementById('iform'));
-            formData.append('ajax_upload_chunk', '1');
-            formData.append('chunk_index', chunkIdx);
-            formData.append('total_chunks', totalChunks);
-            formData.append('file_name', file.name);
-            formData.append('relative_path', relPath);
-            formData.append('target_dir', destination);
-            formData.append('file_chunk', chunk);
-
-            try {
-                await fetch(window.location.href, {
-                    method: 'POST',
-                    body: formData,
-                    signal: window.uploadController.signal
-                });
-
-                const percent = Math.round(((chunkIdx + 1) / totalChunks) * 100);
-                bar.style.width = percent + '%';
-                pText.innerText = `${percent}%`;
-                fName.innerText = `[${i+1}/${files.length}] Uploading: ${file.name}`;
-            } catch (err) {
-                if (err.name === 'AbortError') return;
-                break;
-            }
-        }
-
-        // STEP 3: FINAL VERIFICATION
-        if (!window.cancelUpload) {
-            pText.innerText = "Verifying on server...";
-            bar.style.background = "#ff9800";
-            const verifyData = new FormData(document.getElementById('iform'));
-            verifyData.append('ajax_verify_hash', '1');
-            verifyData.append('target_dir', destination);
-            verifyData.append('relative_path', relPath);
-            verifyData.append('expected_hash', fullFileHash); // calculate hash
-
-            const vRes = await fetch(window.location.href, { method: 'POST', body: verifyData });
-            const vJson = await vRes.json();
-
-            if (vJson.success) {
-                bar.style.background = "#4caf50";
-            } else {
-                showConfirmDialog("Error", "Integrity fail on server!", "error");
-            }
-        }
-    }
-    window.isUploading = false;
 }
 
 async function calculateFileHash(file, onProgress) {
@@ -2033,46 +1999,6 @@ function closeInfoSidebar() {
 }
 
 async function showFileInfo(filePath) {
-    console.log("Ruta enviada a PHP:", filePath);
-    // // 1. Open the sidebar and show loading
-    const sidebar = document.getElementById('ide-info-sidebar');
-    const content = document.getElementById('info-sidebar-content');
-    sidebar.classList.add('open');
-    content.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">Cargando detalles...</div>';
-
-    // // 2. Request data from PHP
-    const formData = new FormData(document.getElementById('iform'));
-    formData.append('ajax_get_info', '1');
-    formData.append('target_path', filePath);
-
-    try {
-        const response = await fetch(window.location.href, { method: 'POST', body: formData });
-        const data = await response.json();
-
-        if (data.success) {
-            // // 3. Build the UI with the file info
-            let html = `
-                <div style="text-align:center; margin-bottom:20px;">
-                    <img src="ext/bastille/images/${data.is_dir ? 'folder.svg' : 'file.svg'}" width="60">
-                    <h4 style="margin:10px 0 0 0; color:#333; word-break:break-all;">${data.name}</h4>
-                </div>
-                <div class="info-row"><div class="info-label">Type</div><div class="info-value">${data.type}</div></div>
-                <div class="info-row"><div class="info-label">Size</div><div class="info-value">${data.size}</div></div>
-                <div class="info-row"><div class="info-label">Modified</div><div class="info-value">${data.modified}</div></div>
-                <div class="info-row"><div class="info-label">Permissions</div><div class="info-value">${data.permissions} (${data.octal})</div></div>
-                <div class="info-row"><div class="info-label">Owner</div><div class="info-value">${data.owner}:${data.group}</div></div>
-                <div class="info-row"><div class="info-label">Full Path</div><div class="info-value" style="font-size:12px; color:#555;">${data.path}</div></div>
-            `;
-            content.innerHTML = html;
-        } else {
-            content.innerHTML = `<div style="color:red; text-align:center;">Error: ${data.error}</div>`;
-        }
-    } catch (e) {
-        content.innerHTML = `<div style="color:red; text-align:center;">Connection error</div>`;
-    }
-}
-
-async function showFileInfo(filePath) {
     const sidebar = document.getElementById('ide-info-sidebar');
     const content = document.getElementById('info-sidebar-content');
 
@@ -2088,9 +2014,9 @@ async function showFileInfo(filePath) {
         currentFileData = await response.json();
 
         if (currentFileData.success) {
-            // // Actualizar Header
+            // Update Header
             document.getElementById('sidebar-filename').innerText = currentFileData.name;
-            // // Forzamos pestaña Overview al abrir
+            // Force Overview tab when opening
             switchTab('overview', document.querySelector('.tab-link'));
         }
     } catch (e) {
