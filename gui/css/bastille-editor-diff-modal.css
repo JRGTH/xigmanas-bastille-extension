@@ -60,3 +60,7 @@
 .diff-close-x:hover {
     opacity: 1;
 }
+
+#cm-compare-history .ide-cm-item-svg {
+    filter: brightness(1.3);
+}
