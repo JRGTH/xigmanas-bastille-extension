@@ -395,17 +395,17 @@ $(document).ready(function(){
 				<input name="restore" type="submit" class="formbtn" title="<?=gtext("Restore a container");?>" value="<?=gtext("Restore");?>" />
 			</div>
 			<table width="100%" border="0" cellpadding="6" cellspacing="0">
-				<?php html_separator();?>
+                 <?php html_separator();?>
 				<?php html_titleline(gtext("Refresh"));?>
-				<?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the containers tab.'),'',false);?>
-				<?php html_separator();?>
-			</table>
-			<table width="100%" border="0" cellpadding="6" cellspacing="0">
+                <?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the Containers tab.'),'',false);?>
+                <?php html_separator();?>
+                <?php html_titleline(gtext("Web terminal"));?>
+                <?php html_checkbox2('show_web_terminal_button',gtext('Show web terminal button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail row, to open the ttyd in a modal window.'),'',false);?>
                 <?php html_separator();?>
                 <?php html_titleline(gtext("File Editor v2 (Beta)"));?>
                 <?php html_checkbox2('enable_beta_editor', gtext('Enable New Editor'), '' ? true : false, gtext('Use the new editor with Quick Search and syntax highlighting instead of the legacy editor.'), '', false);?>
                 <?php html_separator();?>
-            </table>
+			</table>
 			<div id="remarks">
 				<?php html_remark("note", gtext("Info"), sprintf(gtext("For general information visit the following link(s):")));?>
 				<div id="enumeration"><ul><li><a href="http://bastillebsd.org/" target="_blank" ><?=gtext("Bastille helps you quickly create and manage FreeBSD Jails.")?></a></li></ul></div>

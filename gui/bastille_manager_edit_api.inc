@@ -754,32 +754,85 @@ if (isset($_POST['ajax_read_backup'])) {
 }
 
 // --- FILE DOWNLOAD SYSTEM ---
-if (isset($_GET['ajax_download_file'])) {
+if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_download_zip'])) {
+    //This line allows us to avoid gluing downloads together, and prevents the PHP session from blocking the application.
+    session_write_close();
+
     while (ob_get_level() > 0) ob_end_clean();
+    ini_set('display_errors', 0);
+    clearstatcache();
 
     $filepath = $_GET['filepath'] ?? '';
+
     $real_path = realpath($filepath);
     $root_path = realpath($jail_root);
 
-    // Security check: Ensure file exists and is within jail boundaries
+    // Security check: Path exists and is strictly inside the jail boundaries
     if ($real_path && file_exists($real_path) && strpos($real_path, $root_path) === 0) {
         $filename = basename($real_path);
 
-        // Set headers to force download
-        header('Content-Description: File Transfer');
-        header('Content-Type: application/octet-stream');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Expires: 0');
-        header('Cache-Control: must-revalidate');
-        header('Pragma: public');
-        header('Content-Length: ' . filesize($real_path));
+        // --- ZIP COMPRESSION ---
+        if (isset($_GET['ajax_download_zip'])) {
+            if (!class_exists('ZipArchive')) {
+                die("Error: ZipArchive extension is not enabled.");
+            }
 
-        readfile($real_path);
-        exit;
-    } else {
-        die("Security Error: Invalid file path.");
+            $zip = new ZipArchive();
+            $tmp_file = tempnam(sys_get_temp_dir(), 'bastille_zip');
+
+            if ($zip->open($tmp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+                if (is_dir($real_path)) {
+                    $files = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($real_path, RecursiveDirectoryIterator::SKIP_DOTS),
+                        RecursiveIteratorIterator::SELF_FIRST
+                    );
+                    foreach ($files as $file) {
+                        $fPath = $file->getRealPath();
+                        $relativePath = substr($fPath, strlen($real_path) + 1);
+                        if (is_dir($fPath)) {
+                            $zip->addEmptyDir($relativePath);
+                        } else {
+                            $zip->addFile($fPath, $relativePath);
+                        }
+                    }
+                } else {
+                    $zip->addFile($real_path, $filename);
+                }
+                $zip->close();
+                if (isset($_REQUEST['dl_token'])) {
+                    setcookie('bastille_dl_token', $_REQUEST['dl_token'], time() + 120, '/');
+                }
+                header('Content-Type: application/zip');
+                header('Content-Disposition: attachment; filename="' . $filename . '.zip"');
+                header('Content-Length: ' . filesize($tmp_file));
+                header('Pragma: no-cache');
+                header('Expires: 0');
+
+                readfile($tmp_file);
+                unlink($tmp_file);
+                exit;
+            }
+        }
+        // --- DIRECT DOWNLOAD ---
+        else {
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Transfer-Encoding: binary');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+            header('Pragma: public');
+            header('Content-Length: ' . filesize($real_path));
+
+            readfile($real_path);
+            exit;
+        }
     }
+    // Access denied or path out of bounds
+    http_response_code(403);
+    exit;
 }
+
 
 function rrmdir($dir) {
     if (is_dir($dir)) {
