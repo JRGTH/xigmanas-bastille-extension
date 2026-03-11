@@ -2181,7 +2181,7 @@ function renderStorageChart() {
             height: 220,
             fontFamily: 'Inter, sans-serif'
         },
-        colors: [chartColor, '#e2e8f0'],
+        colors: [chartColor, '#3875d1'],
         labels: ['This Item', 'Free Space'],
         stroke: { show: true, colors: '#ffffff', width: 2 },
         dataLabels: { enabled: false },
