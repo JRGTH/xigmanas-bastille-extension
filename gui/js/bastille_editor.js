@@ -1161,7 +1161,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="ide-cm-item" id="cm-compare-history">
             <div class="icon-wrapper">
-                <img src="ext/bastille/images/copy.svg" class="ide-cm-item-svg" alt="compare" style="filter: hue-rotate(180deg);"> </div>
+                <img src="ext/bastille/images/diff.svg" class="ide-cm-item-svg" alt="diff">
+            </div>
             <span class="ide-cm-item-text">Compare History</span>
         </div>
 
