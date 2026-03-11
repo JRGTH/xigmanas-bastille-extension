@@ -1166,6 +1166,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="ide-cm-item-text">Compare History</span>
         </div>
 
+        <div class="ide-cm-item" id="cm-download-file">
+            <div class="icon-wrapper">
+                <img src="images/fm_img/smallicons/drive-download.png" alt="download">
+            </div>
+            <span class="ide-cm-item-text">Download</span>
+        </div>
+
         <div class="ide-cm-separator"></div>
 
         <div class="ide-cm-item cm-delete" id="cm-delete-file">
@@ -1296,6 +1303,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Store target data for the button actions
         cmTargetData = { filepath, filename, liElement, isFolder, flag: currentFlag };
 
+        // Inside your contextmenu listener:
+        const downloadBtn = document.getElementById('cm-download-file');
+        if (cmTargetData.isFolder) {
+            downloadBtn.style.display = 'none';
+        } else {
+            downloadBtn.style.display = 'flex';
+        }
+
         // Position and display menu
         contextMenu.style.display = 'block';
         let left = e.pageX;
@@ -1380,6 +1395,32 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         openDiffViewer(cmTargetData.filepath, cmTargetData.filename);
+    });
+
+    // ACTION: Download File
+    document.getElementById('cm-download-file').addEventListener('click', () => {
+        if (!cmTargetData || cmTargetData.isFolder) return;
+        contextMenu.style.display = 'none';
+
+        const filepath = cmTargetData.filepath;
+        const jailname = cfg.jailname;
+
+        // We build the URL for the download request
+        const downloadUrl = window.location.pathname +
+                            `?jailname=${encodeURIComponent(jailname)}` +
+                            `&filepath=${encodeURIComponent(filepath)}` +
+                            `&ajax_download_file=1`;
+
+        /**
+         * To trigger a download without leaving the page or using AJAX (which would load the binary into RAM),
+         * we use a hidden <a> element.
+         */
+        const tempLink = document.createElement('a');
+        tempLink.href = downloadUrl;
+        tempLink.setAttribute('download', cmTargetData.filename);
+        document.body.appendChild(tempLink);
+        tempLink.click();
+        document.body.removeChild(tempLink);
     });
 
     // ACTION: Delete

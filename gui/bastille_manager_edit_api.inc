@@ -753,6 +753,34 @@ if (isset($_POST['ajax_read_backup'])) {
     exit; // <--- MANDATORY
 }
 
+// --- FILE DOWNLOAD SYSTEM ---
+if (isset($_GET['ajax_download_file'])) {
+    while (ob_get_level() > 0) ob_end_clean();
+
+    $filepath = $_GET['filepath'] ?? '';
+    $real_path = realpath($filepath);
+    $root_path = realpath($jail_root);
+
+    // Security check: Ensure file exists and is within jail boundaries
+    if ($real_path && file_exists($real_path) && strpos($real_path, $root_path) === 0) {
+        $filename = basename($real_path);
+
+        // Set headers to force download
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . filesize($real_path));
+
+        readfile($real_path);
+        exit;
+    } else {
+        die("Security Error: Invalid file path.");
+    }
+}
+
 function rrmdir($dir) {
     if (is_dir($dir)) {
         $objects = scandir($dir);
