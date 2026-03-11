@@ -1297,7 +1297,6 @@ document.addEventListener('DOMContentLoaded', () => {
         executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement, cmTargetData.isFolder);
     });
 
-    // --- Lógica del Menú "+" por Click ---
     const handleHeaderCreate = async (type) => {
         const targetPath = window.IDE_CONFIG.lastSelectedDir || window.IDE_CONFIG.jailRoot;
         const name = await showNewItemModal(type);
@@ -1309,21 +1308,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // // 2. Referenciamos los elementos del submenú
     const headerMain = document.querySelector('.ide-sidebar-header');
     const plusBtn = document.querySelector('.plus-icon');
     const plusMenu = document.querySelector('.header-plus-submenu');
 
     if (plusBtn && plusMenu && headerMain) {
 
-        // // 1. Click en el "+" para abrir/cerrar
         plusBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
 
             const isNowOpen = plusMenu.classList.toggle('show');
 
-            // // AGREGAMOS ESTO: Si el menú está abierto, bloqueamos el header para que sea visible
             if (isNowOpen) {
                 headerMain.classList.add('menu-open');
             } else {
@@ -1331,7 +1327,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // // 2. Click fuera para cerrar TODO
         document.addEventListener('click', (e) => {
             if (!plusMenu.contains(e.target) && !plusBtn.contains(e.target)) {
                 plusMenu.classList.remove('show');
@@ -1339,7 +1334,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // // 3. Al elegir una opción, limpiamos clases
         const resetHeader = () => {
             plusMenu.classList.remove('show');
             headerMain.classList.remove('menu-open');
@@ -1527,7 +1521,7 @@ document.addEventListener('DOMContentLoaded', () => {
                              || window.IDE_CONFIG.jailRoot;
 
                 const filesToUpload = Array.from(this.files);
-                //console.log("Subiendo manual a:", dest);
+                //console.log("Manual Uploading to:", dest);
                 await handleFileUpload(filesToUpload, dest);
                 this.value = '';
             }
@@ -1738,7 +1732,6 @@ window.executeCreateItem = async function(name, type, targetData) {
 };
 
 // // --- HYBRID UPLOAD MODAL CONTROLLER ---
-
 // // 1. Global state for uploads
 window.isUploading = false;
 window.cancelUpload = false;
@@ -1846,7 +1839,7 @@ async function handleRemoteDownload() {
 
 // 5 --- THE CHUNKING ENGINE (with SHA-256 Armor) ---
 async function runChunkedUpload(files, destination) {
-    const CHUNK_SIZE = 100 * 1024 * 1024; // // 100MB chunks
+    const CHUNK_SIZE = 512 * 1024 * 1024; // // 512MB chunks
     window.isUploading = true;
     window.cancelUpload = false;
     window.uploadController = new AbortController();
@@ -1866,7 +1859,7 @@ async function runChunkedUpload(files, destination) {
         fName.innerText = `[${i+1}/${files.length}] Calculating signature...`;
         fHash.innerText = "Processing SHA-256...";
         bar.style.width = '0%';
-        bar.style.background = "#9c27b0"; // // Color lila para "Calculando"
+        bar.style.background = "#9c27b0";
 
         const fullFileHash = await calculateFileHash(file, (p) => {
             pText.innerText = `Hashing: ${p}%`;
@@ -1876,7 +1869,7 @@ async function runChunkedUpload(files, destination) {
         if (window.cancelUpload) break;
 
         fHash.innerText = `Hash: ${fullFileHash}`;
-        bar.style.background = "#3875d6"; // // Volver al azul para subir
+        bar.style.background = "#3875d6";
 
         // // STEP 2: CHUNKED UPLOAD (Normal speed)
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -1915,22 +1908,21 @@ async function runChunkedUpload(files, destination) {
             }
         }
 
-        // // STEP 3: FINAL VERIFICATION
+        // STEP 3: FINAL VERIFICATION
         if (!window.cancelUpload) {
             pText.innerText = "Verifying on server...";
-            bar.style.background = "#ff9800"; // // Naranja para verificar
-
+            bar.style.background = "#ff9800";
             const verifyData = new FormData(document.getElementById('iform'));
             verifyData.append('ajax_verify_hash', '1');
             verifyData.append('target_dir', destination);
             verifyData.append('relative_path', relPath);
-            verifyData.append('expected_hash', fullFileHash); // // El hash que calculamos al principio
+            verifyData.append('expected_hash', fullFileHash); // calculate hash
 
             const vRes = await fetch(window.location.href, { method: 'POST', body: verifyData });
             const vJson = await vRes.json();
 
             if (vJson.success) {
-                bar.style.background = "#4caf50"; // // Verde: ¡Éxito!
+                bar.style.background = "#4caf50";
             } else {
                 showConfirmDialog("Error", "Integrity fail on server!", "error");
             }
@@ -1942,7 +1934,7 @@ async function runChunkedUpload(files, destination) {
 async function calculateFileHash(file, onProgress) {
     const hasher = sha256.create();
     const size = file.size;
-    const sliceSize = 50 * 1024 * 1024; // // Leemos de 50 en 50MB para el hash
+    const sliceSize = 50 * 1024 * 1024; // FIXME
     let offset = 0;
 
     while (offset < size) {
@@ -1960,37 +1952,32 @@ async function calculateFileHash(file, onProgress) {
     return hasher.hex();
 }
 
-// // --- RECURSIVE DIRECTORY SCANNER ---
-// // This function reads dropped items. If it's a file, it adds it.
-// // If it's a folder, it opens it and reads inside recursively.
-
+// --- RECURSIVE DIRECTORY SCANNER ---
 async function scanFiles(item, container, path = "") {
     if (item.isFile) {
-        // // It's a file, we extract it using a Promise
+        // It's a file, we extract it using a Promise
         const file = await new Promise((resolve) => item.file(resolve));
 
-        // // CRITICAL: We save the relative path so PHP knows where to put it
-        // // Example: "movies/action/matrix.mkv" instead of just "matrix.mkv"
         file.customRelativePath = path + file.name;
 
         container.push(file);
     } else if (item.isDirectory) {
-        // // It's a directory, we need to read its contents
+        // It's a directory, we need to read its contents
         let directoryReader = item.createReader();
 
-        // // Read all entries inside the folder
+        // Read all entries inside the folder
         let entries = await new Promise((resolve) => {
             directoryReader.readEntries(resolve);
         });
 
-        // // Loop through entries and scan them recursively
+        // Loop through entries and scan them recursively
         for (let entry of entries) {
             await scanFiles(entry, container, path + item.name + "/");
         }
     }
 }
 
-// // 6. Hook up the Drop Zone inside the Modal
+// 6. Hook up the Drop Zone inside the Modal
 const dropZone = document.querySelector('.up-drop-zone');
 if (dropZone) {
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -2164,7 +2151,7 @@ function switchTab(tabName, element) {
 
     content.innerHTML = html;
 
-    // // Render de la gráfica
+    // Graphics rendering
     if (tabName === 'storage') {
         setTimeout(() => {
             renderStorageChart();
@@ -2172,6 +2159,9 @@ function switchTab(tabName, element) {
     }
 }
 
+/*
+* We created a donut chart to show the free and used space for the selected file or directory.
+*/
 function renderStorageChart() {
     if (!currentFileData || !currentFileData.chart) {
         return;
