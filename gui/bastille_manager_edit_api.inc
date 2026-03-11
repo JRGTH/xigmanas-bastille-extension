@@ -454,8 +454,11 @@ if (isset($_POST['ajax_upload_chunk'])) {
     $in = fopen($_FILES['file_chunk']['tmp_name'], "rb");
 
     if ($out && $in) {
-        while ($buff = fread($in, 8192)) { fwrite($out, $buff); }
-        fclose($in); fclose($out);
+        // FASTEST METHOD: Passes the write operation directly to the OS (C level)
+        // This eliminates the PHP loop overhead and maximizes disk write speed.
+        stream_copy_to_stream($in, $out);
+        fclose($in);
+        fclose($out);
         echo json_encode(['success' => true]);
     } else {
         echo json_encode(['success' => false, 'error' => 'Disk write error']);
@@ -526,31 +529,29 @@ if (isset($_POST['ajax_remote_download'])) {
     exit;
 }
 
-// --- GET FILE INFO HANDLER ---
+// --- GET FILE INFO HANDLER (Cleaned & Optimized) ---
 if (isset($_POST['ajax_get_info'])) {
     while (ob_get_level() > 0) ob_end_clean();
     header('Content-Type: application/json');
 
     $target_path = $_POST['target_path'] ?? '';
 
-    // // 1. Seguridad: Validar existencia y que no se salga de la jaula
+    // 1. Security Check
     if (empty($target_path) || !file_exists($target_path)) {
         echo json_encode(['success' => false, 'error' => 'Item not found']);
         exit;
     }
 
-    // // 2. Obtener estadísticas básicas
+    // 2. Fetch basic stats
     $stat = stat($target_path);
     $is_dir = is_dir($target_path);
 
-    // // 3. Cálculo de tamaño e impacto en disco (FIXED FOR DIRECTORIES)
+    // 3. Calculate size (Uses 'du' for directories, stat for files)
     if ($is_dir) {
-        // Ejecutamos du -sk (en KB). Redirigimos errores a /dev/null por si hay carpetas sin permiso.
         $io = popen("du -sk " . escapeshellarg($target_path) . " 2>/dev/null", 'r');
         $line = fgets($io, 256);
         pclose($io);
 
-        // Extraemos solo el número (du devuelve: "1234  /ruta/...")
         $size_kb = (int)strtok($line, "\t ");
         $bytes = $size_kb * 1024;
         $formatted_size = formatBytes($bytes);
@@ -559,23 +560,17 @@ if (isset($_POST['ajax_get_info'])) {
         $formatted_size = formatBytes($bytes);
     }
 
-    // // Cálculo para ApexCharts (Ahora $bytes ya tiene valor real sea archivo o carpeta)
+    // 4. ApexCharts Calculation (Volume Impact)
     $disk_total = disk_total_space(dirname($target_path));
     $usage_percent = ($disk_total > 0) ? round(($bytes / $disk_total) * 100, 2) : 0;
 
-    // Mínimo visual: si existe, que se vea al menos un 0.1% en la gráfica
+    // Ensure at least 0.1% is visible if the file is not empty
     if ($usage_percent < 0.1 && $bytes > 0) $usage_percent = 0.1;
 
-    // // Cálculo para ApexCharts: ¿Cuánto ocupa respecto al total del disco/jail?
-    $disk_total = disk_total_space(dirname($target_path));
-    $usage_percent = ($disk_total > 0) ? round(($bytes / $disk_total) * 100, 2) : 0;
-    if ($usage_percent < 0.1 && $bytes > 0) $usage_percent = 0.1; // // Mínimo visual
-
-    // // 4. Información de Usuarios (POSIX)
+    // 5. User & Permissions (POSIX)
     $owner_info = function_exists('posix_getpwuid') ? posix_getpwuid($stat['uid']) : ['name' => $stat['uid']];
     $group_info = function_exists('posix_getgrgid') ? posix_getgrgid($stat['gid']) : ['name' => $stat['gid']];
 
-    // // 5. Permisos
     $perms = $stat['mode'];
     $octal = substr(sprintf('%o', $perms), -4);
     $symbolic = formatPermissions($perms);
