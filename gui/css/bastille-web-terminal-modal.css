@@ -106,6 +106,7 @@
 }
 
 .ssl-help-icon {
+    width: 15px;
     margin-right: auto;
     margin-left: 5px;
     cursor: help;
