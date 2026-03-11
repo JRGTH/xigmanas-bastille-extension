@@ -2186,6 +2186,21 @@ function renderStorageChart() {
         stroke: { show: true, colors: '#ffffff', width: 2 },
         dataLabels: { enabled: false },
         fill: { type: 'gradient'},
+        states: {
+                    hover: {
+                        filter: {
+                            type: 'darken',
+                            value: 0.15
+                        }
+                    },
+                    active: {
+                        allowMultipleDataPointsSelection: false,
+                        filter: {
+                            type: 'darken',
+                            value: 0.2
+                        }
+                    }
+                },
         tooltip: {
             theme: 'dark',
             fillSeriesColor: false,
