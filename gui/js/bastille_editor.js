@@ -571,7 +571,6 @@ if (homeBtn) {
                             throw new Error("Server returned invalid JSON. Check console.");
                         }
                      })
-                    .then(response => response.json())
                     .then(data => {
                         if (data.error) {
                             throw new Error(data.error);
@@ -894,7 +893,15 @@ window.toggleFolder = function (element, path) {
     url.searchParams.set('ajax_get_dir', path);
 
     return fetch(url)
-        .then((res) => res.json())
+        .then(async (res) => {
+            const rawText = await res.text();
+            try {
+                return JSON.parse(rawText);
+            } catch (e) {
+                console.error("CRITICAL PHP ERROR:", rawText);
+                throw new Error("Server returned invalid JSON. Check console.");
+            }
+         })
         .then((data) => {
             if (data.error) throw new Error(data.error);
             //console.log("API Response for path: ", path, data); // Debugging info
@@ -940,9 +947,15 @@ window.toggleFolder = function (element, path) {
         })
         .catch(err => {
             console.error("Tree Load Error:", err);
+            li.classList.remove('open');
+            showConfirmDialog(
+                "Directory Load Error",
+                err.message || "Failed to read directory contents. Check permissions.",
+                "error"
+            );
         })
         .finally(() => {
-            if (typeof hideSpinner === 'function') hideSpinner();
+            hideSpinner();
         });
 };
 
