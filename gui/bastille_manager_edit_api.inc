@@ -218,7 +218,9 @@ if (isset($_GET['ajax_search'])) {
 // LAZY LOADING
 if (isset($_GET['ajax_get_dir'])) {
     while (ob_get_level() > 0) ob_end_clean();
-    //ini_set('display_errors', 0); error_reporting(0);
+    //silence PHP errors again.
+    ini_set('display_errors', 0);
+    error_reporting(0);
 
     $dir_path = $_GET['ajax_get_dir'];
     $real_path = realpath($dir_path);
