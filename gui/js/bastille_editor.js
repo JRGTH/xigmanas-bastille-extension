@@ -450,6 +450,43 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
         clearDirtyState();
     }
 
+    // --- NEW: BINARY / MEDIA FILE INTERCEPTOR ---
+    const ext = filepath.split('.').pop().toLowerCase();
+    const binaryExts = [
+        // Media
+        'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'mp3', 'mp4', 'mkv', 'avi', 'mov', 'wav', 'flac',
+        // Archives & Binaries
+        'iso', 'gz', 'zip', 'tar', 'rar', '7z', 'pdf', 'bin', 'exe', 'dll', 'so', 'db', 'sqlite'
+    ];
+
+    if (binaryExts.includes(ext)) {
+        // We do NOT fetch from server. Just show a placeholder in Monaco.
+        if (window.editor) {
+            isInjectingCode = true;
+            window.editor.setValue(`/*\n * BASTILLE EDITOR WARNING\n * ------------------------\n * The file '${filepath.split('/').pop()}' is a binary or media file.\n * It cannot be safely displayed or edited in a text editor.\n */`);
+            window.editor.updateOptions({ readOnly: true });
+            isInjectingCode = false;
+            isDirty = false;
+        }
+
+        // Update UI states to keep it consistent
+        document.querySelectorAll('.tree-item').forEach((el) => el.classList.remove('active'));
+        const treeItem = link.closest('.tree-item');
+        if (treeItem) treeItem.classList.add('active');
+
+        const inputFp = document.querySelector('input[name="filepath"]');
+        const inputDr = document.querySelector('input[name="dir"]');
+        if (inputFp) inputFp.value = filepath;
+        if (inputDr) inputDr.value = filepath.substring(0, filepath.lastIndexOf('/'));
+
+        url.searchParams.delete('ajax');
+        window.history.pushState({}, '', url.toString());
+        if (typeof updateBreadcrumbs === 'function') updateBreadcrumbs(filepath);
+
+        return; // EXIT EARLY! We save bandwidth and time.
+    }
+    // ---------------------------------------------
+
     document.body.style.cursor = 'wait';
     if (typeof spinner === 'function') spinner();
 
@@ -471,7 +508,6 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
         }
 
         // --- UI UPDATES (SPA MODE) ---
-        // 1. Manage active state safely
         const isSearchResult = link.closest('.is-recursive');
         if (isSearchResult) {
             if (typeof clearFilter === 'function') {
@@ -506,7 +542,6 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
             }, 50);
 
         } else {
-
             document.querySelectorAll('.tree-item').forEach((el) => el.classList.remove('active'));
             const treeItem = link.closest('.tree-item');
             if (treeItem) {
@@ -514,7 +549,7 @@ document.querySelector('.ide-file-list').addEventListener('click', async functio
             }
         }
 
-        // 2. Sync hidden form inputs for Save button
+        // Sync hidden form inputs for Save button
         const inputFp = document.querySelector('input[name="filepath"]');
         const inputDr = document.querySelector('input[name="dir"]');
         if (inputFp) inputFp.value = filepath;
