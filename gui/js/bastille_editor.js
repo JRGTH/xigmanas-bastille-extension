@@ -1706,6 +1706,21 @@ async function handleFileUpload(files, destination) {
     }
 }
 
+// --- 3. HANDLE NATIVE INPUTS (Buttons from Upload Modal) ---
+window.handleNativeUpload = function(inputElement, isFolder) {
+    if (!inputElement.files || inputElement.files.length === 0) {
+        return;
+    }
+    const destination = window.IDE_CONFIG.lastSelectedDir || window.IDE_CONFIG.currentDir || window.IDE_CONFIG.jailRoot;
+    const filesArray = Array.from(inputElement.files);
+    if (typeof handleFileUpload === 'function') {
+        handleFileUpload(filesArray, destination);
+    } else {
+        console.error("Critical: handleFileUpload engine is missing.");
+    }
+    inputElement.value = '';
+};
+
 // --- OPTIMISTIC UI: INJECT NEW FILE ---
 function injectItemIntoTree(destination, itemName, isFolder = false) {
     let parentLi = null;
