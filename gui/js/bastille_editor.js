@@ -2181,7 +2181,7 @@ function renderStorageChart() {
             height: 220,
             fontFamily: 'Inter, sans-serif'
         },
-        colors: [chartColor, '#3875d1'],
+        colors: [chartColor, '#78AAFF'],
         labels: ['This Item', 'Free Space'],
         stroke: { show: true, colors: '#ffffff', width: 2 },
         dataLabels: { enabled: false },
@@ -2207,19 +2207,23 @@ function renderStorageChart() {
                             show: true,
                             color: '#adb5bd',
                             fontSize: '11px',
-                            fontWeight: 600,
-                            offsetY: -10
+                            fontWeight: 700
                         },
 
                         value: {
                             show: true,
                             color: '#1a1e23',
                             fontSize: '18px',
-                            fontWeight: 700,
-                            offsetY: 5,
+                            fontWeight: 600,
                             formatter: function (val) {
-                                if (val === visualUsage) return realUsage + "%";
-                                return val.toFixed(2) + "%";
+                                let numVal = parseFloat(val);
+                                 if (isNaN(numVal)) {
+                                    return val;
+                                 }
+                                 if (numVal === visualUsage) {
+                                    return realUsage + "%";
+                                 }
+                                 return numVal.toFixed(2) + "%";
                             }
                         },
                         total: {
