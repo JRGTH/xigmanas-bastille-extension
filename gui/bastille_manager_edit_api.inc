@@ -10,8 +10,22 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     $file_to_read = $_GET['filepath'] ?? '';
 
     if (!empty($file_to_read) && file_exists($file_to_read)) {
+        // // BLINDAJE ANTIMEMORIA: Prevenir carga de archivos masivos
+        $filesize = filesize($file_to_read);
+        $max_size = 5 * 1024 * 1024; // 5 MB límite para edición web
+
         header('Content-Type: text/plain; charset=utf-8');
-        echo file_get_contents($file_to_read);
+
+        if ($filesize > $max_size) {
+            echo "/*\n";
+            echo " * BASTILLE EDITOR WARNING\n";
+            echo " * ------------------------\n";
+            echo " * This file is too large to safely edit in the browser.\n";
+            echo " * Viewing and editing is restricted to text files under 5 MB to prevent server memory exhaustion.\n";
+            echo " */";
+        } else {
+            echo file_get_contents($file_to_read);
+        }
     } else {
         header("HTTP/1.1 404 Not Found");
         echo "Error: File not found.";
@@ -344,7 +358,6 @@ if (isset($_POST['ajax_upload'])) {
     while (ob_get_level() > 0) ob_end_clean();
     header('Content-Type: application/json');
 
-    // DEBUG: Vamos a ver si PHP recibió los archivos o si son demasiado grandes
     if (empty($_FILES) && empty($_POST)) {
         echo json_encode([
             'success' => false,
@@ -601,7 +614,7 @@ if (isset($_POST['ajax_get_info'])) {
 }
 
 /**
- * Convierte bytes en formato legible (KB, MB, GB...)
+ * Convert bytes into readable format (KB, MB, GB...)
  */
 function formatBytes($bytes, $precision = 2) {
     $units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -613,7 +626,7 @@ function formatBytes($bytes, $precision = 2) {
 }
 
 /**
- * Convierte el bitmask de permisos en cadena simbólica (drwxr-xr-x)
+ * Convert the permissions bitmask to a symbolic string (drwxr-xr-x)
  */
 function formatPermissions($perms) {
     if (($perms & 0xC000) == 0xC000) $info = 's';
@@ -643,8 +656,8 @@ function formatPermissions($perms) {
     return $info;
 }
 
+// This is the one that receives the "signal" with the hash calculated by the JS at the beginning.
 // --- 2. HASH VERIFICATION (The Auditor) ---
-// // Este es el que recibe el "signal" con el hash calculado por el JS al principio.
 if (isset($_POST['ajax_verify_hash'])) {
     while (ob_get_level() > 0) ob_end_clean();
     header('Content-Type: application/json');
@@ -660,14 +673,12 @@ if (isset($_POST['ajax_verify_hash'])) {
         exit;
     }
 
-    // // Calculamos el SHA-256 del archivo completo que acabamos de montar
+    // We calculate the SHA-256 of the complete file we just assembled.
     $server_hash = hash_file('sha256', $final_path);
 
     if ($server_hash === $expected_hash) {
-        // // OPCIONAL: Aquí podrías añadir el ítem al árbol o cambiar permisos finales
         echo json_encode(['success' => true]);
     } else {
-        // // Si falló, es que algo se corrompió. Podrías borrarlo si quieres ser estricto.
         // unlink($final_path);
         echo json_encode([
             'success' => false,
