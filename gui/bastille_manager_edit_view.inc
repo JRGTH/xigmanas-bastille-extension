@@ -40,14 +40,14 @@ window.IDE_CONFIG = {
                                         <div class="icon-wrapper">
                                             <img src="ext/bastille/images/file.svg" class="ide-cm-item-svg">
                                         </div>
-                                        <span class="ide-cm-item-text">New File</span>
+                                        <span class="ide-cm-item-text">File</span>
                                     </div>
 
                                     <div class="ide-cm-item" id="header-new-folder">
                                         <div class="icon-wrapper">
                                             <img src="ext/bastille/images/folder.svg" class="ide-cm-item-svg">
                                         </div>
-                                        <span class="ide-cm-item-text">New Directory</span>
+                                        <span class="ide-cm-item-text">Directory</span>
                                     </div>
 
                                     <div class="ide-cm-separator" style="height:1px; background:#eee; margin:4px 0;"></div>
