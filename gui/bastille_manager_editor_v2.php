@@ -43,6 +43,8 @@ if (isset($_GET['ajax'])
     || isset($_POST['ajax_remote_download'])
     || isset($_POST['ajax_get_info'])
     || isset($_POST['ajax_verify_hash'])
+    || isset($_POST['ajax_read_backup'])
+    || isset($_POST['ajax_get_backups'])
     ) {
     include 'bastille_manager_edit_api.inc';
 }

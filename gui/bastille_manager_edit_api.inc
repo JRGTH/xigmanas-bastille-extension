@@ -689,6 +689,70 @@ if (isset($_POST['ajax_verify_hash'])) {
     exit;
 }
 
+// --- GET BACKUPS LIST (DIFF VIEWER) ---
+if (isset($_POST['ajax_get_backups'])) {
+    // 1. Absolute cleanup of output buffers and error reporting to ensure clean JSON
+    while (ob_get_level() > 0) ob_end_clean();
+    ini_set('display_errors', 0);
+    error_reporting(0);
+    header('Content-Type: application/json; charset=utf-8');
+
+    $filepath = $_POST['filepath'] ?? '';
+
+    // Validate that the target file exists
+    if (empty($filepath) || !file_exists($filepath)) {
+        echo json_encode(['success' => false, 'error' => 'File not found on server.']);
+        exit;
+    }
+
+    $file_dir = dirname($filepath);
+    $filename = basename($filepath);
+    $backup_dir = $file_dir . '/.backups/' . $filename;
+
+    $backups = [];
+    if (is_dir($backup_dir)) {
+        $files = glob($backup_dir . '/*.bak');
+        if ($files) {
+            rsort($files); // Sort by newest first
+
+            foreach ($files as $f) {
+                $base = basename($f, '.bak');
+                // Format readable date: 20231024_153022 -> 2023-10-24 15:30:22
+                $date_obj = DateTime::createFromFormat('Ymd_His', $base);
+                $readable_date = $date_obj ? $date_obj->format('Y-m-d H:i:s') : $base;
+
+                $backups[] = [
+                    'path' => $f,
+                    'name' => $base,
+                    'date' => $readable_date
+                ];
+            }
+        }
+    }
+
+    echo json_encode(['success' => true, 'backups' => $backups]);
+    exit; // <--- CRITICAL: Prevents XigmaNAS from appending the <!DOCTYPE HTML footer
+}
+
+// --- READ SPECIFIC BACKUP CONTENT ---
+if (isset($_POST['ajax_read_backup'])) {
+    while (ob_get_level() > 0) ob_end_clean();
+    ini_set('display_errors', 0);
+    error_reporting(0);
+    header('Content-Type: application/json; charset=utf-8');
+
+    $bak_path = $_POST['bak_path'] ?? '';
+
+    // Security check: Verify file exists and is a .bak inside a .backups folder
+    if (file_exists($bak_path) && strpos($bak_path, '.backups') !== false && strpos($bak_path, '.bak') !== false) {
+        $content = file_get_contents($bak_path);
+        echo json_encode(['success' => true, 'content' => $content]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Backup file not accessible or invalid path.']);
+    }
+    exit; // <--- MANDATORY
+}
+
 function rrmdir($dir) {
     if (is_dir($dir)) {
         $objects = scandir($dir);
