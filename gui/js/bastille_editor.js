@@ -562,6 +562,15 @@ if (homeBtn) {
                 });
 
                 fetch(`${window.location.pathname}?${params.toString()}`)
+                    .then(async (res) => {
+                        const rawText = await res.text();
+                        try {
+                            return JSON.parse(rawText);
+                        } catch (e) {
+                            console.error("CRITICAL PHP ERROR:", rawText);
+                            throw new Error("Server returned invalid JSON. Check console.");
+                        }
+                     })
                     .then(response => response.json())
                     .then(data => {
                         if (data.error) {
