@@ -1173,6 +1173,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="ide-cm-item-text">Download</span>
         </div>
 
+        <div class="ide-cm-item" id="cm-download-zip">
+            <div class="icon-wrapper">
+                <svg fill="#ffffff" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="ide-cm-item-svg">
+                    <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10l-4-4h3V9h2v3h3l-4 4z"/>
+                </svg>
+            </div>
+            <span class="ide-cm-item-text">Download as ZIP...</span>
+        </div>
+
         <div class="ide-cm-separator"></div>
 
         <div class="ide-cm-item cm-delete" id="cm-delete-file">
@@ -1311,6 +1320,9 @@ document.addEventListener('DOMContentLoaded', () => {
             downloadBtn.style.display = 'flex';
         }
 
+        const downloadZipBtn = document.getElementById('cm-download-zip');
+        downloadZipBtn.style.display = 'flex'; // ZIP always available
+
         // Position and display menu
         contextMenu.style.display = 'block';
         let left = e.pageX;
@@ -1397,30 +1409,56 @@ document.addEventListener('DOMContentLoaded', () => {
         openDiffViewer(cmTargetData.filepath, cmTargetData.filename);
     });
 
-    // ACTION: Download File
+    // ==========================================
+    // ACTION: Download Single File (No Compression)
+    // ==========================================
     document.getElementById('cm-download-file').addEventListener('click', () => {
         if (!cmTargetData || cmTargetData.isFolder) return;
         contextMenu.style.display = 'none';
 
-        const filepath = cmTargetData.filepath;
-        const jailname = cfg.jailname;
+        showNotification("Download Started", `Downloading file: ${cmTargetData.filename}`);
 
-        // We build the URL for the download request
-        const downloadUrl = window.location.pathname +
-                            `?jailname=${encodeURIComponent(jailname)}` +
-                            `&filepath=${encodeURIComponent(filepath)}` +
-                            `&ajax_download_file=1`;
+        const csrfToken = document.querySelector('input[name="authtoken"]')?.value || '';
+        const params = new URLSearchParams({
+            jailname: cfg.jailname,
+            filepath: cmTargetData.filepath,
+            ajax_download_file: '1',
+            authtoken: csrfToken,
+            t: Date.now()
+        });
 
-        /**
-         * To trigger a download without leaving the page or using AJAX (which would load the binary into RAM),
-         * we use a hidden <a> element.
-         */
-        const tempLink = document.createElement('a');
-        tempLink.href = downloadUrl;
-        tempLink.setAttribute('download', cmTargetData.filename);
-        document.body.appendChild(tempLink);
-        tempLink.click();
-        document.body.removeChild(tempLink);
+        const downloadUrl = window.location.pathname + '?' + params.toString();
+        triggerDownload(downloadUrl);
+    });
+
+    // ==========================================
+    // ACTION: Download as ZIP
+    // ==========================================
+    document.getElementById('cm-download-zip').addEventListener('click', () => {
+        if (!cmTargetData) return;
+        contextMenu.style.display = 'none';
+
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+
+        if (typeof spinner === 'function') spinner();
+
+        const dlToken = 'dl_' + Date.now();
+        const csrfToken = document.querySelector('input[name="authtoken"]')?.value || '';
+
+        const params = new URLSearchParams({
+            jailname: cfg.jailname,
+            filepath: cmTargetData.filepath,
+            ajax_download_zip: '1',
+            dl_token: dlToken,
+            authtoken: csrfToken,
+            t: Date.now()
+        });
+
+        const downloadUrl = window.location.pathname + '?' + params.toString();
+        triggerDownload(downloadUrl);
+        trackDownloadCompletion(dlToken, cmTargetData.filename);
     });
 
     // ACTION: Delete
@@ -1484,6 +1522,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
+// ==========================================
+// NATIVE NOTIFICATION HELPER
+// ==========================================
+function showNotification(title, bodyText) {
+    if (!("Notification" in window)) return;
+
+    const options = {
+        body: bodyText,
+        // Opcional: Pon aquí la ruta real de tu icono si la tienes, si no, saldrá el logo del navegador
+        icon: '/ext/bastille/images/folder.svg'
+    };
+
+    if (Notification.permission === "granted") {
+        new Notification(title, options);
+    } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                new Notification(title, options);
+            }
+        });
+    }
+}
+
+// ==========================================
+// TRACKER & DOWNLOAD TRIGGER
+// ==========================================
+function trackDownloadCompletion(dlToken, fileName) {
+    const tracker = setInterval(() => {
+        if (getCookie('bastille_dl_token') === dlToken) {
+            clearInterval(tracker);
+            hideSpinner();
+            document.cookie = "bastille_dl_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            showNotification("Download Complete", `The ZIP archive for '${fileName}' is ready.`);
+        }
+    }, 500);
+
+    setTimeout(() => {
+        clearInterval(tracker);
+        hideSpinner();
+    }, 30000);
+}
+
+function triggerDownload(url) {
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+
+    setTimeout(() => {
+        document.body.removeChild(a);
+    }, 1000);
+}
+
+function getCookie(name) {
+    let matches = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"));
+    return matches ? decodeURIComponent(matches[1]) : undefined;
+}
 
 /**
  * Sends a request to the backend to remove FreeBSD chflags
