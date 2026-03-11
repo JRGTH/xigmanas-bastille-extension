@@ -1607,7 +1607,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- Upload function UNIFIED HIGH-SPEED CHUNKED UPLOADER ---
 async function handleFileUpload(files, destination) {
     // 200MB chunks for maximum network throughput
-    const CHUNK_SIZE = 200 * 1024 * 1024;
+    const CHUNK_SIZE = 25 * 1024 * 1024;
 
     window.isUploading = true;
     window.cancelUpload = false;
