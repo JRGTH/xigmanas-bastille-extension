@@ -1,0 +1,22 @@
+.apexcharts-tooltip {
+    background: var(--txc-tnt-active) !important;
+}
+
+.apexcharts-tooltip-series-group {
+    padding: 6px 12px !important;
+}
+
+.apexcharts-tooltip-marker {
+    border-radius: 50% !important;
+}
+
+.apexcharts-tooltip-text-y-label {
+    color: #1a1e23 !important;
+    font-weight: 700 !important;
+}
+
+.apexcharts-tooltip-text-y-value {
+    color: #6c757d !important;
+    font-weight: 500 !important;
+    margin-left: 4px !important;
+}
