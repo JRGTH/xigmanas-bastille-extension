@@ -2525,13 +2525,16 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="diff-modal-content">
             <div class="diff-modal-header lhetop">
                 <div>
-                    <strong style="color: #fff; font-size: 16px;">History Compare:</strong>
+                    <span id="diff-modal-header-title" class="diff-modal-header-title">History Compare:</span>
                     <span id="diff-filename" class="diff-filename">filename.php</span>
                     <select id="diff-backup-select">
                         <option value="">Loading backups...</option>
                     </select>
                 </div>
-                <div style="display:flex; gap: 10px;">
+                <div style="display:flex; gap: 15px; align-items: center;">
+                    <span id="ide-diff-maximize" title="Maximize / Restore">
+                        <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" style="width: 16px; height: 16px;" />
+                    </span>
                     <button class="diff-close-x" onclick="closeDiffViewer()" title="Close">&times;</button>
                 </div>
             </div>
@@ -2539,11 +2542,28 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     `;
     document.body.appendChild(diffModal);
+
+    // Evento de Maximizar
+    document.getElementById('ide-diff-maximize').addEventListener('click', () => {
+        const modal = document.getElementById('ide-diff-modal');
+        modal.classList.toggle('maximized');
+
+        // Timeout para esperar que la animación CSS (si la hubiera) o el redibujado termine
+        if (window.diffEditorInstance) {
+            setTimeout(() => {
+                window.diffEditorInstance.layout();
+            }, 50);
+        }
+    });
 });
 
 // --- MONACO DIFF VIEWER ENGINE ---
 window.openDiffViewer = async function(filepath, filename) {
-    if (typeof spinner === 'function') spinner();
+    spinner();
+
+    if (window.diffEditorInstance) {
+        window.diffEditorInstance.setModel(null);
+    }
 
     currentDiffFilepath = filepath;
     document.getElementById('diff-filename').innerText = filename;
@@ -2552,22 +2572,27 @@ window.openDiffViewer = async function(filepath, filename) {
     selectEl.innerHTML = '<option value="">Loading backups...</option>';
     selectEl.disabled = true;
 
-    // 1. Mostrar la Modal
     const modal = document.getElementById('ide-diff-modal');
     modal.style.display = 'flex';
 
-    // 2. Crear la instancia del Diff Editor si no existe
     if (!diffEditorInstance) {
         diffEditorInstance = monaco.editor.createDiffEditor(document.getElementById('diff-monaco-container'), {
-            theme: 'vs', // Pon 'vs-dark' si quieres que el modal sea oscuro
+            theme: 'vs',
             readOnly: true,
             automaticLayout: true,
-            renderSideBySide: true, // Pantalla dividida
-            ignoreTrimWhitespace: false
+            renderSideBySide: true,
+            renderOverviewRuler: false,
+            ignoreTrimWhitespace: false,
+            minimap: {
+                enabled: false
+            },
+            scrollbar: {
+                verticalScrollbarSize: 10,
+                horizontalScrollbarSize: 10
+            }
         });
     }
 
-    // 3. Obtener la lista de backups desde PHP
     const formData = new FormData(document.getElementById('iform'));
     formData.append('ajax_get_backups', '1');
     formData.append('filepath', filepath);
@@ -2583,9 +2608,7 @@ window.openDiffViewer = async function(filepath, filename) {
             console.error("SERVER REJECTED DIFF REQUEST. RAW OUTPUT:", rawText);
             throw new Error("Invalid server response. Check console.");
         }
-        // -------------------------
         if (data.success && data.backups && data.backups.length > 0) {
-            // ... resto de tu código para llenar el select ...
             selectEl.innerHTML = '';
             data.backups.forEach(bak => {
                 const opt = document.createElement('option');
@@ -2597,17 +2620,19 @@ window.openDiffViewer = async function(filepath, filename) {
             await loadBackupDiff(data.backups[0].path);
         } else {
             selectEl.innerHTML = '<option value="">No history found</option>';
+            showConfirmDialog("Backup not found", "No backup file found or could not read it.", "success");
+            hideSpinner();
         }
     } catch (err) {
         console.error("Diff Engine Error:", err);
+        showConfirmDialog("Diff Engine Error", err , "error");
         selectEl.innerHTML = '<option value="">Error loading history</option>';
     }
 };
 
 window.loadBackupDiff = async function(backupPath) {
-    if (typeof spinner === 'function') spinner();
-
-    // 1. Obtener el contenido del Backup (Izquierda)
+    spinner();
+    // 1. Obtain the contents of the Backup (Left)
     const formData = new FormData(document.getElementById('iform'));
     formData.append('ajax_read_backup', '1');
     formData.append('bak_path', backupPath);
@@ -2615,9 +2640,15 @@ window.loadBackupDiff = async function(backupPath) {
     try {
         const resBak = await fetch(window.location.href, { method: 'POST', body: formData });
         const dataBak = await resBak.json();
-        const backupContent = dataBak.success ? dataBak.content : "Error loading backup content.";
+        if (!dataBak.success) {
+            if (window.diffEditorInstance) {
+                window.diffEditorInstance.setModel(null); // Limpiamos la pantalla
+            }
+            showConfirmDialog("Backup not found", dataBak.error || "No backup file found or could not read it.", "success");
+            return; // This exits the function immediately. The 'finally' block will still run to hide the spinner!
+        }
+        const backupContent = dataBak.content;
 
-        // 2. Obtener el contenido actual (Derecha)
         let currentContent = "";
         const activeFilepath = document.querySelector('input[name="filepath"]')?.value;
 
@@ -2628,7 +2659,12 @@ window.loadBackupDiff = async function(backupPath) {
         } else {
             // If it is not open, we request the current content from the server.
             const resCur = await fetch(window.location.pathname + '?ajax=1&filepath=' + encodeURIComponent(currentDiffFilepath));
-            if (resCur.ok) currentContent = await resCur.text();
+            if (resCur.ok) {
+                currentContent = await resCur.text();
+            } else {
+                showConfirmDialog("Error", "Could not load the current file for comparison." , "error");
+                return;
+            }
         }
 
         // Detecting language for syntax coloring
@@ -2652,8 +2688,9 @@ window.loadBackupDiff = async function(backupPath) {
 
     } catch (err) {
         console.error("Diff Load Error:", err);
+        showConfirmDialog("Diff Load Error", err , "error");
     } finally {
-        if (typeof hideSpinner === 'function') hideSpinner();
+        hideSpinner();
     }
 };
 
