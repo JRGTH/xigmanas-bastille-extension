@@ -10,6 +10,8 @@ let originalSidebarHTML = '';
 let currentFileData = null; // We save the data so that it is not requested again when changing tabs.
 let diffEditorInstance = null;
 let currentDiffFilepath = '';
+let contextMenu;
+let cmTargetData = null;
 // Read the configuration injected by PHP
 const cfg = window.IDE_CONFIG;
 
@@ -1114,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 1. Create and inject Context Menu
   // 1. Create and inject Context Menu
-    const contextMenu = document.createElement('div');
+    contextMenu = document.createElement('div');
     contextMenu.id = 'ide-context-menu';
     contextMenu.innerHTML = `
         <div class="ide-cm-item has-submenu" id="cm-new-menu">
@@ -1245,9 +1247,6 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.addEventListener('click', handleClickOutside);
         });
     };
-
-    // This variable stores the data of the item we clicked on
-    let cmTargetData = null;
 
     // 2. Right-Click Event (Context Menu detection)
     document.querySelector('.ide-file-list').addEventListener('contextmenu', function(e) {
@@ -1409,56 +1408,17 @@ document.addEventListener('DOMContentLoaded', () => {
         openDiffViewer(cmTargetData.filepath, cmTargetData.filename);
     });
 
-    // ==========================================
-    // ACTION: Download Single File (No Compression)
-    // ==========================================
+    // ACTION: Download Single File
     document.getElementById('cm-download-file').addEventListener('click', () => {
+        // Only allow files for this action
         if (!cmTargetData || cmTargetData.isFolder) return;
-        contextMenu.style.display = 'none';
-
-        showNotification("Download Started", `Downloading file: ${cmTargetData.filename}`);
-
-        const csrfToken = document.querySelector('input[name="authtoken"]')?.value || '';
-        const params = new URLSearchParams({
-            jailname: cfg.jailname,
-            filepath: cmTargetData.filepath,
-            ajax_download_file: '1',
-            authtoken: csrfToken,
-            t: Date.now()
-        });
-
-        const downloadUrl = window.location.pathname + '?' + params.toString();
-        triggerDownload(downloadUrl);
+        executeDownloadRequest(false);
     });
 
-    // ==========================================
-    // ACTION: Download as ZIP
-    // ==========================================
+    // ACTION: Download as ZIP (Folder or File)
     document.getElementById('cm-download-zip').addEventListener('click', () => {
         if (!cmTargetData) return;
-        contextMenu.style.display = 'none';
-
-        if ("Notification" in window && Notification.permission === "default") {
-            Notification.requestPermission();
-        }
-
-        if (typeof spinner === 'function') spinner();
-
-        const dlToken = 'dl_' + Date.now();
-        const csrfToken = document.querySelector('input[name="authtoken"]')?.value || '';
-
-        const params = new URLSearchParams({
-            jailname: cfg.jailname,
-            filepath: cmTargetData.filepath,
-            ajax_download_zip: '1',
-            dl_token: dlToken,
-            authtoken: csrfToken,
-            t: Date.now()
-        });
-
-        const downloadUrl = window.location.pathname + '?' + params.toString();
-        triggerDownload(downloadUrl);
-        trackDownloadCompletion(dlToken, cmTargetData.filename);
+        executeDownloadRequest(true);
     });
 
     // ACTION: Delete
@@ -1523,15 +1483,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 
-// ==========================================
+/**
+ * Unified logic to handle both standard and ZIP downloads
+ * @param {boolean} isZip - True for ZIP, false for single file
+ */
+function executeDownloadRequest(isZip) {
+    contextMenu.style.display = 'none';
+
+    const csrfToken = document.querySelector('input[name="authtoken"]')?.value || '';
+
+    const params = new URLSearchParams({
+        jailname: cfg.jailname,
+        filepath: cmTargetData.filepath,
+        authtoken: csrfToken,
+        t: Date.now()
+    });
+
+    params.append(isZip ? 'ajax_download_zip' : 'ajax_download_file', '1');
+
+    const downloadUrl = window.location.pathname + '?' + params.toString();
+    triggerDownload(downloadUrl);
+
+}
+
 // NATIVE NOTIFICATION HELPER
-// ==========================================
 function showNotification(title, bodyText) {
     if (!("Notification" in window)) return;
 
     const options = {
         body: bodyText,
-        // Opcional: Pon aquí la ruta real de tu icono si la tienes, si no, saldrá el logo del navegador
         icon: '/ext/bastille/images/folder.svg'
     };
 
@@ -1546,25 +1526,6 @@ function showNotification(title, bodyText) {
     }
 }
 
-// ==========================================
-// TRACKER & DOWNLOAD TRIGGER
-// ==========================================
-function trackDownloadCompletion(dlToken, fileName) {
-    const tracker = setInterval(() => {
-        if (getCookie('bastille_dl_token') === dlToken) {
-            clearInterval(tracker);
-            hideSpinner();
-            document.cookie = "bastille_dl_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-            showNotification("Download Complete", `The ZIP archive for '${fileName}' is ready.`);
-        }
-    }, 500);
-
-    setTimeout(() => {
-        clearInterval(tracker);
-        hideSpinner();
-    }, 30000);
-}
-
 function triggerDownload(url) {
     const a = document.createElement('a');
     a.style.display = 'none';
@@ -1575,11 +1536,6 @@ function triggerDownload(url) {
     setTimeout(() => {
         document.body.removeChild(a);
     }, 1000);
-}
-
-function getCookie(name) {
-    let matches = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"));
-    return matches ? decodeURIComponent(matches[1]) : undefined;
 }
 
 /**
