@@ -631,6 +631,11 @@
     filter: brightness(0.6);
 }
 
+#cm-download-zip .ide-cm-item-svg {
+    width: 14px;
+    height: 18px;
+    filter: brightness(0.6);
+}
 
 /*DEBUG
 .icon-wrapper {
@@ -751,6 +756,10 @@ body.is-dragging .ide-sidebar .tree-item a * {
 
 .ide-cm-item.has-submenu:hover .ide-cm-submenu {
     display: block;
+}
+
+.ide-cm-submenu.download-modifier {
+    min-width: 180px;
 }
 
 .cm-arrow {

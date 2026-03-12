@@ -1168,20 +1168,28 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="ide-cm-item-text">Compare History</span>
         </div>
 
-        <div class="ide-cm-item" id="cm-download-file">
+        <div class="ide-cm-item has-submenu" id="cm-download-menu">
             <div class="icon-wrapper">
                 <img src="images/fm_img/smallicons/drive-download.png" alt="download">
             </div>
             <span class="ide-cm-item-text">Download</span>
-        </div>
+            <img src="ext/bastille/images/right-arrow.svg" class="cm-arrow" alt="arrow">
 
-        <div class="ide-cm-item" id="cm-download-zip">
-            <div class="icon-wrapper">
-                <svg fill="#ffffff" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="ide-cm-item-svg">
-                    <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10l-4-4h3V9h2v3h3l-4 4z"/>
-                </svg>
+            <div class="ide-cm-submenu download-modifier">
+                <div class="ide-cm-item" id="cm-download-file">
+                    <div class="icon-wrapper">
+                        <img src="ext/bastille/images/file.svg" class="ide-cm-item-svg">
+                    </div>
+                    <span class="ide-cm-item-text">Direct Download</span>
+                </div>
+
+                <div class="ide-cm-item" id="cm-download-zip">
+                    <div class="icon-wrapper">
+                        <img src="ext/bastille/images/zip-file-icon.svg" class="ide-cm-item-svg" alt="download">
+                    </div>
+                    <span class="ide-cm-item-text">Download as ZIP...</span>
+                </div>
             </div>
-            <span class="ide-cm-item-text">Download as ZIP...</span>
         </div>
 
         <div class="ide-cm-separator"></div>
