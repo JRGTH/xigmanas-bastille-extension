@@ -8,6 +8,7 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Releases')];
 
 // --- ASYNCHRONOUS STREAMING PROCESSING ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
+    //This line allows us to avoid gluing downloads together, and prevents the PHP session from blocking the application.
     session_write_close();
 
     @ini_set('output_buffering', '0');
@@ -126,7 +127,6 @@ async function runBastilleAction(mode) {
         logArea.textContent += "\n[Error]: " + e;
     } finally {
         btnDown.disabled = btnDest.disabled = false;
-        // No añadimos el mensaje de "Process Completed" ni recargamos
     }
 }
 </script>
