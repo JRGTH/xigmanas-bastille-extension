@@ -754,70 +754,86 @@ if (isset($_POST['ajax_read_backup'])) {
 }
 
 // --- FILE DOWNLOAD SYSTEM ---
-if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_download_zip'])) {
+if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_download_zip']) || isset($_GET['ajax_download_prepared'])) {
     // Prevent session locking so the UI remains responsive
     session_write_close();
-
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     ini_set('display_errors', 0);
-    clearstatcache();
 
     $filepath = $_GET['filepath'] ?? '';
     $real_path = realpath($filepath);
     $root_path = realpath($jail_root);
 
-    // Security check: Path must be within jail boundaries
-    if ($real_path && file_exists($real_path) && strpos($real_path, $root_path) === 0) {
-        $filename = basename($real_path);
+    // Security check
+    if (($real_path && strpos($real_path, $root_path) === 0) || isset($_GET['ajax_download_prepared'])) {
 
-        // --- CASE 1: ZIP COMPRESSION ---
+        // --- CASE 1: ZIP COMPRESSION (RETURNS JSON) ---
         if (isset($_GET['ajax_download_zip'])) {
-            if (!class_exists('ZipArchive')) {
-                die("Error: ZipArchive extension is not enabled.");
-            }
-
+            header('Content-Type: application/json');
             $zip = new ZipArchive();
-            $tmp_file = tempnam(sys_get_temp_dir(), 'bastille_zip');
+            $tmp_id = 'bastille_zip_' . bin2hex(random_bytes(4));
+            $tmp_file = sys_get_temp_dir() . '/' . $tmp_id;
 
             if ($zip->open($tmp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-                if (is_dir($real_path)) {
-                    $files = new RecursiveIteratorIterator(
-                        new RecursiveDirectoryIterator($real_path, RecursiveDirectoryIterator::SKIP_DOTS),
-                        RecursiveIteratorIterator::SELF_FIRST
-                    );
-                    foreach ($files as $file) {
-                        $fPath = $file->getRealPath();
-                        $relativePath = substr($fPath, strlen($real_path) + 1);
-                        is_dir($fPath) ? $zip->addEmptyDir($relativePath) : $zip->addFile($fPath, $relativePath);
+                $filename = basename($real_path);
+
+                // Instantiate a new Fiber
+                $zipperFiber = new Fiber(function(string $path, ZipArchive $archive, string $baseName) {
+                    if (is_dir($path)) {
+                        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+                        $counter = 0;
+                        foreach ($files as $file) {
+                            $fPath = $file->getRealPath();
+                            $rel = substr($fPath, strlen($path) + 1);
+                            is_dir($fPath) ? $archive->addEmptyDir($rel) : $archive->addFile($fPath, $rel);
+                            if (++$counter % 50 === 0) {
+                                Fiber::suspend();
+                            }
+                        }
+                    } else {
+                        $archive->addFile($path, $baseName);
                     }
-                } else {
-                    $zip->addFile($real_path, $filename);
-                }
+                });
+
+                $zipperFiber->start($real_path, $zip, $filename);
+                while (!$zipperFiber->isTerminated()) { $zipperFiber->resume(); }
                 $zip->close();
 
-                header('Content-Type: application/zip');
-                header('Content-Disposition: attachment; filename="' . $filename . '.zip"');
-                header('Content-Length: ' . filesize($tmp_file));
-                readfile($tmp_file);
-                unlink($tmp_file);
+                // Here's where the fiber ends, and we respond
+                echo json_encode([
+                    'success' => true,
+                    'tmp_file' => $tmp_id,
+                    'filename' => $filename . '.zip'
+                ]);
                 exit;
             }
-        } else { // --- CASE 2: DIRECT DOWNLOAD ---
+        }
 
-            header('Content-Description: File Transfer');
+        // --- CASE 2: DELIVERY (PREPARED OR DIRECT) ---
+        $delivery_file = "";
+        $download_name = "";
+
+        if (isset($_GET['ajax_download_prepared'])) {
+            $delivery_file = sys_get_temp_dir() . '/' . basename($_GET['ajax_download_prepared']);
+            $download_name = basename($_GET['filename']);
+        } else {
+            $delivery_file = $real_path;
+            $download_name = basename($real_path);
+        }
+
+        if (file_exists($delivery_file)) {
             header('Content-Type: application/octet-stream');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-            header('Content-Length: ' . filesize($real_path));
-            header('Pragma: public');
-
-            readfile($real_path);
+            header('Content-Disposition: attachment; filename="' . $download_name . '"');
+            header('Content-Length: ' . filesize($delivery_file));
+            header('X-Lighttpd-send-file: ' . $delivery_file);
             exit;
         }
     }
     http_response_code(403);
     exit;
 }
-
 
 function rrmdir($dir) {
     if (is_dir($dir)) {

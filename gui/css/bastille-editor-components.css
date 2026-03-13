@@ -637,6 +637,17 @@
     filter: brightness(0.6);
 }
 
+#cm-download-targz .ide-cm-item-svg {
+    width: 14px;
+    height: 18px;
+    filter: brightness(0.6);
+}
+
+.cm-download-tarzst {
+    width: 25px;
+    height: 25px;
+}
+
 /*DEBUG
 .icon-wrapper {
     background: rgba(255, 0, 0, 0.1); /* Esto te mostrará la "cajita" real
