@@ -1187,8 +1187,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="icon-wrapper">
                         <img src="ext/bastille/images/zip-file-icon.svg" class="ide-cm-item-svg" alt="download">
                     </div>
-                    <span class="ide-cm-item-text">Download as ZIP...</span>
+                    <span class="ide-cm-item-text">Compress as ZIP...</span>
                 </div>
+
+                <div class="ide-cm-item" id="cm-download-targz">
+                    <div class="icon-wrapper">
+                        <img src="ext/bastille/images/gzip.svg" class="ide-cm-item-svg">
+                    </div>
+                    <span class="ide-cm-item-text">Compress as .tar.gz</span>
+                </div>
+
+                <div class="ide-cm-item" id="cm-download-tarzst">
+                    <div class="icon-wrapper">
+                        <img src="ext/bastille/images/zstd85.png" class="cm-download-tarzst">
+                    </div>
+                    <span class="ide-cm-item-text">Compress as .tar.zst</span>
+                </div>
+
             </div>
         </div>
 
@@ -1425,9 +1440,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ACTION: Download as ZIP (Folder or File)
     document.getElementById('cm-download-zip').addEventListener('click', () => {
-        if (!cmTargetData) return;
+        if (!cmTargetData) {
+            return;
+        }
         executeDownloadRequest(true);
     });
+
+    // ACTION: Download as targz
+    document.getElementById('cm-download-targz').addEventListener('click', () => {
+        if (!cmTargetData) {
+            return;
+        }
+        executeDownloadRequest('targz');
+    });
+
+    // ACTION: Download as tarzst
+    document.getElementById('cm-download-tarzst').addEventListener('click', () => {
+        if (!cmTargetData) {
+            return;
+        }
+        executeDownloadRequest('tarzst');
+    });
+
 
     // ACTION: Delete
     document.getElementById('cm-delete-file').addEventListener('click', () => {
@@ -1491,27 +1525,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 
-/**
- * Unified logic to handle both standard and ZIP downloads
- * @param {boolean} isZip - True for ZIP, false for single file
- */
-function executeDownloadRequest(isZip) {
+// Download, standard, or compressed.
+async function executeDownloadRequest(isZip) {
     contextMenu.style.display = 'none';
-
     const csrfToken = document.querySelector('input[name="authtoken"]')?.value || '';
+    const jailName = cfg.jailname;
 
-    const params = new URLSearchParams({
-        jailname: cfg.jailname,
-        filepath: cmTargetData.filepath,
-        authtoken: csrfToken,
-        t: Date.now()
-    });
+    if (!isZip) {
+        const params = new URLSearchParams({
+            jailname: jailName,
+            filepath: cmTargetData.filepath,
+            authtoken: csrfToken,
+            ajax_download_file: '1',
+            t: Date.now()
+        });
+        triggerDownload(window.location.pathname + '?' + params.toString());
+        return;
+    }
 
-    params.append(isZip ? 'ajax_download_zip' : 'ajax_download_file', '1');
+    spinner();
 
-    const downloadUrl = window.location.pathname + '?' + params.toString();
-    triggerDownload(downloadUrl);
+    const fetchUrl = `${window.location.pathname}?jailname=${jailName}&ajax_download_zip=1&filepath=${encodeURIComponent(cmTargetData.filepath)}&authtoken=${csrfToken}`;
 
+    try {
+        const response = await fetch(fetchUrl);
+        const data = await response.json();
+
+        if (data.success) {
+            hideSpinner();
+
+            showNotification("Compression complete, download started!", `Descargando ${data.filename}`);
+
+            const dlUrl = `${window.location.pathname}?jailname=${jailName}&ajax_download_prepared=${data.tmp_file}&filename=${encodeURIComponent(data.filename)}&authtoken=${csrfToken}`;
+
+            triggerDownload(dlUrl);
+        }
+    } catch (err) {
+        hideSpinner();
+        console.error("Error during processing: ", err);
+    }
 }
 
 // NATIVE NOTIFICATION HELPER
@@ -1520,7 +1572,7 @@ function showNotification(title, bodyText) {
 
     const options = {
         body: bodyText,
-        icon: '/ext/bastille/images/folder.svg'
+        icon: '/ext/bastille/images/logo-xigmanas.png'
     };
 
     if (Notification.permission === "granted") {
