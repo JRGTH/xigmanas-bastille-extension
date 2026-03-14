@@ -14,6 +14,7 @@ let contextMenu;
 let cmTargetData = null;
 // Read the configuration injected by PHP
 const cfg = window.IDE_CONFIG;
+let currentAbortController = null;
 
 const MODAL_CONFIG = {
     warning: {
@@ -1530,6 +1531,7 @@ document.addEventListener('DOMContentLoaded', () => {
  * @param {string} type - 'none', 'zip', 'targz', 'tarzst'
  */
 async function executeDownloadRequest(type) {
+    currentAbortController = new AbortController();
     contextMenu.style.display = 'none';
      const csrfToken = document.querySelector('input[name="authtoken"]')?.value || '';
      const jailName = cfg.jailname;
@@ -1559,7 +1561,9 @@ async function executeDownloadRequest(type) {
     });
 
     try {
-        const response = await fetch(window.location.pathname + '?' + fetchParams.toString());
+        const response = await fetch(window.location.pathname + '?' + fetchParams.toString(), {
+            signal: currentAbortController.signal
+        });
         const data = await response.json();
 
         if (data.success) {
@@ -1579,7 +1583,12 @@ async function executeDownloadRequest(type) {
         } else {
             showConfirmDialog("Error","Error in compression!","error");
         }
+        currentAbortController = null;
     } catch (err) {
+        if (err.name === 'AbortError') {
+            console.log("Compression canceled by the user.");
+            return;
+        }
         hideSpinner();
         showConfirmDialog("Error", err.message, "error");
     }
@@ -2723,8 +2732,6 @@ window.loadBackupDiff = async function(backupPath) {
         let currentContent = "";
         const activeFilepath = document.querySelector('input[name="filepath"]')?.value;
 
-        // Si el archivo que estamos comparando es el que está abierto AHORA en el editor,
-        // usamos el contenido del editor (así vemos las diferencias incluso si no hemos guardado)
         if (currentDiffFilepath === activeFilepath && window.editor) {
             currentContent = window.editor.getValue();
         } else {
@@ -2774,5 +2781,15 @@ window.addEventListener('beforeunload', function (e) {
     if (isDirty) {
         e.preventDefault();
         return '';
+    }
+    if (currentAbortController) {
+        console.error("Current abort controller trigger")
+        currentAbortController.abort();
+        const csrfToken = document.querySelector('input[name="authtoken"]')?.value || '';
+        const formData = new FormData();
+        formData.append('jailname', cfg.jailname);
+        formData.append('authtoken', csrfToken);
+        formData.append('ajax_abort_compression', '1'); //signal
+        navigator.sendBeacon(window.location.pathname, formData);
     }
 });

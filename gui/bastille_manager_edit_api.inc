@@ -765,6 +765,18 @@ if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_compress_type']) || 
     $filepath = $_GET['filepath'] ?? '';
     $real_path = realpath($filepath);
     $root_path = realpath($jail_root);
+    $tmp_dir = rtrim($root_path, '/') . '/tmp';
+
+    // --- GARBAGE COLLECTOR (Removes orphaned files older than 1 hour) ---
+    $temp_files = glob($tmp_dir . '/bastille_comp_*');
+    $current_time = time();
+    if ($temp_files !== false) {
+        foreach ($temp_files as $old_file) {
+            if (is_file($old_file) && ($current_time - filemtime($old_file) >= 3600)) {
+                @unlink($old_file);
+            }
+        }
+    }
 
     // Security check: must be inside jail or be a prepared temp file
     if (($real_path && strpos($real_path, $root_path) === 0) || isset($_GET['ajax_download_prepared'])) {
@@ -773,58 +785,72 @@ if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_compress_type']) || 
         if (isset($_GET['ajax_compress_type'])) {
             header('Content-Type: application/json');
 
-            $type = $_GET['ajax_compress_type']; // 'zip', 'targz', 'tarzst'
-            $filename = basename($real_path);
-            $parent_dir = dirname($real_path);
+            try {
+                $type = $_GET['ajax_compress_type']; // 'zip', 'targz', 'tarzst'
+                $filename = basename($real_path);
+                $parent_dir = dirname($real_path);
 
-            $tmp_id = 'bastille_comp_' . bin2hex(random_bytes(4));
-            $tmp_file = sys_get_temp_dir() . '/' . $tmp_id;
-            $final_name = "";
+                $tmp_id = 'bastille_comp_' . bin2hex(random_bytes(4));
+                $tmp_file = $tmp_dir . '/' . $tmp_id;
+                $final_name = "";
 
-            if ($type === 'zip') {
-                $zip = new ZipArchive();
-                if ($zip->open($tmp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-                    $zipperFiber = new Fiber(function(string $path, ZipArchive $archive, string $baseName) {
-                        if (is_dir($path)) {
-                            $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
-                            $counter = 0;
-                            foreach ($files as $file) {
-                                $fPath = $file->getRealPath();
-                                $rel = substr($fPath, strlen($path) + 1);
-                                is_dir($fPath) ? $archive->addEmptyDir($rel) : $archive->addFile($fPath, $rel);
-                                if (++$counter % 50 === 0) Fiber::suspend();
-                            }
-                        } else { $archive->addFile($path, $baseName); }
-                    });
-                    $zipperFiber->start($real_path, $zip, $filename);
-                    while (!$zipperFiber->isTerminated()) { $zipperFiber->resume(); }
-                    $zip->close();
-                    $final_name = $filename . '.zip';
+                if ($type === 'zip') {
+                    $zip = new ZipArchive();
+                    if ($zip->open($tmp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+                        $zipperFiber = new Fiber(function(string $path, ZipArchive $archive, string $baseName) {
+                            if (is_dir($path)) {
+                                $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+                                $counter = 0;
+                                foreach ($files as $file) {
+                                    $fPath = $file->getRealPath();
+                                    $rel = substr($fPath, strlen($path) + 1);
+                                    is_dir($fPath) ? $archive->addEmptyDir($rel) : $archive->addFile($fPath, $rel);
+                                    if (++$counter % 50 === 0) Fiber::suspend();
+                                }
+                            } else { $archive->addFile($path, $baseName); }
+                        });
+                        $zipperFiber->start($real_path, $zip, $filename);
+                        while (!$zipperFiber->isTerminated()) { $zipperFiber->resume(); }
+                        $zip->close();
+                        $final_name = $filename . '.zip';
+                    } else {
+                        throw new Exception("Failed to create ZIP file in: " . $tmp_dir);
+                    }
                 }
-            }
-            elseif ($type === 'targz' || $type === 'tarzst') {
-                // --- TAR LOGIC (USING YOUR PARALLEL CLASS) ---
-                $cmd = "";
-                if ($type === 'targz') {
-                    $cmd = "tar -czf " . escapeshellarg($tmp_file) . " -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
-                    $final_name = $filename . ".tar.gz";
+                elseif ($type === 'targz' || $type === 'tarzst') {
+                    // --- TAR LOGIC (USING YOUR PARALLEL CLASS) ---
+                    $cmd = "";
+                    if ($type === 'targz') {
+                        $cmd = "tar -czf " . escapeshellarg($tmp_file) . " -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
+                        $final_name = $filename . ".tar.gz";
+                    } else {
+                        // FreeBSD/Bastille tar supports zstd
+                        $cmd = "tar -cf " . escapeshellarg($tmp_file) . " --use-compress-program=zstd -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
+                        $final_name = $filename . ".tar.zst";
+                    }
+
+                    $executor = new BastilleManagerMwExecParallel([$cmd]);
+                    $executor->executeWithSelect();
                 } else {
-                    // FreeBSD/Bastille tar supports zstd
-                    $cmd = "tar -cf " . escapeshellarg($tmp_file) . " --use-compress-program=zstd -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
-                    $final_name = $filename . ".tar.zst";
+                    throw new Exception("Unsupported compression type: " . $type);
                 }
 
-                $executor = new BastilleManagerMwExecParallel([$cmd]);
-                $executor->executeWithSelect();
-            }
-
-            if (file_exists($tmp_file)) {
+                if (file_exists($tmp_file)) {
+                    echo json_encode([
+                        'success' => true,
+                        'tmp_file' => $tmp_id,
+                        'filename' => $final_name
+                    ]);
+                    exit;
+                } else {
+                    throw new Exception("Process finished but temporary file was not found.");
+                }
+            } catch(\Throwable $e) {
                 echo json_encode([
-                    'success' => true,
-                    'tmp_file' => $tmp_id,
-                    'filename' => $final_name
+                    'success' => false,
+                    'error' => $e->getMessage()
                 ]);
-                exit;
+                exit; // Prevents fall-through to Phase 2
             }
         }
 
@@ -833,7 +859,7 @@ if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_compress_type']) || 
         $download_name = "";
 
         if (isset($_GET['ajax_download_prepared'])) {
-            $delivery_file = sys_get_temp_dir() . '/' . basename($_GET['ajax_download_prepared']);
+            $delivery_file = $tmp_dir . '/' . basename($_GET['ajax_download_prepared']);
             $download_name = basename($_GET['filename']);
         } else {
             $delivery_file = $real_path;
@@ -849,6 +875,23 @@ if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_compress_type']) || 
         }
     }
     http_response_code(403);
+    exit;
+}
+
+// --- Abort compression with signal beacon ---
+if (isset($_POST['ajax_abort_compression'])) {
+    session_write_close();
+
+    $jail_root = realpath($jail_root);
+    $tmp_dir = $jail_root . '/tmp';
+
+    $temporary_trash = glob($tmp_dir . '/bastille_comp_*');
+
+    foreach ($temporary_trash as $file) {
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
     exit;
 }
 
