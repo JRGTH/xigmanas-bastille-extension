@@ -781,6 +781,8 @@ if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_compress_type']) || 
             $tmp_file = sys_get_temp_dir() . '/' . $tmp_id;
             $final_name = "";
 
+            registerTempFileCleanup($tmp_file);
+
             if ($type === 'zip') {
                 $zip = new ZipArchive();
                 if ($zip->open($tmp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
@@ -867,6 +869,20 @@ function rrmdir($dir) {
         return rmdir($dir);
     }
     return false;
+}
+
+/**
+ * Register a "callback" to delete a temporary file if the user reloads the page or the connection is lost midway through the process.
+ *
+ * @param string $tmp_file Full path of the file to monitor.
+ */
+function registerTempFileCleanup(string $tmp_file): void {
+    ignore_user_abort(false);
+    register_shutdown_function(function() use ($tmp_file) {
+        if (connection_aborted() && file_exists($tmp_file)) {
+            @unlink($tmp_file);
+        }
+    });
 }
 
 ?>
