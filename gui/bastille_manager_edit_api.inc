@@ -753,8 +753,8 @@ if (isset($_POST['ajax_read_backup'])) {
     exit; // <--- MANDATORY
 }
 
-// --- FILE DOWNLOAD SYSTEM ---
-if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_download_zip']) || isset($_GET['ajax_download_prepared'])) {
+// --- FILE DOWNLOAD & COMPRESSION ---
+if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_compress_type']) || isset($_GET['ajax_download_prepared'])) {
     // Prevent session locking so the UI remains responsive
     session_write_close();
     while (ob_get_level() > 0) {
@@ -766,52 +766,69 @@ if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_download_zip']) || i
     $real_path = realpath($filepath);
     $root_path = realpath($jail_root);
 
-    // Security check
+    // Security check: must be inside jail or be a prepared temp file
     if (($real_path && strpos($real_path, $root_path) === 0) || isset($_GET['ajax_download_prepared'])) {
 
-        // --- CASE 1: ZIP COMPRESSION (RETURNS JSON) ---
-        if (isset($_GET['ajax_download_zip'])) {
+        // --- PHASE 1: COMPRESSION LOGIC (RETURNS JSON) ---
+        if (isset($_GET['ajax_compress_type'])) {
             header('Content-Type: application/json');
-            $zip = new ZipArchive();
-            $tmp_id = 'bastille_zip_' . bin2hex(random_bytes(4));
+
+            $type = $_GET['ajax_compress_type']; // 'zip', 'targz', 'tarzst'
+            $filename = basename($real_path);
+            $parent_dir = dirname($real_path);
+
+            $tmp_id = 'bastille_comp_' . bin2hex(random_bytes(4));
             $tmp_file = sys_get_temp_dir() . '/' . $tmp_id;
+            $final_name = "";
 
-            if ($zip->open($tmp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-                $filename = basename($real_path);
-
-                // Instantiate a new Fiber
-                $zipperFiber = new Fiber(function(string $path, ZipArchive $archive, string $baseName) {
-                    if (is_dir($path)) {
-                        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
-                        $counter = 0;
-                        foreach ($files as $file) {
-                            $fPath = $file->getRealPath();
-                            $rel = substr($fPath, strlen($path) + 1);
-                            is_dir($fPath) ? $archive->addEmptyDir($rel) : $archive->addFile($fPath, $rel);
-                            if (++$counter % 50 === 0) {
-                                Fiber::suspend();
+            if ($type === 'zip') {
+                $zip = new ZipArchive();
+                if ($zip->open($tmp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+                    $zipperFiber = new Fiber(function(string $path, ZipArchive $archive, string $baseName) {
+                        if (is_dir($path)) {
+                            $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+                            $counter = 0;
+                            foreach ($files as $file) {
+                                $fPath = $file->getRealPath();
+                                $rel = substr($fPath, strlen($path) + 1);
+                                is_dir($fPath) ? $archive->addEmptyDir($rel) : $archive->addFile($fPath, $rel);
+                                if (++$counter % 50 === 0) Fiber::suspend();
                             }
-                        }
-                    } else {
-                        $archive->addFile($path, $baseName);
-                    }
-                });
+                        } else { $archive->addFile($path, $baseName); }
+                    });
+                    $zipperFiber->start($real_path, $zip, $filename);
+                    while (!$zipperFiber->isTerminated()) { $zipperFiber->resume(); }
+                    $zip->close();
+                    $final_name = $filename . '.zip';
+                }
+            }
+            elseif ($type === 'targz' || $type === 'tarzst') {
+                // --- TAR LOGIC (USING YOUR PARALLEL CLASS) ---
+                $cmd = "";
+                if ($type === 'targz') {
+                    $cmd = "tar -czf " . escapeshellarg($tmp_file) . " -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
+                    $final_name = $filename . ".tar.gz";
+                } else {
+                    // FreeBSD/Bastille tar supports zstd
+                    $cmd = "tar -cf " . escapeshellarg($tmp_file) . " --use-compress-program=zstd -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
+                    $final_name = $filename . ".tar.zst";
+                }
 
-                $zipperFiber->start($real_path, $zip, $filename);
-                while (!$zipperFiber->isTerminated()) { $zipperFiber->resume(); }
-                $zip->close();
+                $executor = new BastilleManagerMwExecParallel([$cmd]);
+                $executor->executeWithSelect();
+            }
 
-                // Here's where the fiber ends, and we respond
+            if (file_exists($tmp_file)) {
                 echo json_encode([
                     'success' => true,
                     'tmp_file' => $tmp_id,
-                    'filename' => $filename . '.zip'
+                    'filename' => $final_name
                 ]);
                 exit;
             }
         }
 
-        // --- CASE 2: DELIVERY (PREPARED OR DIRECT) ---
+        // --- PHASE 2: DELIVERY (ACTUAL DOWNLOAD) ---
         $delivery_file = "";
         $download_name = "";
 

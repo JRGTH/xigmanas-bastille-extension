@@ -1443,7 +1443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!cmTargetData) {
             return;
         }
-        executeDownloadRequest(true);
+        executeDownloadRequest('zip');
     });
 
     // ACTION: Download as targz
@@ -1525,30 +1525,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 
-// Download, standard, or compressed.
-async function executeDownloadRequest(isZip) {
+/**
+ * Unified Download Request
+ * @param {string} type - 'none', 'zip', 'targz', 'tarzst'
+ */
+async function executeDownloadRequest(type) {
     contextMenu.style.display = 'none';
-    const csrfToken = document.querySelector('input[name="authtoken"]')?.value || '';
-    const jailName = cfg.jailname;
+     const csrfToken = document.querySelector('input[name="authtoken"]')?.value || '';
+     const jailName = cfg.jailname;
 
-    if (!isZip) {
-        const params = new URLSearchParams({
+     // Direct download (Uncompressed)
+     if (type === 'none' || !type) {
+         const params = new URLSearchParams({
+             jailname: jailName,
+             filepath: cmTargetData.filepath,
+             authtoken: csrfToken,
+             ajax_download_file: '1',
+             t: Date.now()
+         });
+         triggerDownload(window.location.pathname + '?' + params.toString());
+         return;
+     }
+
+    // Compression (ZIP, TAR.GZ, TAR.ZST)
+    spinner();
+
+    const fetchParams = new URLSearchParams({
             jailname: jailName,
             filepath: cmTargetData.filepath,
             authtoken: csrfToken,
-            ajax_download_file: '1',
+            ajax_compress_type: type, // types: zip, targz o tarzst
             t: Date.now()
-        });
-        triggerDownload(window.location.pathname + '?' + params.toString());
-        return;
-    }
-
-    spinner();
-
-    const fetchUrl = `${window.location.pathname}?jailname=${jailName}&ajax_download_zip=1&filepath=${encodeURIComponent(cmTargetData.filepath)}&authtoken=${csrfToken}`;
+    });
 
     try {
-        const response = await fetch(fetchUrl);
+        const response = await fetch(window.location.pathname + '?' + fetchParams.toString());
         const data = await response.json();
 
         if (data.success) {
@@ -1556,13 +1567,21 @@ async function executeDownloadRequest(isZip) {
 
             showNotification("Compression complete, download started!", `Descargando ${data.filename}`);
 
-            const dlUrl = `${window.location.pathname}?jailname=${jailName}&ajax_download_prepared=${data.tmp_file}&filename=${encodeURIComponent(data.filename)}&authtoken=${csrfToken}`;
+            // Trigger for downloading the prepared temporary file
+            const dlParams = new URLSearchParams({
+                jailname: jailName,
+                ajax_download_prepared: data.tmp_file,
+                filename: data.filename,
+                authtoken: csrfToken
+            });
 
-            triggerDownload(dlUrl);
+            triggerDownload(window.location.pathname + '?' + dlParams.toString());
+        } else {
+            showConfirmDialog("Error","Error in compression!","error");
         }
     } catch (err) {
         hideSpinner();
-        console.error("Error during processing: ", err);
+        showConfirmDialog("Error", err.message, "error");
     }
 }
 
