@@ -1,0 +1,64 @@
+/* MAIN IDE CONTAINER */
+.ide-container {
+    display: grid;
+    /* Sidebar | Resizer | Main Area */
+    grid-template-columns: 260px 4px 1fr;
+    height: calc(100vh - 130px); /* Dynamic height based on viewport */
+    min-height: 500px;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid #999;
+    background: #fff;
+}
+
+/* SIDEBAR LAYOUT */
+.ide-sidebar {
+    display: flex;
+    flex-direction: column; /* Stack header, search, and list vertically */
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+    background-color: #f8f9fa;
+}
+
+/* VERTICAL SPLIT-PANEL RESIZER */
+.ide-resizer {
+    width: 4px;
+    cursor: col-resize;
+    background: #cbd5e0;
+    z-index: 10;
+    transition: background 0.2s;
+}
+.ide-resizer:hover,
+.ide-resizer.resizing {
+    background: #4a5568;
+}
+
+/* MAIN EDITOR AREA */
+.ide-main {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #fff;
+}
+
+/* MONACO CONTAINER FILLING REMAINING SPACE */
+#monaco-container {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* SIDEBAR TOGGLE (ZEN MODE) */
+.sidebar-hidden.ide-container {
+    grid-template-columns: 1fr !important;
+}
+.sidebar-hidden .ide-sidebar,
+.sidebar-hidden .ide-resizer {
+    display: none !important;
+}

@@ -1,4 +1,21 @@
 /* main css */
+@import url('bastille-editor-layout.css');
+@import url('bastille-editor-components.css');
+@import url('bastille-editor-quicksearch.css');
 @import url('bastille-header-refresh.css');
 @import url('bastille-table.css');
 @import url('bastille-web-terminal-modal.css');
+@import url('bastille-editor-upload-modal.css');
+@import url('bastille-editor-info-right-sidebar.css');
+@import url('bastille-editor-charts.css');
+@import url('bastille-editor-diff-modal.css');
+
+:root {
+  --icon-file-item-width: 13px;
+  --icon-file-item-height: 18px;
+  --padding-item-menu: 4px 10px;
+  --font-size-item: 13px;
+  --text-color-secondary: #1b2b41b0;
+  --icon-size-container: 20px;
+  --icon-color: #777777;
+}

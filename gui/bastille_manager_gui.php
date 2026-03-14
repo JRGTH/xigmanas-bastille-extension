@@ -927,9 +927,9 @@ $document->render();
 		</tfoot>
 	</table>
 	<div id="submit">
-		<input name="start_selected_jail" id="start_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_start;?>"/>
-		<input name="stop_selected_jail" id="stop_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_stop;?>"/>
-		<input name="restart_selected_jail" id="restart_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_restart;?>"/>
+		<input name="start_selected_jail" id="start_selected_jail" type="button" class="formbtn" value="<?=$gt_selection_start;?>"/>
+		<input name="stop_selected_jail" id="stop_selected_jail" type="button" class="formbtn" value="<?=$gt_selection_stop;?>"/>
+		<input name="restart_selected_jail" id="restart_selected_jail" type="button" class="formbtn" value="<?=$gt_selection_restart;?>"/>
 		<input name="autoboot_selected_jail" id="autoboot_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_autoboot;?>"/>
 	</div>
 

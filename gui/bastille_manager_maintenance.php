@@ -333,6 +333,19 @@ $(document).ready(function(){
         var isChecked = $(this).is(':checked');
         localStorage.setItem('bastille_show_web_terminal_button', isChecked);
     });
+
+	// --- CHECKBOX BETA EDITOR LOGIC (LocalStorage) ---
+    var $chkBeta = $("#enable_beta_editor");
+    var savedBetaState = localStorage.getItem('bastille_enable_beta_editor');
+    if (savedBetaState === 'true') {
+		$chkBeta.prop('checked', true);
+	} else {
+		$chkBeta.prop('checked', false);
+	}
+    $chkBeta.change(function() {
+		localStorage.setItem('bastille_enable_beta_editor', $(this).is(':checked'));
+	});
+
 });
 //]]>
 </script>
@@ -398,6 +411,9 @@ $(document).ready(function(){
                 <?php html_separator();?>
                 <?php html_titleline(gtext("Web terminal"));?>
                 <?php html_checkbox2('show_web_terminal_button',gtext('Show web terminal button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail row, to open the ttyd in a modal window.'),'',false);?>
+                <?php html_separator();?>
+                <?php html_titleline(gtext("File Editor v2 (Beta)"));?>
+                <?php html_checkbox2('enable_beta_editor', gtext('Enable New Editor'), '' ? true : false, gtext('Use the new editor with Quick Search and syntax highlighting instead of the legacy editor.'), '', false);?>
                 <?php html_separator();?>
 			</table>
 			<div id="remarks">
