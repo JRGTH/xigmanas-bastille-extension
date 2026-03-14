@@ -1197,7 +1197,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="ide-cm-item-text">Compress as .tar.gz</span>
                 </div>
 
-                <div class="ide-cm-item" id="cm-download-tarzst">
+                <div class="ide-cm-item" id="cm-download-tarzst" title="(facebook/zstd: Zstandard - Fast real-time compression)">
                     <div class="icon-wrapper">
                         <img src="ext/bastille/images/zstd85.png" class="cm-download-tarzst">
                     </div>
