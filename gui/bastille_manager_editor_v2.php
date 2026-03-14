@@ -30,7 +30,7 @@ if ($real_current_dir === false || strpos($real_current_dir, $jail_root) !== 0) 
 }
 
 // ROUTER AJAX (API) ---
-// If there is an asynchronous request, enter here and stop the execution of the rest.
+// If there is an asynchronous request
 if (isset($_GET['ajax'])
     || isset($_GET['ajax_search'])
     || isset($_GET['ajax_get_dir'])
@@ -48,6 +48,7 @@ if (isset($_GET['ajax'])
     || isset($_GET['ajax_download_file'])
     || isset($_GET['ajax_compress_type'])
     || isset($_GET['ajax_download_prepared'])
+    || isset($_POST['ajax_abort_compression'])
     ) {
     include 'bastille_manager_edit_api.inc';
 }
