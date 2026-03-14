@@ -13,8 +13,12 @@ if (empty($jailname)) {
 }
 
 $jail_root = realpath("{$jail_dir}/{$jailname}");
+if ($jail_root === false) {
+    header("Location: bastille_manager_gui.php");
+    exit;
+}
 $current_dir = $_GET['dir'] ?? $_POST['dir'] ?? $jail_root;
-$filepath = $_GET['filepath'] ?? $_POST['filepath'] ?? '';
+$filepath = urldecode($_GET['filepath'] ?? $_POST['filepath'] ?? '');
 
 $img_path   = "ext/bastille/images";
 $icon_folder = "<img src='{$img_path}/folder.svg' class='tree-icon' width='16' height='16'/>";
@@ -45,18 +49,26 @@ if (isset($_GET['ajax'])
     || isset($_POST['ajax_verify_hash'])
     || isset($_POST['ajax_read_backup'])
     || isset($_POST['ajax_get_backups'])
-    || isset($_GET['ajax_download_file'])
-    || isset($_GET['ajax_compress_type'])
+    || isset($_POST['ajax_download_file'])
+    || isset($_POST['ajax_compress_type'])
     || isset($_GET['ajax_download_prepared'])
-    || isset($_POST['ajax_abort_compression'])
+    || isset($_GET['ajax_job_sse'])
     ) {
     include 'bastille_manager_edit_api.inc';
+    exit;
 }
 
 // --- INITIAL STATUS LOAD ---
 $content = "";
-if (!empty($filepath) && file_exists($filepath) && is_file($filepath)) {
-    $content = file_get_contents($filepath);
+$filepath_safe = realpath($filepath);
+if (
+    !empty($filepath)
+    && $filepath_safe !== false
+    && strpos($filepath_safe, $jail_root) === 0  // dentro del jail
+    && file_exists($filepath_safe)
+    && is_file($filepath_safe)
+) {
+    $content = file_get_contents($filepath_safe);
 }
 
 $items = @scandir($real_current_dir);

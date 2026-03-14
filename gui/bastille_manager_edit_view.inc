@@ -23,7 +23,7 @@ window.IDE_CONFIG = {
         </ul>
     </td></tr>
     <tr><td class="tabcont">
-        <form action="bastille_manager_editor_v2.php?jailname=<?=urlencode($jailname)?>&dir=<?=urlencode($real_current_dir)?>&filepath=<?=urlencode($filepath)?>" method="post" name="iform" id="iform">
+        <form action="bastille_manager_editor_v2.php?jailname=<?=urlencode($jailname)?>&dir=<?=urlencode($real_current_dir)?>" method="post" name="iform" id="iform">
             
             <div class="ide-container">
                 <div class="ide-sidebar">

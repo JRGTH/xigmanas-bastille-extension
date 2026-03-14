@@ -1,5 +1,6 @@
 <?php
 // bastille_manager_edit_api.inc
+use common\session;
 
 // FILE CONTENT LOAD (SPA)
 if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
@@ -10,9 +11,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     $file_to_read = $_GET['filepath'] ?? '';
 
     if (!empty($file_to_read) && file_exists($file_to_read)) {
-        // // BLINDAJE ANTIMEMORIA: Prevenir carga de archivos masivos
+        // Files up to 5 MB to the editor
         $filesize = filesize($file_to_read);
-        $max_size = 5 * 1024 * 1024; // 5 MB límite para edición web
+        $max_size = 5 * 1024 * 1024; // 5 MB
 
         header('Content-Type: text/plain; charset=utf-8');
 
@@ -130,8 +131,10 @@ if ($_POST && isset($_POST['save'])) {
 
         if ($save_success) {
             if ($is_ajax) {
-                echo json_encode(['success' => true]);
-                exit; //
+                echo json_encode([
+                    'success' => true
+                ]);
+                exit;
             } else {
                 $savemsg = sprintf('%s %s', gtext('Saved file to'), $filepath);
             }
@@ -161,12 +164,16 @@ if ($_POST && isset($_POST['save'])) {
 
 // PARALLEL RECURSIVE SEARCH ENGINE
 if (isset($_GET['ajax_search'])) {
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     header('Content-Type: application/json; charset=utf-8');
 
     $filter = $_GET['ajax_search'];
     if (strlen($filter) < 2) {
-        echo json_encode(['items' => []]);
+        echo json_encode([
+            'items' => []
+        ]);
         exit;
     }
 
@@ -231,7 +238,9 @@ if (isset($_GET['ajax_search'])) {
 
 // LAZY LOADING
 if (isset($_GET['ajax_get_dir'])) {
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     //silence PHP errors again.
     ini_set('display_errors', 0);
     error_reporting(0);
@@ -299,7 +308,9 @@ if (isset($_GET['ajax_get_dir'])) {
 
 // --- CREATE NEW FILE OR FOLDER ---
 if (isset($_POST['create_item'])) {
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     header('Content-Type: application/json');
 
     $parent_dir = $_POST['parent_dir'] ?? '';
@@ -310,7 +321,11 @@ if (isset($_POST['create_item'])) {
 
     // Security check
     if (strpos($full_path, $jail_root) !== 0 || strpos($new_name, '..') !== false) {
-        echo json_encode(['success' => false, 'error' => 'Access denied']); exit;
+        echo json_encode([
+            'success' => false,
+            'error' => 'Access denied'
+        ]);
+        exit;
     }
 
     conf_mount_rw();
@@ -328,7 +343,9 @@ if (isset($_POST['create_item'])) {
 
 // --- UNLOCK FILES & FOLDERS (Clear FreeBSD Flags) ---
 if (isset($_POST['ajax_unlock'])) {
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     header('Content-Type: application/json; charset=utf-8');
 
     $filepath = $_POST['filepath'] ?? '';
@@ -343,7 +360,9 @@ if (isset($_POST['ajax_unlock'])) {
         $executor->executeWithSelect();
         conf_mount_ro();
         clearstatcache(true, $filepath);
-        echo json_encode(['success' => true]);
+        echo json_encode([
+            'success' => true
+        ]);
     } else {
         echo json_encode([
             'success' => false,
@@ -355,7 +374,9 @@ if (isset($_POST['ajax_unlock'])) {
 
 // --- FILE UPLOAD HANDLER ---
 if (isset($_POST['ajax_upload'])) {
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     header('Content-Type: application/json');
 
     if (empty($_FILES) && empty($_POST)) {
@@ -411,7 +432,9 @@ if (isset($_POST['ajax_upload'])) {
 
 // --- CREATE ITEM (File/Folder) ---
 if (isset($_POST['ajax_create_item'])) {
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     header('Content-Type: application/json');
 
     $parent = $_POST['parent_dir'] ?? '';
@@ -450,9 +473,11 @@ if (isset($_POST['ajax_create_item'])) {
     exit;
 }
 
-// --- 1. CHUNKED UPLOAD HANDLER (The Tank Engine) ---
+// --- CHUNKED UPLOAD HANDLER (The Tank Engine) ---
 if (isset($_POST['ajax_upload_chunk'])) {
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     header('Content-Type: application/json');
 
     $target_dir = $_POST['target_dir'] ?? '';
@@ -462,7 +487,9 @@ if (isset($_POST['ajax_upload_chunk'])) {
     $final_path = rtrim($target_dir, '/') . '/' . ltrim($rel_path, '/');
     $dir = dirname($final_path);
 
-    if (!is_dir($dir)) { mkdir($dir, 0755, true); }
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
 
     $mode = ($chunk_idx === 0) ? "wb" : "ab";
     $out = fopen($final_path, $mode);
@@ -474,17 +501,24 @@ if (isset($_POST['ajax_upload_chunk'])) {
         stream_copy_to_stream($in, $out);
         fclose($in);
         fclose($out);
-        echo json_encode(['success' => true]);
+        echo json_encode([
+            'success' => true
+        ]);
     } else {
-        echo json_encode(['success' => false, 'error' => 'Disk write error']);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Disk write error'
+        ]);
     }
     exit;
 }
 
-// --- 2. REMOTE DOWNLOAD HANDLER (Import via URL) ---
+// --- REMOTE DOWNLOAD HANDLER (Import via URL) ---
 if (isset($_POST['ajax_remote_download'])) {
-    // // Clear buffers
-    while (ob_get_level() > 0) ob_end_clean();
+    // Clear buffers
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     header('Content-Type: application/json');
 
     $url = $_POST['remote_url'] ?? '';
@@ -498,7 +532,7 @@ if (isset($_POST['ajax_remote_download'])) {
         exit;
     }
 
-    // // Extract filename from URL (fallback to timestamp if missing)
+    // Extract filename from URL (fallback to timestamp if missing)
     $fileName = basename(parse_url($url, PHP_URL_PATH));
     if (empty($fileName)) {
         $fileName = 'downloaded_file_' . time();
@@ -506,7 +540,7 @@ if (isset($_POST['ajax_remote_download'])) {
 
     $save_to = rtrim($target_dir, '/') . '/' . $fileName;
 
-    // // Open file for writing
+    // Open file for writing
     $fp = fopen($save_to, 'w+');
     if (!$fp) {
         echo json_encode([
@@ -516,11 +550,11 @@ if (isset($_POST['ajax_remote_download'])) {
         exit;
     }
 
-    // // Use cURL to download directly to the server's disk
+    // Use cURL to download directly to the server's disk
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_FILE, $fp);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_FAILONERROR, true); // // Throw error if 404
+    curl_setopt($ch, CURLOPT_FAILONERROR, true); // Throw error if 404
 
     $success = curl_exec($ch);
     $error = curl_error($ch);
@@ -534,7 +568,7 @@ if (isset($_POST['ajax_remote_download'])) {
             'fileName' => $fileName
         ]);
     } else {
-        // // Clean up the empty/broken file if download failed
+        // Clean up the empty/broken file if download failed
         unlink($save_to);
         echo json_encode([
             'success' => false,
@@ -546,14 +580,19 @@ if (isset($_POST['ajax_remote_download'])) {
 
 // --- GET FILE INFO HANDLER (Cleaned & Optimized) ---
 if (isset($_POST['ajax_get_info'])) {
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     header('Content-Type: application/json');
 
     $target_path = $_POST['target_path'] ?? '';
 
     // 1. Security Check
     if (empty($target_path) || !file_exists($target_path)) {
-        echo json_encode(['success' => false, 'error' => 'Item not found']);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Item not found'
+        ]);
         exit;
     }
 
@@ -580,7 +619,9 @@ if (isset($_POST['ajax_get_info'])) {
     $usage_percent = ($disk_total > 0) ? round(($bytes / $disk_total) * 100, 2) : 0;
 
     // Ensure at least 0.1% is visible if the file is not empty
-    if ($usage_percent < 0.1 && $bytes > 0) $usage_percent = 0.1;
+    if ($usage_percent < 0.1 && $bytes > 0) {
+        $usage_percent = 0.1;
+    }
 
     // 5. User & Permissions (POSIX)
     $owner_info = function_exists('posix_getpwuid') ? posix_getpwuid($stat['uid']) : ['name' => $stat['uid']];
@@ -659,17 +700,22 @@ function formatPermissions($perms) {
 // This is the one that receives the "signal" with the hash calculated by the JS at the beginning.
 // --- 2. HASH VERIFICATION (The Auditor) ---
 if (isset($_POST['ajax_verify_hash'])) {
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     header('Content-Type: application/json');
 
     $target_dir = $_POST['target_dir'] ?? '';
     $rel_path = $_POST['relative_path'] ?? '';
-    $expected_hash = $_POST['expected_hash'] ?? ''; // // La señal del JS
+    $expected_hash = $_POST['expected_hash'] ?? ''; // The JS signal
 
     $final_path = rtrim($target_dir, '/') . '/' . ltrim($rel_path, '/');
 
     if (!file_exists($final_path)) {
-        echo json_encode(['success' => false, 'error' => 'File not found on server']);
+        echo json_encode([
+            'success' => false,
+            'error' => 'File not found on server'
+        ]);
         exit;
     }
 
@@ -692,7 +738,9 @@ if (isset($_POST['ajax_verify_hash'])) {
 // --- GET BACKUPS LIST (DIFF VIEWER) ---
 if (isset($_POST['ajax_get_backups'])) {
     // 1. Absolute cleanup of output buffers and error reporting to ensure clean JSON
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     ini_set('display_errors', 0);
     error_reporting(0);
     header('Content-Type: application/json; charset=utf-8');
@@ -701,7 +749,10 @@ if (isset($_POST['ajax_get_backups'])) {
 
     // Validate that the target file exists
     if (empty($filepath) || !file_exists($filepath)) {
-        echo json_encode(['success' => false, 'error' => 'File not found on server.']);
+        echo json_encode([
+            'success' => false,
+            'error' => 'File not found on server.'
+        ]);
         exit;
     }
 
@@ -730,13 +781,18 @@ if (isset($_POST['ajax_get_backups'])) {
         }
     }
 
-    echo json_encode(['success' => true, 'backups' => $backups]);
-    exit; // <--- CRITICAL: Prevents XigmaNAS from appending the <!DOCTYPE HTML footer
+    echo json_encode([
+        'success' => true,
+        'backups' => $backups
+    ]);
+    exit;
 }
 
 // --- READ SPECIFIC BACKUP CONTENT ---
 if (isset($_POST['ajax_read_backup'])) {
-    while (ob_get_level() > 0) ob_end_clean();
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     ini_set('display_errors', 0);
     error_reporting(0);
     header('Content-Type: application/json; charset=utf-8');
@@ -746,31 +802,37 @@ if (isset($_POST['ajax_read_backup'])) {
     // Security check: Verify file exists and is a .bak inside a .backups folder
     if (file_exists($bak_path) && strpos($bak_path, '.backups') !== false && strpos($bak_path, '.bak') !== false) {
         $content = file_get_contents($bak_path);
-        echo json_encode(['success' => true, 'content' => $content]);
+        echo json_encode([
+            'success' => true,
+            'content' => $content
+        ]);
     } else {
-        echo json_encode(['success' => false, 'error' => 'Backup file not accessible or invalid path.']);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Backup file not accessible or invalid path.'
+        ]);
     }
-    exit; // <--- MANDATORY
+    exit;
 }
 
 // --- FILE DOWNLOAD & COMPRESSION ---
-if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_compress_type']) || isset($_GET['ajax_download_prepared'])) {
-    // Prevent session locking so the UI remains responsive
+if (isDownloadRequest()) {
     session_write_close();
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
     ini_set('display_errors', 0);
+    error_reporting(0);
 
-    $filepath = $_GET['filepath'] ?? '';
+    $filepath = $_POST['filepath'] ?? $_GET['filepath'] ?? '';
     $real_path = realpath($filepath);
     $root_path = realpath($jail_root);
-    $tmp_dir = rtrim($root_path, '/') . '/tmp';
+    $tmp_dir = rtrim($root_path, '/') . '/root/tmp';
 
-    // --- GARBAGE COLLECTOR (Removes orphaned files older than 1 hour) ---
+    // --- GARBAGE COLLECTOR ---
     $temp_files = glob($tmp_dir . '/bastille_comp_*');
-    $current_time = time();
     if ($temp_files !== false) {
+        $current_time = time();
         foreach ($temp_files as $old_file) {
             if (is_file($old_file) && ($current_time - filemtime($old_file) >= 3600)) {
                 @unlink($old_file);
@@ -778,92 +840,124 @@ if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_compress_type']) || 
         }
     }
 
-    // Security check: must be inside jail or be a prepared temp file
-    if (($real_path && strpos($real_path, $root_path) === 0) || isset($_GET['ajax_download_prepared'])) {
+    if (($real_path && strpos($real_path, $root_path) === 0) || isset($_GET['ajax_download_prepared']) || isset($_GET['ajax_job_sse'])) {
 
-        // --- PHASE 1: COMPRESSION LOGIC (RETURNS JSON) ---
-        if (isset($_GET['ajax_compress_type'])) {
+        // --- SSE: PROGRESS ENDPOINT ---
+        if (isset($_GET['ajax_job_sse'])) {
+            validateGetToken();
+            header('Content-Type: text/event-stream');
+            header('Cache-Control: no-cache');
+            header('X-Accel-Buffering: no');
+
+            $job_id = preg_replace('/[^a-zA-Z0-9_]/', '', $_GET['job_id'] ?? '');
+            if (!preg_match('/^bastille_comp_[a-f0-9]{8}$/', $job_id)) {
+                echo "data: " . json_encode(['status' => 'error', 'error' => 'Invalid job_id']) . "\n\n";
+                flush();
+                exit;
+            }
+
+            $tmp_file = $tmp_dir . '/' . $job_id;
+            $filename = basename($_GET['filename'] ?? '');
+
+            while (true) {
+                if (file_exists($tmp_file)) {
+                    echo "data: " . json_encode([
+                        'status' => 'done',
+                        'tmp_file' => $job_id,
+                        'filename' => $filename
+                    ]) . "\n\n";
+                    flush();
+                    break;
+                }
+                echo "data: " . json_encode([
+                    'status' => 'running'
+                ]) . "\n\n";
+                flush();
+                sleep(1);
+            }
+            exit;
+        }
+
+        // --- PHASE 1: COMPRESSION ---
+        if (isset($_POST['ajax_compress_type'])) {
             header('Content-Type: application/json');
 
             try {
-                $type = $_GET['ajax_compress_type']; // 'zip', 'targz', 'tarzst'
+                $type = $_POST['ajax_compress_type'];
                 $filename = basename($real_path);
                 $parent_dir = dirname($real_path);
-
                 $tmp_id = 'bastille_comp_' . bin2hex(random_bytes(4));
                 $tmp_file = $tmp_dir . '/' . $tmp_id;
-                $final_name = "";
+                $tmp_wip = $tmp_file . '.wip';
+                $final_name = '';
 
                 if ($type === 'zip') {
-                    $zip = new ZipArchive();
-                    if ($zip->open($tmp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-                        $zipperFiber = new Fiber(function(string $path, ZipArchive $archive, string $baseName) {
-                            if (is_dir($path)) {
-                                $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
-                                $counter = 0;
-                                foreach ($files as $file) {
-                                    $fPath = $file->getRealPath();
-                                    $rel = substr($fPath, strlen($path) + 1);
-                                    is_dir($fPath) ? $archive->addEmptyDir($rel) : $archive->addFile($fPath, $rel);
-                                    if (++$counter % 50 === 0) Fiber::suspend();
-                                }
-                            } else { $archive->addFile($path, $baseName); }
-                        });
-                        $zipperFiber->start($real_path, $zip, $filename);
-                        while (!$zipperFiber->isTerminated()) { $zipperFiber->resume(); }
-                        $zip->close();
-                        $final_name = $filename . '.zip';
-                    } else {
-                        throw new Exception("Failed to create ZIP file in: " . $tmp_dir);
-                    }
-                }
-                elseif ($type === 'targz' || $type === 'tarzst') {
-                    // --- TAR LOGIC (USING YOUR PARALLEL CLASS) ---
-                    $cmd = "";
-                    if ($type === 'targz') {
-                        $cmd = "tar -czf " . escapeshellarg($tmp_file) . " -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
-                        $final_name = $filename . ".tar.gz";
-                    } else {
-                        // FreeBSD/Bastille tar supports zstd
-                        $cmd = "tar -cf " . escapeshellarg($tmp_file) . " --use-compress-program=zstd -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
-                        $final_name = $filename . ".tar.zst";
+                    $final_name = $filename . '.zip';
+                    $args_file = $tmp_dir . '/' . $tmp_id . '_args.json';
+                    $worker_path = __DIR__ . '/bastille_manager_zip_worker.php';
+
+                    if (!file_exists($worker_path)) {
+                        throw new Exception("ZIP worker not found: " . $worker_path);
                     }
 
+                    file_put_contents($args_file, json_encode([
+                        $real_path, $tmp_wip, $tmp_file, $filename
+                    ]));
+
+                    $executor = new BastilleManagerMwExecParallel(
+                        ['/usr/local/bin/php ' . escapeshellarg($worker_path) . ' ' . escapeshellarg($args_file)]
+                    );
+                    $executor->executeDetached();
+
+                } elseif ($type === 'targz' || $type === 'tarzst') {
+                    if ($type === 'targz') {
+                        $final_name = $filename . '.tar.gz';
+                        $cmd = "tar -czf " . escapeshellarg($tmp_wip) . " -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
+                    } else {
+                        $final_name = $filename . '.tar.zst';
+                        $cmd = "tar -cf " . escapeshellarg($tmp_wip) . " --use-compress-program=zstd -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
+                    }
+
+                    $cmd .= " && mv " . escapeshellarg($tmp_wip) . " " . escapeshellarg($tmp_file);
                     $executor = new BastilleManagerMwExecParallel([$cmd]);
-                    $executor->executeWithSelect();
+                    $executor->executeDetached();
+
                 } else {
                     throw new Exception("Unsupported compression type: " . $type);
                 }
 
-                if (file_exists($tmp_file)) {
-                    echo json_encode([
-                        'success' => true,
-                        'tmp_file' => $tmp_id,
-                        'filename' => $final_name
-                    ]);
-                    exit;
-                } else {
-                    throw new Exception("Process finished but temporary file was not found.");
-                }
-            } catch(\Throwable $e) {
+                $json = json_encode([
+                    'success' => true,
+                    'async' => true,
+                    'job_id' => $tmp_id,
+                    'filename' => $final_name
+                ]);
+                header('Content-Length: ' . strlen($json));
+                header('Connection: close');
+                echo $json;
+                flush();
+                exit;
+
+            } catch (\Throwable $e) {
                 echo json_encode([
                     'success' => false,
                     'error' => $e->getMessage()
                 ]);
-                exit; // Prevents fall-through to Phase 2
+                exit;
             }
         }
 
-        // --- PHASE 2: DELIVERY (ACTUAL DOWNLOAD) ---
-        $delivery_file = "";
-        $download_name = "";
-
+        // --- PHASE 2: DELIVERY ---
         if (isset($_GET['ajax_download_prepared'])) {
+            validateGetToken();
             $delivery_file = $tmp_dir . '/' . basename($_GET['ajax_download_prepared']);
             $download_name = basename($_GET['filename']);
-        } else {
+        } elseif (isset($_POST['ajax_download_file'])) {
             $delivery_file = $real_path;
             $download_name = basename($real_path);
+        } else {
+            http_response_code(400);
+            exit;
         }
 
         if (file_exists($delivery_file)) {
@@ -874,28 +968,13 @@ if (isset($_GET['ajax_download_file']) || isset($_GET['ajax_compress_type']) || 
             exit;
         }
     }
+
     http_response_code(403);
     exit;
 }
 
-// --- Abort compression with signal beacon ---
-if (isset($_POST['ajax_abort_compression'])) {
-    session_write_close();
-
-    $jail_root = realpath($jail_root);
-    $tmp_dir = $jail_root . '/tmp';
-
-    $temporary_trash = glob($tmp_dir . '/bastille_comp_*');
-
-    foreach ($temporary_trash as $file) {
-        if (is_file($file)) {
-            @unlink($file);
-        }
-    }
-    exit;
-}
-
-function rrmdir($dir) {
+function rrmdir($dir)
+{
     if (is_dir($dir)) {
         $objects = scandir($dir);
         foreach ($objects as $object) {
@@ -912,4 +991,20 @@ function rrmdir($dir) {
     return false;
 }
 
-?>
+function validateGetToken(): void
+{
+    $authtoken = $_GET['authtoken'] ?? '';
+
+    if (!session::is_valid_authtoken($authtoken)) {
+        http_response_code(401);
+        exit;
+    }
+}
+
+function isDownloadRequest(): bool
+{
+    return isset($_POST['ajax_download_file'])
+        || isset($_POST['ajax_compress_type'])
+        || isset($_GET['ajax_download_prepared'])
+        || isset($_GET['ajax_job_sse']);
+}
