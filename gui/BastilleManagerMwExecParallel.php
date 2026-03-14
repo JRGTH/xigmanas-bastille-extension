@@ -125,6 +125,24 @@ class BastilleManagerMwExecParallel
         return $this->results;
     }
 
+
+    public function executeDetached(): void
+    {
+        $command = $this->commands[0] ?? '';
+        if (empty($command)) return;
+
+        $process = proc_open($command, [
+            0 => ['file', '/dev/null', 'r'],
+            1 => ['file', '/dev/null', 'w'],
+            2 => ['file', '/dev/null', 'w'],
+        ], $pipes);
+
+        if (is_resource($process)) {
+            //Do not call proc_close — leave the process orphaned. PHP's garbage collector will close the resource without waiting
+            unset($process);
+        }
+    }
+
     /**
      * Gets total execution time in ms
      * @return string
