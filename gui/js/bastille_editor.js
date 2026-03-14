@@ -1581,7 +1581,8 @@ async function executeDownloadRequest(type) {
 
             triggerDownload(window.location.pathname + '?' + dlParams.toString());
         } else {
-            showConfirmDialog("Error","Error in compression!","error");
+            showConfirmDialog("Error", data.error || "Unknown compression error from server", "error");
+            hideSpinner();
         }
         currentAbortController = null;
     } catch (err) {
