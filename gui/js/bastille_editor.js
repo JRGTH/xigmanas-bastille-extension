@@ -1188,7 +1188,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="ide-cm-item has-submenu" id="cm-download-menu">
             <div class="icon-wrapper">
-                <img src="images/fm_img/smallicons/drive-download.png" alt="download">
+                <img src="images/fm_img/smallicons/drive-download.png" class="cm-download-menu" alt="download">
             </div>
             <span class="ide-cm-item-text">Download</span>
             <img src="ext/bastille/images/right-arrow.svg" class="cm-arrow" alt="arrow">
@@ -1224,6 +1224,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             </div>
         </div>
+
+       <div class="ide-cm-item" id="cm-refresh-dir">
+           <div class="icon-wrapper">
+               <div class="icon-wrapper">
+                <img src="images/fm_img/smallicons/arrow_refresh_small.png" class="cm-refresh-dir" alt="refresh">
+               </div>
+           </div>
+           <span class="ide-cm-item-text">Refresh Directory</span>
+       </div>
 
         <div class="ide-cm-separator"></div>
 
@@ -1363,17 +1372,56 @@ document.addEventListener('DOMContentLoaded', () => {
         const downloadZipBtn = document.getElementById('cm-download-zip');
         downloadZipBtn.style.display = 'flex'; // ZIP always available
 
+        // --- REFRESH DIR ---
+        const refreshBtn = document.getElementById('cm-refresh-dir');
+        const refreshText = refreshBtn.querySelector('.ide-cm-item-text');
+
+        refreshText.innerText = cmTargetData.isFolder ? 'Refresh Directory' : 'Refresh Parent Dir';
+        refreshBtn.style.display = 'flex';
+
         // Position and display menu
         contextMenu.style.display = 'block';
+
         let left = e.pageX;
         let top = e.pageY;
 
-        // Boundary checks
-        if (left + contextMenu.offsetWidth > window.innerWidth) left = window.innerWidth - contextMenu.offsetWidth;
-        if (top + contextMenu.offsetHeight > window.innerHeight) top = window.innerHeight - contextMenu.offsetHeight;
+        const menuWidth = contextMenu.offsetWidth;
+        const menuHeight = contextMenu.offsetHeight;
+
+        if (e.clientX + menuWidth > window.innerWidth) {
+            left = e.pageX - menuWidth;
+        }
+
+        if (e.clientY + menuHeight > window.innerHeight) {
+            top = e.pageY - menuHeight;
+        }
 
         contextMenu.style.left = `${left}px`;
         contextMenu.style.top = `${top}px`;
+
+    });
+
+    // --- SMART REPOSITIONING OF SUBMENUS ---
+    document.querySelectorAll('.has-submenu').forEach(menuItem => {
+        menuItem.addEventListener('mouseenter', function() {
+            const sub = this.querySelector('.ide-cm-submenu');
+            if (!sub) {
+                return;
+            }
+
+            sub.style.top = '0px';
+            sub.style.bottom = 'auto';
+
+            const rect = this.getBoundingClientRect();
+            const realHeight = sub.getBoundingClientRect().height || sub.scrollHeight;
+            const windowHeight = window.innerHeight;
+
+            // If the submenu is at the bottom, we pin it to the top
+            if (rect.top + realHeight > windowHeight - 10) {
+                sub.style.top = 'auto';
+                sub.style.bottom = '0px';
+            }
+        });
     });
 
     // 3. Global click and Escape listeners to hide menu
@@ -1480,6 +1528,28 @@ document.addEventListener('DOMContentLoaded', () => {
         executeDownloadRequest('tarzst');
     });
 
+    // ACTION: Refresh Directory
+    document.getElementById('cm-refresh-dir').addEventListener('click', async () => {
+        if (!cmTargetData) return;
+        contextMenu.style.display = 'none';
+
+        // ES6: Extraemos el target dinámicamente
+        const targetPath = cmTargetData.isFolder
+            ? cmTargetData.filepath
+            : cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
+
+        if (typeof spinner === 'function') spinner();
+
+        try {
+            await refreshDir(targetPath);
+            showNotification("Refreshed", `Directory contents updated from server.`);
+        } catch (e) {
+            console.error("Refresh UI Error:", e);
+            showConfirmDialog("Error", "Failed to refresh directory.", "error");
+        } finally {
+            if (typeof hideSpinner === 'function') hideSpinner();
+        }
+    });
 
     // ACTION: Delete
     document.getElementById('cm-delete-file').addEventListener('click', () => {
@@ -1617,19 +1687,21 @@ async function executeDownloadRequest(type) {
         localStorage.setItem('bastille_pending_job', JSON.stringify({
             job_id: data.job_id,
             filename: data.filename,
+            parentDir: cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/')).trim(),
             jailName,
             csrfToken
         }));
 
-        openSSE(data.job_id, data.filename, jailName, csrfToken);
+        const parentDir = cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/')).trim();
+        openSSE(data.job_id, data.filename, jailName, csrfToken, parentDir);
 
     } catch (err) {
         hideSpinner();
-         showConfirmDialog("Error", err.message, "error");
+        showConfirmDialog("Error", err.message, "error");
     }
 }
 
-function openSSE(jobId, filename, jailName, csrfToken) {
+function openSSE(jobId, filename, jailName, csrfToken, parentDir = null) {
     const params = new URLSearchParams({
         jailname: jailName,
         authtoken: csrfToken,
@@ -1648,6 +1720,11 @@ function openSSE(jobId, filename, jailName, csrfToken) {
         evtSource.close();
         hideSpinner();
         setTimeout(() => localStorage.removeItem('bastille_pending_job'), 3000);
+
+        console.log('[onmessage] parentDir:', parentDir);
+
+        const tmpDir = cfg.jailRoot + '/root/tmp';
+        injectItemIntoTree(tmpDir, data.filename, false);
 
         showNotification("Compression complete!", `Downloading ${data.filename}`);
 
@@ -1672,10 +1749,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-        const { job_id, filename, jailName, csrfToken } = JSON.parse(pending);
+        const { job_id, filename, jailName, csrfToken, parentDir } = JSON.parse(pending);
         localStorage.removeItem('bastille_pending_job');
         spinner();
-        openSSE(job_id, filename, jailName, csrfToken);
+        openSSE(job_id, filename, jailName, csrfToken, parentDir);
     } catch (_) {
         localStorage.removeItem('bastille_pending_job');
     }
@@ -2503,6 +2580,123 @@ function switchTab(tabName, element) {
         setTimeout(() => {
             renderStorageChart();
         }, 100);
+    }
+}
+
+/**
+ * Refreshes directory content without flickering (Smart DOM Diffing)
+ * Syncs the UI with the server state by adding/removing only changed nodes.
+ */
+async function refreshDir(dirPath) {
+    const cleanDest = dirPath.replace(/\/$/, '');
+    const cleanRoot = cfg.jailRoot.replace(/\/$/, '');
+    let targetLi = null;
+
+    // 1. Find the target folder in the tree
+    if (cleanDest === cleanRoot) {
+        targetLi = document.querySelector('#fileList > li.folder-item');
+    } else {
+        const folderLinks = document.querySelectorAll('.folder-item > a');
+        for (let a of folderLinks) {
+            const onclick = a.getAttribute('onclick') || '';
+            if (onclick.includes(`'${cleanDest}'`) || onclick.includes(`"${cleanDest}"`)) {
+                targetLi = a.closest('li');
+                break;
+            }
+        }
+    }
+
+    if (!targetLi) return;
+
+    let ul = targetLi.querySelector('ul');
+
+    // If the folder is visually closed, we don't need to refresh the inner DOM
+    if (!ul) return;
+
+    const params = new URLSearchParams({
+        'ajax_get_dir': cleanDest,
+        'jailname': cfg.jailname
+    });
+
+    try {
+        const res = await fetch(`${window.location.pathname}?${params.toString()}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        // Map server state
+        const serverFolderNames = data.folders.map(f => f.name);
+        const serverFileNames = data.files.map(f => f.name);
+
+        // PHASE 1: REMOVAL
+        // Remove items from DOM that no longer exist on the server
+        const currentItems = Array.from(ul.children);
+        currentItems.forEach(li => {
+            if (li.classList.contains('is-recursive') || li.classList.contains('no-results')) return;
+
+            const nameSpan = li.querySelector('a span:not(.tree-caret)');
+            if (!nameSpan) return;
+            const itemName = nameSpan.innerText.trim();
+            const isFolder = li.classList.contains('folder-item');
+
+            if (isFolder && !serverFolderNames.includes(itemName)) {
+                li.remove();
+            } else if (!isFolder && !serverFileNames.includes(itemName)) {
+                li.remove();
+            }
+        });
+
+        // PHASE 2: INJECT NEW FOLDERS
+        const existingFolders = Array.from(ul.querySelectorAll('.folder-item a span:not(.tree-caret)')).map(s => s.innerText.trim());
+
+        data.folders.forEach(folder => {
+            if (!existingFolders.includes(folder.name)) {
+                const isLocked = folder.flag && folder.flag.includes('schg');
+                const lockIcon = isLocked ? `<img src="ext/bastille/images/lock.svg" class="lock-icon" style="width:14px; margin-left:5px;">` : '';
+                const safePath = (cleanDest + '/' + folder.name).replace(/'/g, "\\'");
+
+                const li = document.createElement('li');
+                li.className = 'tree-item folder-item';
+                li.dataset.flag = folder.flag || '';
+                li.innerHTML = `
+                    <a href="javascript:void(0)" onclick="toggleFolder(this, '${safePath}')">
+                        <span class="tree-caret"><img src="ext/bastille/images/right-arrow.svg" style="width: 20px;"></span>
+                        ${cfg.icons.folder} <span>${folder.name}</span> ${lockIcon}
+                    </a>
+                `;
+
+                // Keep folders at the top
+                const firstFile = ul.querySelector('.file-item');
+                if (firstFile) {
+                    ul.insertBefore(li, firstFile);
+                } else {
+                    ul.appendChild(li);
+                }
+            }
+        });
+
+        // PHASE 3: INJECT NEW FILES
+        const existingFiles = Array.from(ul.querySelectorAll('.file-item a span:not(.tree-caret)')).map(s => s.innerText.trim());
+
+        data.files.forEach(file => {
+            if (!existingFiles.includes(file.name)) {
+                const isLocked = file.flag && file.flag.includes('schg');
+                const lockIcon = isLocked ? `<img src="ext/bastille/images/lock.svg" class="lock-icon" style="width:14px; margin-left:5px;">` : '';
+                const editUrl = `?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(cleanDest)}&filepath=${encodeURIComponent(cleanDest + '/' + file.name)}`;
+
+                const li = document.createElement('li');
+                li.className = 'tree-item file-item';
+                li.dataset.flag = file.flag || '';
+                li.innerHTML = `
+                    <a href="${editUrl}" onclick="if(typeof spinner === 'function') spinner();">
+                        ${cfg.icons.file} <span>${file.name}</span> ${lockIcon}
+                    </a>
+                `;
+                ul.appendChild(li);
+            }
+        });
+
+    } catch (err) {
+        console.error("Smart Refresh Error:", err);
     }
 }
 

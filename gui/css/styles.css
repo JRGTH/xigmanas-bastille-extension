@@ -11,8 +11,8 @@
 @import url('bastille-editor-diff-modal.css');
 
 :root {
-  --icon-file-item-width: 13px;
-  --icon-file-item-height: 18px;
+  --icon-file-item-width: 20px !important;
+  --icon-file-item-height: 20px !important;
   --padding-item-menu: 4px 10px;
   --font-size-item: 13px;
   --text-color-secondary: #1b2b41b0;
