@@ -2621,7 +2621,9 @@ async function refreshDir(dirPath) {
     try {
         const res = await fetch(`${window.location.pathname}?${params.toString()}`);
         const data = await res.json();
-        if (data.error) throw new Error(data.error);
+        if (data.error) {
+            throw new Error(data.error);
+        }
 
         // Map server state
         const serverFolderNames = data.folders.map(f => f.name);
@@ -2631,10 +2633,14 @@ async function refreshDir(dirPath) {
         // Remove items from DOM that no longer exist on the server
         const currentItems = Array.from(ul.children);
         currentItems.forEach(li => {
-            if (li.classList.contains('is-recursive') || li.classList.contains('no-results')) return;
+            if (li.classList.contains('is-recursive') || li.classList.contains('no-results')) {
+                return;
+            }
 
             const nameSpan = li.querySelector('a span:not(.tree-caret)');
-            if (!nameSpan) return;
+            if (!nameSpan) {
+                return;
+            }
             const itemName = nameSpan.innerText.trim();
             const isFolder = li.classList.contains('folder-item');
 
@@ -2646,7 +2652,8 @@ async function refreshDir(dirPath) {
         });
 
         // PHASE 2: INJECT NEW FOLDERS
-        const existingFolders = Array.from(ul.querySelectorAll('.folder-item a span:not(.tree-caret)')).map(s => s.innerText.trim());
+        const existingFolders = Array.from(ul.querySelectorAll('.folder-item a span:not(.tree-caret)'))
+            .map(s => s.innerText.trim());
 
         data.folders.forEach(folder => {
             if (!existingFolders.includes(folder.name)) {
@@ -2657,6 +2664,11 @@ async function refreshDir(dirPath) {
                 const li = document.createElement('li');
                 li.className = 'tree-item folder-item';
                 li.dataset.flag = folder.flag || '';
+
+                // 1. Prepare for animation (Start invisible)
+                li.style.opacity = '0';
+                li.style.transition = 'opacity 0.5s ease-in, background-color 0.5s';
+
                 li.innerHTML = `
                     <a href="javascript:void(0)" onclick="toggleFolder(this, '${safePath}')">
                         <span class="tree-caret"><img src="ext/bastille/images/right-arrow.svg" style="width: 20px;"></span>
@@ -2664,18 +2676,29 @@ async function refreshDir(dirPath) {
                     </a>
                 `;
 
-                // Keep folders at the top
                 const firstFile = ul.querySelector('.file-item');
                 if (firstFile) {
                     ul.insertBefore(li, firstFile);
                 } else {
                     ul.appendChild(li);
                 }
+
+                // 2. Trigger the green flash effect
+                requestAnimationFrame(() => {
+                    li.style.opacity = '1';
+                    const a = li.querySelector('a');
+                    a.style.backgroundColor = 'rgba(76, 175, 80, 0.3)';
+                    a.style.borderRadius = '4px';
+                    setTimeout(() => {
+                        a.style.backgroundColor = '';
+                    }, 1500);
+                });
             }
         });
 
-        // PHASE 3: INJECT NEW FILES
-        const existingFiles = Array.from(ul.querySelectorAll('.file-item a span:not(.tree-caret)')).map(s => s.innerText.trim());
+        // --- PHASE 3: INJECT NEW FILES ---
+        const existingFiles = Array.from(ul.querySelectorAll('.file-item a span:not(.tree-caret)'))
+                .map(s => s.innerText.trim());
 
         data.files.forEach(file => {
             if (!existingFiles.includes(file.name)) {
@@ -2686,17 +2709,34 @@ async function refreshDir(dirPath) {
                 const li = document.createElement('li');
                 li.className = 'tree-item file-item';
                 li.dataset.flag = file.flag || '';
+
+                // 1. Prepare for animation (Start invisible)
+                li.style.opacity = '0';
+                li.style.transition = 'opacity 0.5s ease-in, background-color 0.5s';
+
                 li.innerHTML = `
                     <a href="${editUrl}" onclick="if(typeof spinner === 'function') spinner();">
                         ${cfg.icons.file} <span>${file.name}</span> ${lockIcon}
                     </a>
                 `;
                 ul.appendChild(li);
+
+                // 2. Trigger the green flash effect
+                requestAnimationFrame(() => {
+                    li.style.opacity = '1';
+                    const a = li.querySelector('a');
+                    a.style.backgroundColor = 'rgba(76, 175, 80, 0.3)';
+                    a.style.borderRadius = '4px';
+                    setTimeout(() => {
+                        a.style.backgroundColor = '';
+                    }, 1500);
+                });
             }
         });
 
     } catch (err) {
-        console.error("Smart Refresh Error:", err);
+        console.error("Smart Refresh Error:", err.message);
+        showConfirmDialog("Refresh error", err.message, "error")
     }
 }
 
