@@ -849,8 +849,11 @@ if (isDownloadRequest()) {
             header('Cache-Control: no-cache');
             header('X-Accel-Buffering: no');
 
-            $job_id = preg_replace('/[^a-zA-Z0-9_]/', '', $_GET['job_id'] ?? '');
-            if (!preg_match('/^bastille_comp_[a-f0-9]{8}_.+$/', $job_id)) {
+            $allowed_chars  = '/[^a-zA-Z0-9_.\-]/';
+            $valid_job_id   = '/^bastille_comp_[a-f0-9]{8}_.+$/';
+
+            $job_id = preg_replace($allowed_chars, '', $_GET['job_id'] ?? '');
+            if (!preg_match($valid_job_id, $job_id)) {
                 echo "data: " . json_encode([
                     'status' => 'error',
                      'error' => 'Invalid job_id'
