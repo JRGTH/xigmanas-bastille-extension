@@ -850,8 +850,11 @@ if (isDownloadRequest()) {
             header('X-Accel-Buffering: no');
 
             $job_id = preg_replace('/[^a-zA-Z0-9_]/', '', $_GET['job_id'] ?? '');
-            if (!preg_match('/^bastille_comp_[a-f0-9]{8}$/', $job_id)) {
-                echo "data: " . json_encode(['status' => 'error', 'error' => 'Invalid job_id']) . "\n\n";
+            if (!preg_match('/^bastille_comp_[a-f0-9]{8}_.+$/', $job_id)) {
+                echo "data: " . json_encode([
+                    'status' => 'error',
+                     'error' => 'Invalid job_id'
+                ]) . "\n\n";
                 flush();
                 exit;
             }
@@ -886,18 +889,25 @@ if (isDownloadRequest()) {
                 $type = $_POST['ajax_compress_type'];
                 $filename = basename($real_path);
                 $parent_dir = dirname($real_path);
-                $tmp_id = 'bastille_comp_' . bin2hex(random_bytes(4));
+                $uid = bin2hex(random_bytes(4));
+
+                $final_name = match($type) {
+                    'zip' => $filename . '.zip',
+                    'targz' => $filename . '.tar.gz',
+                    'tarzst' => $filename . '.tar.zst',
+                    default => throw new \Exception("Unsupported compression type: " . $type)
+                };
+
+                $tmp_id = 'bastille_comp_' . $uid . '_' . $final_name;
                 $tmp_file = $tmp_dir . '/' . $tmp_id;
                 $tmp_wip = $tmp_file . '.wip';
-                $final_name = '';
 
                 if ($type === 'zip') {
-                    $final_name = $filename . '.zip';
-                    $args_file = $tmp_dir . '/' . $tmp_id . '_args.json';
+                    $args_file = $tmp_dir . '/' . $uid . '_args.json';
                     $worker_path = __DIR__ . '/bastille_manager_zip_worker.php';
 
                     if (!file_exists($worker_path)) {
-                        throw new Exception("ZIP worker not found: " . $worker_path);
+                        throw new \Exception("ZIP worker not found: " . $worker_path);
                     }
 
                     file_put_contents($args_file, json_encode([
@@ -909,21 +919,17 @@ if (isDownloadRequest()) {
                     );
                     $executor->executeDetached();
 
-                } elseif ($type === 'targz' || $type === 'tarzst') {
-                    if ($type === 'targz') {
-                        $final_name = $filename . '.tar.gz';
-                        $cmd = "tar -czf " . escapeshellarg($tmp_wip) . " -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
-                    } else {
-                        $final_name = $filename . '.tar.zst';
-                        $cmd = "tar -cf " . escapeshellarg($tmp_wip) . " --use-compress-program=zstd -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
-                    }
-
+                } elseif ($type === 'targz') {
+                    $cmd = "tar -czf " . escapeshellarg($tmp_wip) . " -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
                     $cmd .= " && mv " . escapeshellarg($tmp_wip) . " " . escapeshellarg($tmp_file);
                     $executor = new BastilleManagerMwExecParallel([$cmd]);
                     $executor->executeDetached();
 
-                } else {
-                    throw new Exception("Unsupported compression type: " . $type);
+                } elseif ($type === 'tarzst') {
+                    $cmd = "tar -cf " . escapeshellarg($tmp_wip) . " --use-compress-program=zstd -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
+                    $cmd .= " && mv " . escapeshellarg($tmp_wip) . " " . escapeshellarg($tmp_file);
+                    $executor = new BastilleManagerMwExecParallel([$cmd]);
+                    $executor->executeDetached();
                 }
 
                 $json = json_encode([
