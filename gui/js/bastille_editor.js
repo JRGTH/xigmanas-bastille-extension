@@ -1724,7 +1724,7 @@ function openSSE(jobId, filename, jailName, csrfToken, parentDir = null) {
         console.log('[onmessage] parentDir:', parentDir);
 
         const tmpDir = cfg.jailRoot + '/root/tmp';
-        injectItemIntoTree(tmpDir, data.filename, false);
+        refreshDir(tmpDir);
 
         showNotification("Compression complete!", `Downloading ${data.filename}`);
 
