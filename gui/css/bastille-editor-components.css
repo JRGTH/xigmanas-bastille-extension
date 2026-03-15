@@ -660,6 +660,11 @@
     filter: brightness(0.6);
 }
 
+#cm-download-tarlz4 .ide-cm-item-svg {
+    width: var(--icon-file-item-width);
+    height: var(--icon-file-item-height);
+}
+
 .cm-download-tarzst {
     width: 25px;
     height: 25px;

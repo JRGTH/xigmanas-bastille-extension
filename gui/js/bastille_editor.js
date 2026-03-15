@@ -1215,6 +1215,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="ide-cm-item-text">Compress as .tar.gz</span>
                 </div>
 
+                <div class="ide-cm-item" id="cm-download-tarlz4">
+                    <div class="icon-wrapper">
+                        <img src="ext/bastille/images/lz4.svg" class="ide-cm-item-svg">
+                    </div>
+                    <span class="ide-cm-item-text">Compress as .tar.lz4</span>
+                </div>
+
                 <div class="ide-cm-item" id="cm-download-tarzst" title="(facebook/zstd: Zstandard - Fast real-time compression)">
                     <div class="icon-wrapper">
                         <img src="ext/bastille/images/zstd85.png" class="cm-download-tarzst">
@@ -1518,6 +1525,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         executeDownloadRequest('targz');
+    });
+
+    // ACTION: Download as tarlz4
+    document.getElementById('cm-download-tarlz4').addEventListener('click', () => {
+        if (!cmTargetData) {
+            return;
+        }
+        executeDownloadRequest('tarlz4');
     });
 
     // ACTION: Download as tarzst
@@ -2490,8 +2505,7 @@ if (dropZone) {
     });
 }
 
-// // --- FILE INFO SIDEBAR LOGIC ---
-
+// --- FILE INFO SIDEBAR LOGIC ---
 function closeInfoSidebar() {
     document.getElementById('ide-info-sidebar').classList.remove('open');
 }

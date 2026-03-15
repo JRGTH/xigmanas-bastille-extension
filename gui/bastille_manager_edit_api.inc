@@ -852,12 +852,11 @@ if (isDownloadRequest()) {
             $allowed_chars  = '/[^a-zA-Z0-9_.\-]/';
             $valid_job_id   = '/^bastille_comp_[a-f0-9]{8}_.+$/';
 
-            $job_id = preg_replace($allowed_chars, '', $_GET['job_id'] ?? '');
+            $job_id  = preg_replace('/[^a-zA-Z0-9_.\-\s()]/', '', $_GET['job_id'] ?? '');
+            $job_id  = basename($job_id);
+
             if (!preg_match($valid_job_id, $job_id)) {
-                echo "data: " . json_encode([
-                    'status' => 'error',
-                     'error' => 'Invalid job_id'
-                ]) . "\n\n";
+                echo "data: " . json_encode(['status' => 'error', 'error' => 'Invalid job_id']) . "\n\n";
                 flush();
                 exit;
             }
@@ -895,10 +894,11 @@ if (isDownloadRequest()) {
                 $uid = bin2hex(random_bytes(4));
 
                 $final_name = match($type) {
-                    'zip' => $filename . '.zip',
-                    'targz' => $filename . '.tar.gz',
+                    'zip'    => $filename . '.zip',
+                    'targz'  => $filename . '.tar.gz',
+                    'tarlz4' => $filename . '.tar.lz4',
                     'tarzst' => $filename . '.tar.zst',
-                    default => throw new \Exception("Unsupported compression type: " . $type)
+                    default  => throw new \Exception("Unsupported compression type: " . $type)
                 };
 
                 $tmp_id = 'bastille_comp_' . $uid . '_' . $final_name;
@@ -927,9 +927,13 @@ if (isDownloadRequest()) {
                     $cmd .= " && mv " . escapeshellarg($tmp_wip) . " " . escapeshellarg($tmp_file);
                     $executor = new BastilleManagerMwExecParallel([$cmd]);
                     $executor->executeDetached();
-
                 } elseif ($type === 'tarzst') {
                     $cmd = "tar -cf " . escapeshellarg($tmp_wip) . " --use-compress-program=zstd -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
+                    $cmd .= " && mv " . escapeshellarg($tmp_wip) . " " . escapeshellarg($tmp_file);
+                    $executor = new BastilleManagerMwExecParallel([$cmd]);
+                    $executor->executeDetached();
+                } elseif ($type === 'tarlz4') {
+                    $cmd = "tar -cf " . escapeshellarg($tmp_wip) . " --use-compress-program=lz4 -C " . escapeshellarg($parent_dir) . " " . escapeshellarg($filename);
                     $cmd .= " && mv " . escapeshellarg($tmp_wip) . " " . escapeshellarg($tmp_file);
                     $executor = new BastilleManagerMwExecParallel([$cmd]);
                     $executor->executeDetached();
