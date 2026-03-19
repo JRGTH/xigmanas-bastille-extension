@@ -1,298 +1,437 @@
-// modules/search.js
+// modules/tree.js
 
-import { cfg }                              from './state.js';
-import { spinner, hideSpinner }             from './ui.js';
-import { syncSidebarWithFolder }            from './tree.js';
-import { setSelectedIndex, setSearchTimer,
-         setSidebarTimer, setOriginalSidebarHTML,
-         selectedIndex, searchTimer,
-         sidebarTimer, originalSidebarHTML } from './state.js';
+import { cfg, isDirty, isInjectingCode,
+         setIsDirty, setIsInjectingCode }  from './state.js';
+import { spinner, hideSpinner,
+         updateBreadcrumbs }               from './ui.js';
+import { showConfirmDialog }               from './modal.js';
+import { clearFilter }                     from './search.js';
 
-// --- QUICK SEARCH ---
-const qsModal           = document.getElementById('quick-search-modal');
-const qsBackdrop        = document.getElementById('quick-search-backdrop');
-const qsInput           = document.getElementById('qs-input');
-const qsClearBtn        = document.getElementById('qs-clear-btn');
-const qsResultsList     = document.getElementById('qs-results-list');
-const qsHistoryContainer = document.getElementById('qs-history-container');
-const qsBadges          = document.getElementById('qs-badges');
+const BINARY_EXTS = new Set([
+    'png','jpg','jpeg','gif','svg','ico','mp3','mp4','mkv','avi','mov','wav','flac',
+    'iso','gz','zip','tar','rar','7z','pdf','bin','exe','dll','so','db','sqlite'
+]);
 
-let searchHistory = JSON.parse(localStorage.getItem('bastilleSearchHistory')) || [];
+// --- HELPERS ---
+function renderLockIcon(flag) {
+    return flag && flag !== '0'
+        ? `<img src="ext/bastille/images/lock.svg" class="lock-icon" title="Flags: ${flag}">`
+        : '';
+}
 
-function renderHistory() {
-    if (searchHistory.length === 0) {
-        qsHistoryContainer.style.display = 'none';
-        return;
-    }
-    qsHistoryContainer.style.display = 'flex';
-    qsBadges.innerHTML = '';
-    searchHistory.forEach((term) => {
-        const badge = document.createElement('span');
-        badge.className = 'qs-badge';
-        badge.innerHTML = `${term} <span class="badge-delete" onclick="event.stopPropagation(); removeHistoryItem('${term}')">&times;</span>`;
-        badge.onclick = () => { qsInput.value = term; runQuickSearch(); };
-        qsBadges.appendChild(badge);
+function buildFolderLi(name, fullPath, flag) {
+    const safePath = fullPath.replace(/'/g, "\\'");
+    const li       = document.createElement('li');
+    li.className   = 'tree-item folder-item';
+    li.dataset.flag = flag || '';
+    li.innerHTML   = `
+        <a href="javascript:void(0)" onclick="toggleFolder(this, '${safePath}')">
+            ${cfg.icons.caret} ${cfg.icons.folder} <span>${name}</span> ${renderLockIcon(flag)}
+        </a>`;
+    return li;
+}
+
+function buildFileLi(name, fullPath, dirPath, flag) {
+    const editUrl = `?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(dirPath)}&filepath=${encodeURIComponent(fullPath)}`;
+    const li      = document.createElement('li');
+    li.className  = 'tree-item file-item';
+    li.dataset.flag = flag || '';
+    li.innerHTML  = `
+        <a href="${editUrl}" onclick="if(typeof spinner === 'function') spinner();">
+            ${cfg.icons.file} <span>${name}</span> ${renderLockIcon(flag)}
+        </a>`;
+    return li;
+}
+
+function flashNew(li) {
+    li.style.opacity    = '0';
+    li.style.transition = 'opacity 0.5s ease-in, background-color 0.5s';
+    requestAnimationFrame(() => {
+        li.style.opacity = '1';
+        const a = li.querySelector('a');
+        if (a) {
+            a.style.backgroundColor = 'rgba(76, 175, 80, 0.3)';
+            a.style.borderRadius    = '4px';
+            setTimeout(() => { a.style.backgroundColor = ''; }, 1500);
+        }
     });
 }
 
-export function removeHistoryItem(term) {
-    searchHistory = searchHistory.filter(t => t !== term);
-    localStorage.setItem('bastilleSearchHistory', JSON.stringify(searchHistory));
-    renderHistory();
-}
-window.removeHistoryItem = removeHistoryItem;
+// --- TOGGLE FOLDER ---
+export function toggleFolder(element, path) {
+    const li      = element.parentElement;
+    let subList   = li.querySelector('ul');
 
-function saveHistory(term) {
-    if (!term?.trim()) return;
-    term = term.trim().toLowerCase();
-    searchHistory = searchHistory.filter(t => t !== term);
-    searchHistory.unshift(term);
-    if (searchHistory.length > 5) searchHistory.pop();
-    localStorage.setItem('bastilleSearchHistory', JSON.stringify(searchHistory));
-    renderHistory();
-}
-
-export function openQuickSearch() {
-    qsModal.style.display = 'block';
-    qsBackdrop.style.display = 'block';
-    renderHistory();
-    qsInput.value = '';
-    runQuickSearch();
-    setTimeout(() => qsInput.focus(), 100);
-}
-
-export function closeQuickSearch() {
-    qsModal.style.display = 'none';
-    qsBackdrop.style.display = 'none';
-}
-
-function clearQuickSearch() {
-    qsInput.value = '';
-    runQuickSearch();
-    qsInput.focus();
-}
-
-function updateSelection(items) {
-    Array.from(items).forEach(li => li.classList.remove('selected'));
-    if (items[selectedIndex]) {
-        items[selectedIndex].classList.add('selected');
-        items[selectedIndex].scrollIntoView({ block: 'nearest' });
-    }
-}
-
-function runQuickSearch() {
-    setSelectedIndex(-1);
-    const filter = qsInput.value.trim();
-    qsClearBtn.style.display = filter.length > 0 ? 'flex' : 'none';
-
-    if (filter.length < 2) {
-        qsResultsList.innerHTML = '<li style="padding: 15px; color:#888;">Type at least 2 chars...</li>';
+    if (subList) {
+        const isHidden = subList.style.display === 'none';
+        subList.style.display = isHidden ? 'block' : 'none';
+        isHidden ? li.classList.add('open') : li.classList.remove('open');
         return;
     }
 
-    clearTimeout(searchTimer);
-    setSearchTimer(setTimeout(() => {
-        spinner();
-        qsResultsList.innerHTML = '<li style="padding: 15px; color:#888;">Searching recursively...</li>';
+    spinner();
 
-        const url = new URL(window.location.origin + window.location.pathname);
-        url.searchParams.set('jailname', cfg.jailname);
-        url.searchParams.set('ajax_search', filter);
-
-        fetch(url)
-            .then(r => r.json())
-            .then(data => {
-                const perfInfo = document.getElementById('qs-perf-info');
-                if (perfInfo) perfInfo.innerText = data.perf;
-                qsResultsList.innerHTML = '';
-
-                if (!data.items?.length) {
-                    qsResultsList.innerHTML = `<li class="no-results" style="padding: 20px; text-align: center; color: #999;"><div style="font-size: 24px;">No files found!</div></li>`;
-                    return;
-                }
-
-                data.items.forEach(file => {
-                    const li   = document.createElement('li');
-                    const a    = document.createElement('a');
-                    const icon = file.type === 'folder'
-                        ? '<img src="ext/bastille/images/folder.svg" style="width:16px; margin-right:8px; vertical-align:middle;">'
-                        : '<img src="ext/bastille/images/file.svg" style="width:16px; margin-right:8px; vertical-align:middle;">';
-
-                    a.innerHTML = `<span class="qs-item-title">${icon}${file.name}</span><span class="qs-item-path">${file.relative}</span>`;
-
-                    if (file.type === 'folder') {
-                        a.href = '#';
-                        a.addEventListener('click', async (e) => {
-                            e.preventDefault();
-                            saveHistory(filter);
-                            closeQuickSearch();
-                            await syncSidebarWithFolder(file.full);
-                        });
-                    } else {
-                        a.href = `bastille_manager_editor_v2.php?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
-                        a.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            saveHistory(filter);
-                            closeQuickSearch();
-                            const fakeLi   = document.createElement('li');
-                            fakeLi.className = 'tree-item is-recursive';
-                            fakeLi.style.display = 'none';
-                            const fakeLink = document.createElement('a');
-                            fakeLink.href  = a.href;
-                            fakeLi.appendChild(fakeLink);
-                            document.querySelector('.ide-file-list').appendChild(fakeLi);
-                            fakeLink.click();
-                            fakeLi.remove();
-                        });
-                    }
-
-                    li.appendChild(a);
-                    qsResultsList.appendChild(li);
-                });
-            })
-            .catch(() => {
-                qsResultsList.innerHTML = '<li style="padding: 15px; color:red;">Search engine offline.</li>';
-            })
-            .finally(() => hideSpinner());
-    }, 400));
-}
-
-// --- SIDEBAR FILTER ---
-export function filterFiles() {
-    const input    = document.getElementById('fileFilter');
-    const clearBtn = document.getElementById('clearFilterBtn');
-    const ul       = document.getElementById('fileList');
-    const filter   = input.value.toLowerCase().trim();
-
-    if (originalSidebarHTML === '' && filter !== '') setOriginalSidebarHTML(ul.innerHTML);
-    clearBtn.style.display = filter.length > 0 ? 'flex' : 'none';
-
-    Array.from(ul.getElementsByTagName('li')).forEach(li => {
-        const a        = li.getElementsByTagName('a')[0];
-        const txtValue = a ? (a.textContent || a.innerText) : '';
-        li.style.display = txtValue.toLowerCase().includes(filter) ? '' : 'none';
-    });
-
-    clearTimeout(sidebarTimer);
-    if (filter.length >= 2) {
-        setSidebarTimer(setTimeout(() => fetchSearchRecursive(filter), 500));
-    } else if (filter === '') {
-        clearFilter();
-    }
-}
-
-export function clearFilter() {
-    const input = document.getElementById('fileFilter');
-    const ul    = document.getElementById('fileList');
-    input.value = '';
-
-    if (originalSidebarHTML !== '') {
-        ul.innerHTML = originalSidebarHTML;
-        setOriginalSidebarHTML('');
-    }
-
-    Array.from(ul.getElementsByTagName('li')).forEach(li => li.style.display = '');
-    document.getElementById('clearFilterBtn').style.display = 'none';
-    input.focus();
-}
-window.clearFilter = clearFilter;
-
-function fetchSearchRecursive(term) {
-    const ul  = document.getElementById('fileList');
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('jailname', cfg.jailname);
-    url.searchParams.set('ajax_search', term);
+    url.searchParams.set('ajax_get_dir', path);
 
-    fetch(url)
-        .then(res => res.json())
+    return fetch(url)
+        .then(async res => {
+            const raw = await res.text();
+            try { return JSON.parse(raw); }
+            catch { console.error('CRITICAL PHP ERROR:', raw); throw new Error('Server returned invalid JSON.'); }
+        })
         .then(data => {
-            ul.querySelectorAll('.is-recursive, .no-results').forEach(el => el.remove());
+            if (data.error) throw new Error(data.error);
 
-            if (!data.items?.length) {
-                const li = document.createElement('li');
-                li.className = 'no-results';
-                li.innerHTML = '<span style="padding:10px; color:#888; font-style:italic;">No matches found...</span>';
-                ul.appendChild(li);
-                return;
+            subList = document.createElement('ul');
+            subList.className   = 'ide-file-list';
+            subList.style.paddingLeft = '15px';
+
+            data.folders.forEach(f => subList.appendChild(buildFolderLi(f.name, path + '/' + f.name, f.flag)));
+            data.files.forEach(f   => subList.appendChild(buildFileLi(f.name, path + '/' + f.name, path, f.flag)));
+
+            li.appendChild(subList);
+            li.classList.add('open');
+        })
+        .catch(err => {
+            console.error('Tree Load Error:', err);
+            li.classList.remove('open');
+            showConfirmDialog('Directory Load Error', err.message || 'Failed to read directory.', 'error');
+        })
+        .finally(() => hideSpinner());
+}
+window.toggleFolder = toggleFolder;
+
+// --- SYNC SIDEBAR WITH FILE ---
+export async function syncSidebarWithFile() {
+    const targetFile = cfg.filepath;
+    if (!targetFile) return;
+
+    const relativePath = targetFile.replace(cfg.jailRoot, '');
+    const segments     = relativePath.split('/').filter(s => s !== '');
+    segments.pop();
+
+    let currentPath       = cfg.jailRoot.replace(/\/$/, '');
+    let $currentContainer = document.getElementById('fileList');
+    if (!$currentContainer) return;
+
+    for (const segment of segments) {
+        currentPath += '/' + segment;
+        const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
+            .find(a => Array.from(a.querySelectorAll('span')).some(s => s.innerText.trim() === segment));
+
+        if (!folderLink) break;
+
+        const li      = folderLink.parentElement;
+        const subList = li.querySelector('ul');
+
+        if (subList && subList.style.display !== 'none' && li.classList.contains('open')) {
+            $currentContainer = subList;
+        } else {
+            await toggleFolder(folderLink, currentPath);
+            const nextUl = li.querySelector('ul');
+            if (nextUl) $currentContainer = nextUl;
+            else break;
+        }
+    }
+
+    setTimeout(() => {
+        const targetLink = Array.from(document.querySelectorAll('.file-item > a'))
+            .find(a => new URL(a.href, window.location.origin).searchParams.get('filepath') === targetFile);
+
+        if (!targetLink) return;
+
+        const li = targetLink.closest('.tree-item');
+        let parent = li.parentElement;
+        while (parent && parent.id !== 'fileList') {
+            if (parent.tagName === 'UL') parent.style.display = 'block';
+            if (parent.tagName === 'LI') parent.classList.add('open');
+            parent = parent.parentElement;
+        }
+
+        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+        li.classList.add('active');
+        li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+}
+
+// --- SYNC SIDEBAR WITH FOLDER ---
+export async function syncSidebarWithFolder(targetPath) {
+    const fileFilterInput = document.getElementById('fileFilter');
+    if (fileFilterInput?.value !== '') clearFilter();
+
+    const relativePath = targetPath.replace(cfg.jailRoot, '').replace(/^\/+/, '');
+    const segments     = relativePath.split('/').filter(s => s !== '');
+
+    let currentPath       = cfg.jailRoot.replace(/\/$/, '');
+    let $currentContainer = document.getElementById('fileList');
+    if (!$currentContainer) return;
+
+    let targetLi = null;
+
+    if (segments.length === 0) {
+        const rootFolder = $currentContainer.querySelector('li.folder-item');
+        if (rootFolder) {
+            if (!rootFolder.classList.contains('open')) await toggleFolder(rootFolder.querySelector('a'), currentPath);
+            targetLi = rootFolder;
+        }
+    } else {
+        for (const segment of segments) {
+            currentPath += '/' + segment;
+            const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
+                .find(a => Array.from(a.querySelectorAll('span')).some(s => s.innerText.trim() === segment));
+
+            if (!folderLink) break;
+
+            const li      = folderLink.parentElement;
+            targetLi      = li;
+            const subList = li.querySelector('ul');
+
+            if (subList && subList.style.display !== 'none' && li.classList.contains('open')) {
+                $currentContainer = subList;
+            } else {
+                await toggleFolder(folderLink, currentPath);
+                const nextUl = li.querySelector('ul');
+                if (nextUl) $currentContainer = nextUl;
+                else break;
+            }
+        }
+    }
+
+    if (targetLi) {
+        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+        targetLi.classList.add('active');
+        setTimeout(() => {
+            (targetLi.querySelector('a') || targetLi).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+    }
+}
+window.syncSidebarWithFolder = syncSidebarWithFolder;
+
+// --- REFRESH DIR (smart diff) ---
+export async function refreshDir(dirPath) {
+    const cleanDest = dirPath.replace(/\/$/, '');
+    const cleanRoot = cfg.jailRoot.replace(/\/$/, '');
+
+    let targetLi = cleanDest === cleanRoot
+        ? document.querySelector('#fileList > li.folder-item')
+        : Array.from(document.querySelectorAll('.folder-item > a'))
+            .find(a => {
+                const oc = a.getAttribute('onclick') || '';
+                return oc.includes(`'${cleanDest}'`) || oc.includes(`"${cleanDest}"`);
+            })?.closest('li') ?? null;
+
+    if (!targetLi) return;
+    const ul = targetLi.querySelector('ul');
+    if (!ul) return;
+
+    const params = new URLSearchParams({ ajax_get_dir: cleanDest, jailname: cfg.jailname });
+
+    try {
+        const res  = await fetch(`${window.location.pathname}?${params.toString()}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        const serverFolders = data.folders.map(f => f.name);
+        const serverFiles   = data.files.map(f => f.name);
+
+        // Phase 1 — remove stale items
+        Array.from(ul.children).forEach(li => {
+            if (li.classList.contains('is-recursive') || li.classList.contains('no-results')) return;
+            const nameSpan = li.querySelector('a span:not(.tree-caret)');
+            if (!nameSpan) return;
+            const name     = nameSpan.innerText.trim();
+            const isFolder = li.classList.contains('folder-item');
+            if (isFolder ? !serverFolders.includes(name) : !serverFiles.includes(name)) li.remove();
+        });
+
+        // Phase 2 — inject new folders
+        const existingFolders = new Set(
+            Array.from(ul.querySelectorAll('.folder-item a span:not(.tree-caret)')).map(s => s.innerText.trim())
+        );
+        data.folders.forEach(f => {
+            if (existingFolders.has(f.name)) return;
+            const li = buildFolderLi(f.name, cleanDest + '/' + f.name, f.flag);
+            const firstFile = ul.querySelector('.file-item');
+            firstFile ? ul.insertBefore(li, firstFile) : ul.appendChild(li);
+            flashNew(li);
+        });
+
+        // Phase 3 — inject new files
+        const existingFiles = new Set(
+            Array.from(ul.querySelectorAll('.file-item a span:not(.tree-caret)')).map(s => s.innerText.trim())
+        );
+        data.files.forEach(f => {
+            if (existingFiles.has(f.name)) return;
+            const li = buildFileLi(f.name, cleanDest + '/' + f.name, cleanDest, f.flag);
+            ul.appendChild(li);
+            flashNew(li);
+        });
+
+    } catch (err) {
+        console.error('Smart Refresh Error:', err.message);
+        showConfirmDialog('Refresh error', err.message, 'error');
+    }
+}
+
+// --- SPA CLICK HANDLER ---
+export function initTreeClickHandler() {
+    document.querySelector('.ide-file-list').addEventListener('click', async (e) => {
+        const link = e.target.closest('a');
+        if (!link || link.getAttribute('onclick')?.includes('toggleFolder')) return;
+
+        const url      = new URL(link.href, window.location.origin);
+        const filepath = url.searchParams.get('filepath');
+        if (!filepath) return;
+
+        e.preventDefault();
+
+        if (isDirty) {
+            hideSpinner();
+            const ok = await showConfirmDialog('Unsaved changes', 'You have made changes. If you switch files now, you will lose your changes.', 'warning');
+            if (!ok) return;
+            clearDirtyState();
+        }
+
+        const ext = filepath.split('.').pop().toLowerCase();
+
+        if (BINARY_EXTS.has(ext)) {
+            if (window.editor) {
+                setIsInjectingCode(true);
+                window.editor.setValue(`/*\n * BASTILLE EDITOR WARNING\n * ------------------------\n * The file '${filepath.split('/').pop()}' is a binary or media file.\n * It cannot be safely displayed or edited in a text editor.\n */`);
+                window.editor.updateOptions({ readOnly: true });
+                setIsInjectingCode(false);
+                setIsDirty(false);
+                hideSpinner();
+            }
+            document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+            link.closest('.tree-item')?.classList.add('active');
+            _syncFormInputs(filepath);
+            url.searchParams.delete('ajax');
+            url.searchParams.delete('filepath');
+            window.history.pushState({ filepath }, '', url.toString());
+            updateBreadcrumbs(filepath);
+            return;
+        }
+
+        document.body.style.cursor = 'wait';
+        spinner();
+
+        try {
+            url.searchParams.set('ajax', '1');
+            const response = await fetch(url.toString());
+            if (!response.ok) throw new Error('Fetch failed');
+
+            const fileContent = await response.text();
+
+            if (window.editor) {
+                setIsInjectingCode(true);
+                window.editor.setValue(fileContent);
+                window.editor.updateOptions({ readOnly: false });
+                setIsInjectingCode(false);
+                setIsDirty(false);
             }
 
-            data.items.forEach(file => {
-                if (ul.querySelector(`li.is-recursive a[href*="${encodeURIComponent(file.full)}"]`)) return;
+            const isSearchResult = link.closest('.is-recursive');
+            if (isSearchResult) {
+                clearFilter();
+                document.querySelector('.ide-search input')?.dispatchEvent(new Event('input'));
+                document.querySelectorAll('.is-recursive, .no-results').forEach(el => el.remove());
+                document.querySelectorAll('.ide-file-list > li').forEach(el => el.style.display = '');
+                cfg.filepath = filepath;
+                setTimeout(async () => await syncSidebarWithFile(), 50);
+            } else {
+                document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+                link.closest('.tree-item')?.classList.add('active');
+            }
 
-                const li       = document.createElement('li');
-                li.className   = 'tree-item is-recursive ' + (file.type === 'folder' ? 'folder-item' : 'file-item');
-                const safePath = file.full.replace(/'/g, "\\'");
-                const editUrl  = `?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
+            _syncFormInputs(filepath);
+            url.searchParams.delete('ajax');
+            url.searchParams.delete('filepath');
+            window.history.pushState({ filepath }, '', url.toString());
+            updateBreadcrumbs(filepath);
 
-                li.innerHTML = file.type === 'folder'
-                    ? `<a href="javascript:void(0)" onclick="syncSidebarWithFolder('${safePath}')" title="${file.full}">
-                           <strong>${cfg.icons.folder} ${file.name}</strong>
-                           <span class="search-result-path">${file.relative}</span>
-                       </a>`
-                    : `<a href="${editUrl}" title="${file.full}">
-                           <strong>${cfg.icons.file} ${file.name}</strong>
-                           <span class="search-result-path">${file.relative}</span>
-                       </a>`;
+        } catch (error) {
+            console.error('Editor Error:', error);
+            showConfirmDialog('Error', 'The selected file could not be loaded.', 'error');
+        } finally {
+            document.body.style.cursor = 'default';
+            hideSpinner();
+        }
+    });
+}
 
-                ul.appendChild(li);
+// --- HOME BUTTON ---
+export function initHomeButton() {
+    const homeBtn = document.querySelector('.ide-sidebar-header a[title="Reset Tree"]');
+    if (!homeBtn) return;
+
+    homeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        document.querySelector('.ide-search input')?.value !== undefined &&
+            (document.querySelector('.ide-search input').value = '');
+        document.querySelectorAll('.is-recursive, .no-results').forEach(el => el.remove());
+
+        const fileList = document.getElementById('fileList');
+        if (!fileList) return;
+
+        const rootLi = fileList.querySelector('li.folder-item');
+        const rootUl = rootLi?.querySelector('ul');
+        if (!rootUl) return;
+
+        rootUl.innerHTML = '<li class="tree-item" style="padding-left:20px; opacity:0.5;">Updating tree...</li>';
+
+        const params = new URLSearchParams({ ajax_get_dir: cfg.jailRoot, jailname: cfg.jailname });
+
+        fetch(`${window.location.pathname}?${params.toString()}`)
+            .then(async res => {
+                const raw = await res.text();
+                try { return JSON.parse(raw); }
+                catch { throw new Error('Server returned invalid JSON.'); }
+            })
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+                rootUl.innerHTML = '';
+                data.folders.forEach(f => rootUl.appendChild(buildFolderLi(f.name, data.parent + '/' + f.name, f.flag)));
+                data.files.forEach(f   => rootUl.appendChild(buildFileLi(f.name, data.parent + '/' + f.name, data.parent, f.flag)));
+            })
+            .catch(err => {
+                console.error('Reset Tree Error:', err);
+                rootUl.innerHTML = '<li class="tree-item" style="color:red; padding-left:20px;">Error updating.</li>';
             });
-        })
-        .catch(err => console.error('Search Error:', err));
+
+        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active', 'open'));
+        rootLi?.classList.add('open');
+    });
 }
 
 // --- INIT ---
-export function initSearch() {
-    if (qsBackdrop) qsBackdrop.addEventListener('click', closeQuickSearch);
-    if (qsClearBtn) qsClearBtn.addEventListener('click', clearQuickSearch);
-    if (qsInput)    qsInput.addEventListener('input', runQuickSearch);
+export function initTree() {
+    if (history.state?.filepath) cfg.filepath = history.state.filepath;
 
-    const fileFilterInput = document.getElementById('fileFilter');
-    const sidebarClearBtn = document.getElementById('clearFilterBtn');
-    if (fileFilterInput) fileFilterInput.addEventListener('keyup', filterFiles);
-    if (sidebarClearBtn) sidebarClearBtn.addEventListener('click', clearFilter);
-}
-
-// --- GLOBAL KEYBINDS ---
-export function initKeybinds() {
-    document.addEventListener('keydown', (e) => {
-        const isCtrl = e.ctrlKey || e.metaKey;
-        const key    = e.key.toLowerCase();
-
-        if (isCtrl && key === 'b') { e.preventDefault(); e.stopPropagation(); window.toggleSidebar(); return; }
-        if (isCtrl && key === 's') { e.preventDefault(); e.stopPropagation(); window.executeSaved?.(); return; }
-        if (isCtrl && key === 'k') { e.preventDefault(); e.stopPropagation(); openQuickSearch(); return; }
-
-        if (qsModal?.style.display === 'block') {
-            if (e.key === 'Escape') { closeQuickSearch(); return; }
-
-            const items = qsResultsList.getElementsByTagName('li');
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setSelectedIndex(selectedIndex + 1 < items.length ? selectedIndex + 1 : selectedIndex);
-                updateSelection(items);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setSelectedIndex(selectedIndex - 1 >= 0 ? selectedIndex - 1 : 0);
-                updateSelection(items);
-            } else if (e.key === 'Enter') {
-                if (selectedIndex > -1 && items[selectedIndex]) {
-                    e.preventDefault();
-                    items[selectedIndex].querySelector('a').click();
-                } else if (items.length > 0) {
-                    e.preventDefault();
-                    items[0].querySelector('a').click();
-                }
-            }
+    document.addEventListener('DOMContentLoaded', async () => {
+        if (cfg.filepath && cfg.filepath !== '') {
+            await syncSidebarWithFile();
+        } else if (cfg.currentDir && cfg.currentDir !== cfg.jailRoot) {
+            await syncSidebarWithFolder(cfg.currentDir);
         }
-    }, true);
+    });
 }
 
-export function initFolderDelegation() {
-    document.addEventListener('click', async (e) => {
-        const link = e.target.closest('a[data-folder-path]');
-        if (!link) return;
-        e.preventDefault();
-        const path = link.getAttribute('data-folder-path');
-        if (path) await toggleFolder(link, path);
-    });
+// --- PRIVATE ---
+function _syncFormInputs(filepath) {
+    const inputFp = document.querySelector('input[name="filepath"]');
+    const inputDr = document.querySelector('input[name="dir"]');
+    if (inputFp) inputFp.value = filepath;
+    if (inputDr) inputDr.value = filepath.substring(0, filepath.lastIndexOf('/'));
+}
+
+export function clearDirtyState() {
+    setIsDirty(false);
+    document.querySelectorAll('.dirty-dot').forEach(dot => dot.remove());
+    document.title = document.title.replace('* ', '');
+    const saveBtn = document.getElementById('btn_save');
+    if (saveBtn) saveBtn.disabled = true;
 }
