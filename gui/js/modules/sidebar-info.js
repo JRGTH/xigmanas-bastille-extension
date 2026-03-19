@@ -197,3 +197,69 @@ export async function showFileInfo(filePath) {
         content.innerHTML = '<div class="modern-card" style="color:red">Connection error</div>';
     }
 }
+
+// --- FILE INFO SIDEBAR LOGIC ---
+export function closeInfoSidebar() {
+    document.getElementById('ide-info-sidebar').classList.remove('open');
+}
+
+export function switchTab(tabName, element) {
+    if (!currentFileData) return;
+
+    // // UI: Manage active classes
+    if (element) {
+        document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
+        element.classList.add('active');
+    }
+
+    const content = document.getElementById('info-sidebar-content');
+    let html = '';
+
+    if (tabName === 'overview') {
+        html = `
+            <div class="modern-card">
+                <div class="card-label">Item Type</div>
+                <div class="card-value">${currentFileData.type}</div>
+            </div>
+            <div class="modern-card">
+                <div class="card-label">Last Modified</div>
+                <div class="card-value">${currentFileData.modified}</div>
+            </div>
+            <div class="modern-card">
+                <div class="card-label">Full Path</div>
+                <div class="card-value" style="font-size:11px; color:#6c757d;">${currentFileData.path}</div>
+            </div>
+        `;
+    } else if (tabName === 'security') {
+        html = `
+            <div class="modern-card">
+                <div class="card-label">Permissions</div>
+                <div class="card-value">${currentFileData.permissions} (${currentFileData.octal})</div>
+            </div>
+            <div class="modern-card">
+                <div class="card-label">Ownership</div>
+                <div class="card-value">${currentFileData.owner}:${currentFileData.group}</div>
+            </div>
+        `;
+    } else if (tabName === 'storage') {
+        html = `
+            <div class="modern-card">
+                <div class="card-label">Actual Size</div>
+                <div class="card-value">${currentFileData.size}</div>
+            </div>
+            <div class="modern-card">
+                <div class="card-label">Volume Impact</div>
+                <div id="storage-chart-container" style="min-height: 220px;"></div>
+            </div>
+        `;
+    }
+
+    content.innerHTML = html;
+
+    // Graphics rendering
+    if (tabName === 'storage') {
+        setTimeout(() => {
+            renderStorageChart();
+        }, 100);
+    }
+}
