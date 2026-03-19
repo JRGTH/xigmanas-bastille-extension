@@ -435,3 +435,13 @@ export function clearDirtyState() {
     const saveBtn = document.getElementById('btn_save');
     if (saveBtn) saveBtn.disabled = true;
 }
+
+export function initFolderDelegation() {
+    document.addEventListener('click', async (e) => {
+        const link = e.target.closest('a[data-folder-path]');
+        if (!link) return;
+        e.preventDefault();
+        const path = link.getAttribute('data-folder-path');
+        if (path) await toggleFolder(link, path);
+    });
+}
