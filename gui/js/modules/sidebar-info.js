@@ -172,7 +172,7 @@ export function initPendingJobResume() {
     });
 }
 
-async function showFileInfo(filePath) {
+export async function showFileInfo(filePath) {
     const sidebar = document.getElementById('ide-info-sidebar');
     const content = document.getElementById('info-sidebar-content');
 
