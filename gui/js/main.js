@@ -78,22 +78,3 @@ if (history.state?.filepath) cfg.filepath = history.state.filepath;
 
 initTree();
 initMonaco();
-```
-
-Con esto la estructura final queda:
-```
-ext/bastille/js/
-├── main.js
-├── bastille_editor.js     ← puede vaciarse o eliminarse
-└── modules/
-    ├── state.js
-    ├── modal.js
-    ├── ui.js
-    ├── search.js
-    ├── tree.js
-    ├── editor.js
-    ├── download.js
-    ├── filesystem.js
-    ├── upload.js
-    ├── sidebar-info.js
-    └── context-menu.js
