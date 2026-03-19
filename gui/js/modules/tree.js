@@ -409,15 +409,16 @@ export function initHomeButton() {
 
 // --- INIT ---
 export function initTree() {
-    if (history.state?.filepath) cfg.filepath = history.state.filepath;
+    if (history.state?.filepath) {
+        cfg.filepath = history.state.filepath;
+    }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-        if (cfg.filepath && cfg.filepath !== '') {
-            await syncSidebarWithFile();
-        } else if (cfg.currentDir && cfg.currentDir !== cfg.jailRoot) {
-            await syncSidebarWithFolder(cfg.currentDir);
-        }
-    });
+    if (cfg.filepath && cfg.filepath !== '') {
+        await syncSidebarWithFile();
+    } else if (cfg.currentDir && cfg.currentDir !== cfg.jailRoot) {
+        await syncSidebarWithFolder(cfg.currentDir);
+    }
+
 }
 
 // --- PRIVATE ---

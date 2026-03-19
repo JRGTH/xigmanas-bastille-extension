@@ -131,229 +131,227 @@ function hideContextMenu() {
 
 // --- INIT ---
 export function initContextMenu() {
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('[CM] fileList:', document.querySelector('.ide-file-list'));
-        console.log('[CM] contextmenu init');
-        // Inject context menu
-        const cm   = document.createElement('div');
-        cm.id      = 'ide-context-menu';
-        cm.innerHTML = CONTEXT_MENU_HTML;
-        document.body.appendChild(cm);
-        setContextMenu(cm);
+    console.log('[CM] fileList:', document.querySelector('.ide-file-list'));
+    console.log('[CM] contextmenu init');
+    // Inject context menu
+    const cm   = document.createElement('div');
+    cm.id      = 'ide-context-menu';
+    cm.innerHTML = CONTEXT_MENU_HTML;
+    document.body.appendChild(cm);
+    setContextMenu(cm);
 
-        // Inject new item modal
-        const modal       = document.createElement('div');
-        modal.id          = 'ide-new-item-modal';
-        modal.innerHTML   = `
-            <div class="ide-new-item-content">
-                <div id="ide-new-item-title" class="ide-new-item-title lhetop">New File</div>
-                <input type="text" id="ide-new-item-input" placeholder="Name" autocomplete="off" spellcheck="false">
-            </div>`;
-        document.body.appendChild(modal);
+    // Inject new item modal
+    const modal       = document.createElement('div');
+    modal.id          = 'ide-new-item-modal';
+    modal.innerHTML   = `
+        <div class="ide-new-item-content">
+            <div id="ide-new-item-title" class="ide-new-item-title lhetop">New File</div>
+            <input type="text" id="ide-new-item-input" placeholder="Name" autocomplete="off" spellcheck="false">
+        </div>`;
+    document.body.appendChild(modal);
 
-        // Right-click listener
-        document.querySelector('.ide-file-list').addEventListener('contextmenu', (e) => {
-            const link = e.target.closest('.tree-item a');
-            if (!link) return;
-            e.preventDefault();
+    // Right-click listener
+    document.querySelector('.ide-file-list').addEventListener('contextmenu', (e) => {
+        const link = e.target.closest('.tree-item a');
+        if (!link) return;
+        e.preventDefault();
 
-            const liElement  = link.closest('.tree-item');
-            const isFolder   = liElement.classList.contains('folder-item');
-            let filepath     = '';
+        const liElement  = link.closest('.tree-item');
+        const isFolder   = liElement.classList.contains('folder-item');
+        let filepath     = '';
 
-            if (isFolder) {
-                filepath = link.getAttribute('data-folder-path') ?? '';
-            } else {
-                filepath = new URL(link.href, window.location.origin).searchParams.get('filepath') ?? '';
-            }
+        if (isFolder) {
+            filepath = link.getAttribute('data-folder-path') ?? '';
+        } else {
+            filepath = new URL(link.href, window.location.origin).searchParams.get('filepath') ?? '';
+        }
 
-            if (!filepath) return;
+        if (!filepath) return;
 
-            const filenameEl   = link.querySelector('span:not(.tree-caret)');
-            const filename     = filenameEl?.innerText.trim() ?? 'Unknown';
-            const currentFlag  = liElement.getAttribute('data-flag') || '';
-            const isImmutable  = currentFlag.includes('schg');
+        const filenameEl   = link.querySelector('span:not(.tree-caret)');
+        const filename     = filenameEl?.innerText.trim() ?? 'Unknown';
+        const currentFlag  = liElement.getAttribute('data-flag') || '';
+        const isImmutable  = currentFlag.includes('schg');
 
-            const parentUl     = liElement.closest('ul.ide-file-list');
-            const parentFlag   = parentUl?.closest('.folder-item')?.getAttribute('data-flag') || '';
-            const isParentImmutable = parentFlag.includes('schg');
+        const parentUl     = liElement.closest('ul.ide-file-list');
+        const parentFlag   = parentUl?.closest('.folder-item')?.getAttribute('data-flag') || '';
+        const isParentImmutable = parentFlag.includes('schg');
 
-            const unlockBtn = document.getElementById('cm-unlock-item');
-            const deleteBtn = document.getElementById('cm-delete-file');
+        const unlockBtn = document.getElementById('cm-unlock-item');
+        const deleteBtn = document.getElementById('cm-delete-file');
 
-            if (isImmutable) {
-                unlockBtn.style.display = 'flex';
-                deleteBtn.style.display = 'none';
-            } else if (isParentImmutable) {
-                unlockBtn.style.display = 'none';
-                deleteBtn.style.display = 'none';
-            } else {
-                unlockBtn.style.display = 'none';
-                deleteBtn.style.display = 'flex';
-            }
+        if (isImmutable) {
+            unlockBtn.style.display = 'flex';
+            deleteBtn.style.display = 'none';
+        } else if (isParentImmutable) {
+            unlockBtn.style.display = 'none';
+            deleteBtn.style.display = 'none';
+        } else {
+            unlockBtn.style.display = 'none';
+            deleteBtn.style.display = 'flex';
+        }
 
-            setCmTargetData({ filepath, filename, liElement, isFolder, flag: currentFlag });
+        setCmTargetData({ filepath, filename, liElement, isFolder, flag: currentFlag });
 
-            document.getElementById('cm-download-file').style.display = isFolder ? 'none' : 'flex';
-            document.getElementById('cm-download-zip').style.display  = 'flex';
+        document.getElementById('cm-download-file').style.display = isFolder ? 'none' : 'flex';
+        document.getElementById('cm-download-zip').style.display  = 'flex';
 
-            const refreshBtn  = document.getElementById('cm-refresh-dir');
-            refreshBtn.querySelector('.ide-cm-item-text').innerText = isFolder ? 'Refresh Directory' : 'Refresh Parent Dir';
-            refreshBtn.style.display = 'flex';
+        const refreshBtn  = document.getElementById('cm-refresh-dir');
+        refreshBtn.querySelector('.ide-cm-item-text').innerText = isFolder ? 'Refresh Directory' : 'Refresh Parent Dir';
+        refreshBtn.style.display = 'flex';
 
-            // Position
-            let left = e.pageX;
-            let top  = e.pageY;
-            if (e.clientX + cm.offsetWidth  > window.innerWidth)  left = e.pageX - cm.offsetWidth;
-            if (e.clientY + cm.offsetHeight > window.innerHeight)  top  = e.pageY - cm.offsetHeight;
+        // Position
+        let left = e.pageX;
+        let top  = e.pageY;
+        if (e.clientX + cm.offsetWidth  > window.innerWidth)  left = e.pageX - cm.offsetWidth;
+        if (e.clientY + cm.offsetHeight > window.innerHeight)  top  = e.pageY - cm.offsetHeight;
 
-            cm.style.left    = `${left}px`;
-            cm.style.top     = `${top}px`;
-            cm.style.display = 'block';
-        });
+        cm.style.left    = `${left}px`;
+        cm.style.top     = `${top}px`;
+        cm.style.display = 'block';
+    });
 
-        // Submenu repositioning
-        document.querySelectorAll('.has-submenu').forEach(item => {
-            item.addEventListener('mouseenter', function() {
-                const sub = this.querySelector('.ide-cm-submenu');
-                if (!sub) return;
-                sub.style.top    = '0px';
-                sub.style.bottom = 'auto';
-                const rect       = this.getBoundingClientRect();
-                const subHeight  = sub.getBoundingClientRect().height || sub.scrollHeight;
-                if (rect.top + subHeight > window.innerHeight - 10) {
-                    sub.style.top    = 'auto';
-                    sub.style.bottom = '0px';
-                }
-            });
-        });
-
-        // Global hide
-        document.addEventListener('click',   (e) => { if (e.button !== 2) hideContextMenu(); });
-        document.addEventListener('keydown',  (e) => { if (e.key === 'Escape') hideContextMenu(); });
-
-        // --- ACTIONS ---
-        document.getElementById('cm-new-file').addEventListener('click', async () => {
-            if (!cmTargetData) return;
-            hideContextMenu();
-            const name = await showNewItemModal('file');
-            if (name) executeCreateItem(name, 'file', cmTargetData);
-        });
-
-        document.getElementById('cm-new-folder').addEventListener('click', async () => {
-            if (!cmTargetData) return;
-            hideContextMenu();
-            const name = await showNewItemModal('folder');
-            if (name) executeCreateItem(name, 'folder', cmTargetData);
-        });
-
-        document.getElementById('cm-copy-path').addEventListener('click', () => {
-            if (!cmTargetData) return;
-            navigator.clipboard?.writeText(cmTargetData.filepath)
-                ?? (() => {
-                    const ta = document.createElement('textarea');
-                    ta.value = cmTargetData.filepath;
-                    document.body.appendChild(ta);
-                    ta.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(ta);
-                })();
-            hideContextMenu();
-        });
-
-        document.getElementById('cm-unlock-item').addEventListener('click', async () => {
-            if (!cmTargetData) return;
-            hideContextMenu();
-            const ok = await showConfirmDialog(
-                'Unlock Protection',
-                `The item "${cmTargetData.filename}" is protected with the flag: ${cmTargetData.flag}.\n\nDo you want to remove all protection flags now?`,
-                'warning'
-            );
-            if (ok) executeUnlock(cmTargetData.filepath, cmTargetData.liElement);
-        });
-
-        document.getElementById('cm-info-item').addEventListener('click', () => {
-            if (!cmTargetData) return;
-            hideContextMenu();
-            showFileInfo(cmTargetData.filepath);
-        });
-
-        document.getElementById('cm-compare-history').addEventListener('click', () => {
-            if (!cmTargetData) return;
-            hideContextMenu();
-            if (cmTargetData.isFolder) {
-                showConfirmDialog('Error', 'You can only compare the history of a file, not a directory.', 'error');
-                return;
-            }
-            openDiffViewer(cmTargetData.filepath, cmTargetData.filename);
-        });
-
-        document.getElementById('cm-download-file').addEventListener('click', () => {
-            if (!cmTargetData || cmTargetData.isFolder) return;
-            executeDownloadRequest(false);
-        });
-
-        document.getElementById('cm-download-zip').addEventListener('click',    () => cmTargetData && executeDownloadRequest('zip'));
-        document.getElementById('cm-download-targz').addEventListener('click',  () => cmTargetData && executeDownloadRequest('targz'));
-        document.getElementById('cm-download-tarlz4').addEventListener('click', () => cmTargetData && executeDownloadRequest('tarlz4'));
-        document.getElementById('cm-download-tarzst').addEventListener('click', () => cmTargetData && executeDownloadRequest('tarzst'));
-
-        document.getElementById('cm-refresh-dir').addEventListener('click', async () => {
-            if (!cmTargetData) return;
-            hideContextMenu();
-            const targetPath = cmTargetData.isFolder
-                ? cmTargetData.filepath
-                : cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
-            spinner();
-            try {
-                await refreshDir(targetPath);
-                showNotification('Refreshed', 'Directory contents updated from server.');
-            } catch (e) {
-                showConfirmDialog('Error', 'Failed to refresh directory.', 'error');
-            } finally {
-                hideSpinner();
+    // Submenu repositioning
+    document.querySelectorAll('.has-submenu').forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            const sub = this.querySelector('.ide-cm-submenu');
+            if (!sub) return;
+            sub.style.top    = '0px';
+            sub.style.bottom = 'auto';
+            const rect       = this.getBoundingClientRect();
+            const subHeight  = sub.getBoundingClientRect().height || sub.scrollHeight;
+            if (rect.top + subHeight > window.innerHeight - 10) {
+                sub.style.top    = 'auto';
+                sub.style.bottom = '0px';
             }
         });
+    });
 
-        document.getElementById('cm-delete-file').addEventListener('click', () => {
-            if (!cmTargetData) return;
-            hideContextMenu();
-            executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement, cmTargetData.isFolder);
-        });
+    // Global hide
+    document.addEventListener('click',   (e) => { if (e.button !== 2) hideContextMenu(); });
+    document.addEventListener('keydown',  (e) => { if (e.key === 'Escape') hideContextMenu(); });
 
-        // --- HEADER + BUTTON ---
-        const plusBtn  = document.querySelector('.plus-icon');
-        const plusMenu = document.querySelector('.header-plus-submenu');
-        const headerMain = document.querySelector('.ide-sidebar-header');
+    // --- ACTIONS ---
+    document.getElementById('cm-new-file').addEventListener('click', async () => {
+        if (!cmTargetData) return;
+        hideContextMenu();
+        const name = await showNewItemModal('file');
+        if (name) executeCreateItem(name, 'file', cmTargetData);
+    });
 
-        if (plusBtn && plusMenu && headerMain) {
-            plusBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const isOpen = plusMenu.classList.toggle('show');
-                headerMain.classList.toggle('menu-open', isOpen);
-            });
+    document.getElementById('cm-new-folder').addEventListener('click', async () => {
+        if (!cmTargetData) return;
+        hideContextMenu();
+        const name = await showNewItemModal('folder');
+        if (name) executeCreateItem(name, 'folder', cmTargetData);
+    });
 
-            document.addEventListener('click', (e) => {
-                if (!plusMenu.contains(e.target) && !plusBtn.contains(e.target)) {
-                    plusMenu.classList.remove('show');
-                    headerMain.classList.remove('menu-open');
-                }
-            });
+    document.getElementById('cm-copy-path').addEventListener('click', () => {
+        if (!cmTargetData) return;
+        navigator.clipboard?.writeText(cmTargetData.filepath)
+            ?? (() => {
+                const ta = document.createElement('textarea');
+                ta.value = cmTargetData.filepath;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            })();
+        hideContextMenu();
+    });
 
-            const resetHeader = () => {
-                plusMenu.classList.remove('show');
-                headerMain.classList.remove('menu-open');
-            };
+    document.getElementById('cm-unlock-item').addEventListener('click', async () => {
+        if (!cmTargetData) return;
+        hideContextMenu();
+        const ok = await showConfirmDialog(
+            'Unlock Protection',
+            `The item "${cmTargetData.filename}" is protected with the flag: ${cmTargetData.flag}.\n\nDo you want to remove all protection flags now?`,
+            'warning'
+        );
+        if (ok) executeUnlock(cmTargetData.filepath, cmTargetData.liElement);
+    });
 
-            const handleHeaderCreate = async (type) => {
-                const targetPath = cfg.lastSelectedDir || cfg.jailRoot;
-                const name       = await showNewItemModal(type);
-                if (name) executeCreateItem(name, type, { filepath: targetPath, isFolder: true });
-            };
+    document.getElementById('cm-info-item').addEventListener('click', () => {
+        if (!cmTargetData) return;
+        hideContextMenu();
+        showFileInfo(cmTargetData.filepath);
+    });
 
-            document.getElementById('header-new-file')?.addEventListener('click',   () => { resetHeader(); handleHeaderCreate('file'); });
-            document.getElementById('header-new-folder')?.addEventListener('click', () => { resetHeader(); handleHeaderCreate('folder'); });
+    document.getElementById('cm-compare-history').addEventListener('click', () => {
+        if (!cmTargetData) return;
+        hideContextMenu();
+        if (cmTargetData.isFolder) {
+            showConfirmDialog('Error', 'You can only compare the history of a file, not a directory.', 'error');
+            return;
+        }
+        openDiffViewer(cmTargetData.filepath, cmTargetData.filename);
+    });
+
+    document.getElementById('cm-download-file').addEventListener('click', () => {
+        if (!cmTargetData || cmTargetData.isFolder) return;
+        executeDownloadRequest(false);
+    });
+
+    document.getElementById('cm-download-zip').addEventListener('click',    () => cmTargetData && executeDownloadRequest('zip'));
+    document.getElementById('cm-download-targz').addEventListener('click',  () => cmTargetData && executeDownloadRequest('targz'));
+    document.getElementById('cm-download-tarlz4').addEventListener('click', () => cmTargetData && executeDownloadRequest('tarlz4'));
+    document.getElementById('cm-download-tarzst').addEventListener('click', () => cmTargetData && executeDownloadRequest('tarzst'));
+
+    document.getElementById('cm-refresh-dir').addEventListener('click', async () => {
+        if (!cmTargetData) return;
+        hideContextMenu();
+        const targetPath = cmTargetData.isFolder
+            ? cmTargetData.filepath
+            : cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
+        spinner();
+        try {
+            await refreshDir(targetPath);
+            showNotification('Refreshed', 'Directory contents updated from server.');
+        } catch (e) {
+            showConfirmDialog('Error', 'Failed to refresh directory.', 'error');
+        } finally {
+            hideSpinner();
         }
     });
+
+    document.getElementById('cm-delete-file').addEventListener('click', () => {
+        if (!cmTargetData) return;
+        hideContextMenu();
+        executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement, cmTargetData.isFolder);
+    });
+
+    // --- HEADER + BUTTON ---
+    const plusBtn  = document.querySelector('.plus-icon');
+    const plusMenu = document.querySelector('.header-plus-submenu');
+    const headerMain = document.querySelector('.ide-sidebar-header');
+
+    if (plusBtn && plusMenu && headerMain) {
+        plusBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = plusMenu.classList.toggle('show');
+            headerMain.classList.toggle('menu-open', isOpen);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!plusMenu.contains(e.target) && !plusBtn.contains(e.target)) {
+                plusMenu.classList.remove('show');
+                headerMain.classList.remove('menu-open');
+            }
+        });
+
+        const resetHeader = () => {
+            plusMenu.classList.remove('show');
+            headerMain.classList.remove('menu-open');
+        };
+
+        const handleHeaderCreate = async (type) => {
+            const targetPath = cfg.lastSelectedDir || cfg.jailRoot;
+            const name       = await showNewItemModal(type);
+            if (name) executeCreateItem(name, type, { filepath: targetPath, isFolder: true });
+        };
+
+        document.getElementById('header-new-file')?.addEventListener('click',   () => { resetHeader(); handleHeaderCreate('file'); });
+        document.getElementById('header-new-folder')?.addEventListener('click', () => { resetHeader(); handleHeaderCreate('folder'); });
+    }
 }

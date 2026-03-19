@@ -145,35 +145,33 @@ window.executeSaved = executeSaved;
 
 // --- DIFF VIEWER ---
 export function initDiffModal() {
-    document.addEventListener('DOMContentLoaded', () => {
-        const diffModal       = document.createElement('div');
-        diffModal.id          = 'ide-diff-modal';
-        diffModal.className   = 'diff-modal-overlay';
-        diffModal.innerHTML   = `
-            <div class="diff-modal-content">
-                <div class="diff-modal-header lhetop">
-                    <div>
-                        <span id="diff-modal-header-title" class="diff-modal-header-title">History Compare:</span>
-                        <span id="diff-filename" class="diff-filename">filename.php</span>
-                        <select id="diff-backup-select">
-                            <option value="">Loading backups...</option>
-                        </select>
-                    </div>
-                    <div style="display:flex; gap: 15px; align-items: center;">
-                        <span id="ide-diff-maximize" title="Maximize / Restore">
-                            <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" style="width: 16px; height: 16px;">
-                        </span>
-                        <button class="diff-close-x" onclick="closeDiffViewer()" title="Close">&times;</button>
-                    </div>
+    const diffModal       = document.createElement('div');
+    diffModal.id          = 'ide-diff-modal';
+    diffModal.className   = 'diff-modal-overlay';
+    diffModal.innerHTML   = `
+        <div class="diff-modal-content">
+            <div class="diff-modal-header lhetop">
+                <div>
+                    <span id="diff-modal-header-title" class="diff-modal-header-title">History Compare:</span>
+                    <span id="diff-filename" class="diff-filename">filename.php</span>
+                    <select id="diff-backup-select">
+                        <option value="">Loading backups...</option>
+                    </select>
                 </div>
-                <div class="diff-modal-body" id="diff-monaco-container"></div>
-            </div>`;
-        document.body.appendChild(diffModal);
+                <div style="display:flex; gap: 15px; align-items: center;">
+                    <span id="ide-diff-maximize" title="Maximize / Restore">
+                        <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" style="width: 16px; height: 16px;">
+                    </span>
+                    <button class="diff-close-x" onclick="closeDiffViewer()" title="Close">&times;</button>
+                </div>
+            </div>
+            <div class="diff-modal-body" id="diff-monaco-container"></div>
+        </div>`;
+    document.body.appendChild(diffModal);
 
-        document.getElementById('ide-diff-maximize').addEventListener('click', () => {
-            document.getElementById('ide-diff-modal').classList.toggle('maximized');
-            setTimeout(() => diffEditorInstance?.layout(), 50);
-        });
+    document.getElementById('ide-diff-maximize').addEventListener('click', () => {
+        document.getElementById('ide-diff-modal').classList.toggle('maximized');
+        setTimeout(() => diffEditorInstance?.layout(), 50);
     });
 }
 
