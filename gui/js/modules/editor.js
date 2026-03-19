@@ -7,7 +7,7 @@ import { cfg, isDirty, isInjectingCode,
 import { spinner, hideSpinner }                           from './ui.js';
 import { showConfirmDialog }                              from './modal.js';
 
-const MONACO_PATH = '/ext/bastille/js/vs';
+const MONACO_PATH = '/ext/bastille/js/monaco/vs';
 
 // --- LANGUAGE DETECTION ---
 function detectLang(filepath) {
