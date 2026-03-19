@@ -292,9 +292,9 @@ window.IDE_CONFIG = {
 <input type="file" id="up-file-input" style="display:none" multiple onchange="handleNativeUpload(this, false)">
 <input type="file" id="up-folder-input" style="display:none" webkitdirectory directory onchange="handleNativeUpload(this, true)">
 
-<script src="ext/bastille/js/bastille_editor_clipboard.js?v=<?=time();?>"></script>
-<script src="ext/bastille/js/sha256.min.js"></script>
-<script src="ext/bastille/js/apexcharts.v5.10.3.js"></script>
+<script src="ext/bastille/js/modules/bastille_editor_clipboard.js?v=<?=time();?>"></script>
+<script src="ext/bastille/js/modules/sha256.min.js"></script>
+<script src="ext/bastille/js/modules/apexcharts.v5.10.3.js"></script>
 <script src="js/spin.min.js"></script>
 
 <script src="ext/bastille/js/vs/loader.js"></script>
