@@ -298,7 +298,6 @@ window.IDE_CONFIG = {
 <script src="js/spin.min.js"></script>
 
 <script src="ext/bastille/js/vs/loader.js"></script>
-<script src="ext/bastille/js/bastille_editor.js?v=<?=time();?>"></script>
 <script type="module" src="ext/bastille/js/main.js"></script>
 
 <?php if (!empty($input_errors)): ?>
