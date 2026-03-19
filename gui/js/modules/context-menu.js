@@ -132,7 +132,8 @@ function hideContextMenu() {
 // --- INIT ---
 export function initContextMenu() {
     document.addEventListener('DOMContentLoaded', () => {
-
+        console.log('[CM] fileList:', document.querySelector('.ide-file-list'));
+        console.log('[CM] contextmenu init');
         // Inject context menu
         const cm   = document.createElement('div');
         cm.id      = 'ide-context-menu';
