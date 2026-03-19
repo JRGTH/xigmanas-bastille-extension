@@ -42,7 +42,9 @@ export function hideSpinner() {
 export function initResizer() {
     const resizer   = document.getElementById('ide-resizer');
     const container = document.querySelector('.ide-container');
-    if (!resizer || !container) return;
+    if (!resizer || !container) {
+        return;
+    }
 
     const resize = (e) => {
         const newWidth = e.clientX - container.getBoundingClientRect().left;

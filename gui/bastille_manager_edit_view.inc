@@ -164,7 +164,7 @@ window.IDE_CONFIG = {
                         </div>
 
                         <div class="ide-main-header-toolbar">
-                            <div class="layout-btn" onclick="toggleSidebar()" title="Toggle Sidebar (Ctrl + B)">
+                            <div class="layout-btn" id="toggle-sidebar-btn" title="Toggle Sidebar (Ctrl + B)">
                                 <?= $icon_toggle ?>
                             </div>
                             <input name="save" id="btn_save" type="button" class="formbtn" title= "Save File (Ctrl + S)" value="<?=gtext("Save File");?>" onclick="executeSaved();" <?=empty($filepath) ? 'disabled' : ''?> />
