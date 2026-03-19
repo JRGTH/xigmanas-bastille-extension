@@ -408,7 +408,7 @@ export function initHomeButton() {
 }
 
 // --- INIT ---
-export function initTree() {
+export async function initTree() {
     if (history.state?.filepath) {
         cfg.filepath = history.state.filepath;
     }
