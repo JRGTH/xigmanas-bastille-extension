@@ -171,3 +171,29 @@ export function initPendingJobResume() {
         }
     });
 }
+
+async function showFileInfo(filePath) {
+    const sidebar = document.getElementById('ide-info-sidebar');
+    const content = document.getElementById('info-sidebar-content');
+
+    sidebar.classList.add('open');
+    content.innerHTML = '<div style="text-align:center; padding-top:50px; color:#adb5bd;">Loading...</div>';
+
+    const formData = new FormData(document.getElementById('iform'));
+    formData.append('ajax_get_info', '1');
+    formData.append('target_path', filePath);
+
+    try {
+        const response = await fetch(window.location.href, { method: 'POST', body: formData });
+        currentFileData = await response.json();
+
+        if (currentFileData.success) {
+            // Update Header
+            document.getElementById('sidebar-filename').innerText = currentFileData.name;
+            // Force Overview tab when opening
+            switchTab('overview', document.querySelector('.tab-link'));
+        }
+    } catch (e) {
+        content.innerHTML = '<div class="modern-card" style="color:red">Connection error</div>';
+    }
+}
