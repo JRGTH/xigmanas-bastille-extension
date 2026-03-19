@@ -176,7 +176,7 @@ function saveHistory(term) {
     renderHistory();
 }
 
-function openQuickSearch() {
+/*function openQuickSearch() {
     qsModal.style.display = 'block';
     qsBackdrop.style.display = 'block';
     renderHistory();
@@ -278,7 +278,7 @@ function runQuickSearch() {
                 hideSpinner();
             });
     }, 400);
-}
+}*/
 
 if (qsInput) {
     qsInput.removeEventListener('keyup', runQuickSearch);
