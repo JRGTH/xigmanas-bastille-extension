@@ -1,6 +1,6 @@
 // modules/download.js
 
-import { cfg, cmTargetData }    from './state.js';
+import { cfg, cmTargetData, currentFileData, setCurrentFileData } from './state.js';
 import { spinner, hideSpinner } from './ui.js';
 import { showConfirmDialog }    from './modal.js';
 import { refreshDir }           from './tree.js';
