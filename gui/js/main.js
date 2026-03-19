@@ -27,7 +27,7 @@ import { initMonaco, executeSaved,
          loadBackupDiff, closeDiffViewer,
          initBeforeUnload }                 from './modules/editor.js';
 import { closeInfoSidebar, showFileInfo,
-         switchTab, startDiskWatcher}       from './modules/sidebar-info.js';
+        switchTab}                          from './modules/sidebar-info.js';
 import { initContextMenu }                  from './modules/context-menu.js';
 import { initFolderDelegation } from './modules/tree.js';
 
