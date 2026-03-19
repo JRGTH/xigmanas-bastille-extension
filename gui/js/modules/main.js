@@ -30,6 +30,7 @@ import { closeInfoSidebar, showFileInfo,
          switchTab, startDiskWatcher,
          stopDiskWatcher }                  from './modules/sidebar-info.js';
 import { initContextMenu }                  from './modules/context-menu.js';
+import { initFolderDelegation } from './modules/tree.js';
 
 // --- EXPOSE GLOBALS NEEDED BY PHP-GENERATED HTML ---
 window.toggleSidebar        = toggleSidebar;
@@ -59,6 +60,7 @@ window.updateBreadcrumbs    = updateBreadcrumbs;
 
 // --- INIT ---
 document.addEventListener('DOMContentLoaded', () => {
+    initFolderDelegation();
     initResizer();
     initBreadcrumbListener();
     initSearch();

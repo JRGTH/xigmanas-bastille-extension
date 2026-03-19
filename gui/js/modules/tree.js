@@ -286,3 +286,13 @@ export function initKeybinds() {
         }
     }, true);
 }
+
+export function initFolderDelegation() {
+    document.addEventListener('click', async (e) => {
+        const link = e.target.closest('a[data-folder-path]');
+        if (!link) return;
+        e.preventDefault();
+        const path = link.getAttribute('data-folder-path');
+        if (path) await toggleFolder(link, path);
+    });
+}

@@ -94,7 +94,7 @@ window.IDE_CONFIG = {
                                            $lock_img = !empty($f_flag) ? "<img src='ext/bastille/images/lock.svg' class='lock-icon' style='width:14px;'>" : "";
                                            ?>
                                            <li class="tree-item folder-item" data-flag="<?= $f_flag ?>">
-                                               <a href="javascript:void(0)" onclick="toggleFolder(this, '<?= addslashes($full_path) ?>')">
+                                               <a href="javascript:void(0)" data-folder-path="<?= htmlspecialchars($full_path) ?>">
                                                    <span class="tree-caret"><img src="ext/bastille/images/right-arrow.svg" style="width: 20px;"></span>
                                                    <?= $icon_folder ?> <span><?= htmlspecialchars($folder) ?></span> <?= $lock_img ?>
                                                </a>

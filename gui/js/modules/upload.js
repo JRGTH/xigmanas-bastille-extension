@@ -29,8 +29,8 @@ export function injectItemIntoTree(destination, itemName, isFolder = false) {
     if (isFolder) {
         const safePath = fullPath.replace(/'/g, "\\'");
         li.innerHTML = `
-            <a href="javascript:void(0)" onclick="toggleFolder(this, '${safePath}')">
-                ${cfg.icons.caret} ${cfg.icons.folder} <span>${itemName}</span>
+            <a href="javascript:void(0)" data-folder-path="${fullPath.replace(/"/g, '&quot;')}">
+                ${cfg.icons.caret} ${cfg.icons.folder} <span>${name}</span> ${renderLockIcon(flag)}
             </a>`;
     } else {
         const editUrl = `?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(destination)}&filepath=${encodeURIComponent(fullPath)}`;

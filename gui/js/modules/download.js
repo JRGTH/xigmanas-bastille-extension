@@ -24,8 +24,8 @@ function buildFolderLi(name, fullPath, flag) {
     const li       = document.createElement('li');
     li.className   = 'tree-item folder-item';
     li.dataset.flag = flag || '';
-    li.innerHTML   = `
-        <a href="javascript:void(0)" onclick="toggleFolder(this, '${safePath}')">
+    li.innerHTML = `
+        <a href="javascript:void(0)" data-folder-path="${fullPath.replace(/"/g, '&quot;')}">
             ${cfg.icons.caret} ${cfg.icons.folder} <span>${name}</span> ${renderLockIcon(flag)}
         </a>`;
     return li;

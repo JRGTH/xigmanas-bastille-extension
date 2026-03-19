@@ -1,294 +1,359 @@
-// modules/editor.js
+// modules/context-menu.js
 
-import { cfg, isDirty, isInjectingCode,
-         setIsDirty, setIsInjectingCode,
-         diffEditorInstance, currentDiffFilepath,
-         setDiffEditorInstance, setCurrentDiffFilepath } from './state.js';
-import { spinner, hideSpinner }                           from './ui.js';
-import { showConfirmDialog }                              from './modal.js';
+import { cfg, cmTargetData, setCmTargetData, contextMenu, setContextMenu } from './state.js';
+import { spinner, hideSpinner }     from './ui.js';
+import { showConfirmDialog }        from './modal.js';
+import { refreshDir }               from './tree.js';
+import { executeUnlock, executeDelete, executeCreateItem } from './filesystem.js';
+import { executeDownloadRequest }   from './download.js';
+import { showFileInfo }             from './sidebar-info.js';
+import { openDiffViewer }           from './editor.js';
+import { showNotification }         from './download.js';
 
-const MONACO_PATH = '/ext/bastille/js/vs';
+// --- CONTEXT MENU HTML ---
+const CONTEXT_MENU_HTML = `
+    <div class="ide-cm-item has-submenu" id="cm-new-menu">
+        <div class="icon-wrapper"></div>
+        <span class="ide-cm-item-text">New</span>
+        <img src="ext/bastille/images/right-arrow.svg" class="cm-arrow" alt="arrow">
+        <div class="ide-cm-submenu">
+            <div class="ide-cm-item" id="cm-new-file">
+                <div class="icon-wrapper"><img src="ext/bastille/images/file.svg" class="ide-cm-item-svg"></div>
+                <span class="ide-cm-item-text">File</span>
+            </div>
+            <div class="ide-cm-item" id="cm-new-folder">
+                <div class="icon-wrapper"><img src="ext/bastille/images/folder.svg" class="ide-cm-item-svg"></div>
+                <span class="ide-cm-item-text">Directory</span>
+            </div>
+        </div>
+    </div>
 
-// --- LANGUAGE DETECTION ---
-function detectLang(filepath) {
-    const ext = filepath.split('.').pop().toLowerCase();
-    if (['php', 'inc'].includes(ext)) return 'php';
-    if (ext === 'xml')                return 'xml';
-    if (ext === 'js')                 return 'javascript';
-    if (ext === 'css')                return 'css';
-    if (ext === 'json')               return 'json';
-    if (['html', 'htm'].includes(ext)) return 'html';
-    return 'shell';
-}
+    <div class="ide-cm-separator"></div>
 
-// --- MONACO INIT ---
-export function initMonaco() {
-    if (typeof require === 'undefined') return;
+    <div class="ide-cm-item" id="cm-copy-path">
+        <div class="icon-wrapper"><img src="ext/bastille/images/copy.svg" class="ide-cm-item-svg" alt="copy"></div>
+        <span class="ide-cm-item-text">Copy Full Path</span>
+    </div>
 
-    require.config({
-        paths: { vs: MONACO_PATH },
-        ignoreDuplicateModules: ['vs/editor/editor.main'],
+    <div class="ide-cm-item cm-unlock" id="cm-unlock-item" style="display:none;">
+        <div class="icon-wrapper"><img src="ext/bastille/images/lock.svg" class="ide-cm-item-svg" alt="unlock"></div>
+        <span class="ide-cm-item-text">Unlock (Clear Flags)</span>
+    </div>
+
+    <div class="ide-cm-item" id="cm-info-item">
+        <div class="icon-wrapper"><img src="ext/bastille/images/info-ssl.svg" class="ide-cm-item-svg" alt="info"></div>
+        <span class="ide-cm-item-text">Information</span>
+    </div>
+
+    <div class="ide-cm-item" id="cm-compare-history">
+        <div class="icon-wrapper"><img src="ext/bastille/images/diff.svg" class="ide-cm-item-svg" alt="diff"></div>
+        <span class="ide-cm-item-text">Compare History</span>
+    </div>
+
+    <div class="ide-cm-item has-submenu" id="cm-download-menu">
+        <div class="icon-wrapper"><img src="images/fm_img/smallicons/drive-download.png" class="cm-download-menu" alt="download"></div>
+        <span class="ide-cm-item-text">Download</span>
+        <img src="ext/bastille/images/right-arrow.svg" class="cm-arrow" alt="arrow">
+        <div class="ide-cm-submenu download-modifier">
+            <div class="ide-cm-item" id="cm-download-file">
+                <div class="icon-wrapper"><img src="ext/bastille/images/file.svg" class="ide-cm-item-svg"></div>
+                <span class="ide-cm-item-text">Direct Download</span>
+            </div>
+            <div class="ide-cm-item" id="cm-download-zip">
+                <div class="icon-wrapper"><img src="ext/bastille/images/zip-file-icon.svg" class="ide-cm-item-svg" alt="zip"></div>
+                <span class="ide-cm-item-text">Compress as ZIP...</span>
+            </div>
+            <div class="ide-cm-item" id="cm-download-targz">
+                <div class="icon-wrapper"><img src="ext/bastille/images/gzip.svg" class="ide-cm-item-svg"></div>
+                <span class="ide-cm-item-text">Compress as .tar.gz</span>
+            </div>
+            <div class="ide-cm-item" id="cm-download-tarlz4">
+                <div class="icon-wrapper"><img src="ext/bastille/images/lz4.svg" class="ide-cm-item-svg"></div>
+                <span class="ide-cm-item-text">Compress as .tar.lz4</span>
+            </div>
+            <div class="ide-cm-item" id="cm-download-tarzst" title="Zstandard - Fast real-time compression">
+                <div class="icon-wrapper"><img src="ext/bastille/images/zstd85.png" class="cm-download-tarzst"></div>
+                <span class="ide-cm-item-text">Compress as .tar.zst</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="ide-cm-item" id="cm-refresh-dir">
+        <div class="icon-wrapper"><img src="images/fm_img/smallicons/arrow_refresh_small.png" class="cm-refresh-dir" alt="refresh"></div>
+        <span class="ide-cm-item-text">Refresh Directory</span>
+    </div>
+
+    <div class="ide-cm-separator"></div>
+
+    <div class="ide-cm-item cm-delete" id="cm-delete-file">
+        <div class="icon-wrapper"><img src="ext/bastille/images/delete.svg" class="ide-cm-item-svg" alt="delete"></div>
+        <span class="ide-cm-item-text">Delete</span>
+    </div>`;
+
+// --- NEW ITEM MODAL ---
+function showNewItemModal(type) {
+    return new Promise((resolve) => {
+        const modal   = document.getElementById('ide-new-item-modal');
+        const titleEl = document.getElementById('ide-new-item-title');
+        const input   = document.getElementById('ide-new-item-input');
+
+        titleEl.innerText = type === 'folder' ? 'New Directory' : 'New File';
+        input.value       = '';
+        modal.style.display = 'flex';
+        setTimeout(() => input.focus(), 50);
+
+        const cleanup = () => {
+            modal.style.display = 'none';
+            input.removeEventListener('keydown', handleKey);
+            modal.removeEventListener('click', handleClickOutside);
+        };
+
+        const handleKey = (e) => {
+            if (e.key === 'Enter')  { cleanup(); resolve(input.value.trim() || null); }
+            if (e.key === 'Escape') { cleanup(); resolve(null); }
+        };
+
+        const handleClickOutside = (e) => {
+            if (e.target === modal) { cleanup(); resolve(null); }
+        };
+
+        input.addEventListener('keydown', handleKey);
+        modal.addEventListener('click', handleClickOutside);
     });
+}
+window.showNewItemModal = showNewItemModal;
 
-    window.MonacoEnvironment = {
-        getWorkerUrl() {
-            const base       = window.location.origin + MONACO_PATH;
-            const workerCode = `self.MonacoEnvironment = { baseUrl: '${base}' }; importScripts('${base}/base/worker/workerMain.js');`;
-            return `data:text/javascript;charset=utf-8,${encodeURIComponent(workerCode)}`;
-        }
-    };
-
-    require(['vs/editor/editor.main'], () => {
-        const filepath    = cfg.filepath || '';
-        const fileContent = filepath
-            ? (document.getElementById('file_content')?.value || '')
-            : '# Welcome to Bastille Editor\n# Select a file from the sidebar to start editing.';
-        const lang        = filepath ? detectLang(filepath) : 'shell';
-
-        window.editor = monaco.editor.create(document.getElementById('monaco-container'), {
-            value:           fileContent,
-            language:        lang,
-            theme:           'vs',
-            automaticLayout: true,
-            wordWrap:        'on',
-            minimap:         { enabled: true },
-            fontSize:        11,
-            readOnly:        filepath === ''
-        });
-
-        window.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-            window.executeSaved?.();
-        });
-
-        window.editor.onDidChangeModelContent(() => {
-            if (isInjectingCode) return;
-            if (!isDirty) {
-                setIsDirty(true);
-                const saveBtn = document.getElementById('btn_save');
-                if (saveBtn) saveBtn.disabled = false;
-
-                const activeFileLink = document.querySelector('.tree-item.active > a');
-                if (activeFileLink && !activeFileLink.querySelector('.dirty-dot')) {
-                    const dot       = document.createElement('span');
-                    dot.className   = 'dirty-dot';
-                    dot.innerHTML   = '•';
-                    activeFileLink.appendChild(dot);
-                }
-            }
-        });
-
-        // Suppress Monaco internal Canceled errors
-        if (!window.monacoErrorHandlerSet) {
-            monaco.editor.onDidCreateEditor(() => {});
-            window.monacoErrorHandlerSet = true;
-        }
-    });
+// --- HIDE CONTEXT MENU ---
+function hideContextMenu() {
+    const cm = document.getElementById('ide-context-menu');
+    if (cm) cm.style.display = 'none';
 }
 
-// --- SAVE ---
-export async function executeSaved() {
-    if (!window.editor || !isDirty) return;
-
-    const filepath = document.querySelector('input[name="filepath"]')?.value;
-    const form     = document.getElementById('iform');
-
-    if (!filepath || filepath === 'Select a file' || !form) {
-        showConfirmDialog('Error', 'No file selected to save or form missing.', 'error');
-        return;
-    }
-
-    spinner();
-    const saveBtn = document.getElementById('btn_save');
-    if (saveBtn) { saveBtn.disabled = true; saveBtn.value = 'Saving...'; }
-
-    const formData = new FormData(form);
-    formData.set('ajax_save',    '1');
-    formData.set('file_content', window.editor.getValue());
-    formData.set('filepath',     filepath);
-    formData.set('jailname',     cfg.jailname);
-    formData.set('save',         '1');
-
-    try {
-        const response = await fetch(window.location.href, {
-            method: 'POST', body: formData, credentials: 'same-origin'
-        });
-
-        if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`Server returned status ${response.status}. Details: ${errText.substring(0, 50)}...`);
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-            // clearDirtyState imported from tree to avoid circular dep
-            window.clearDirtyState?.();
-            showConfirmDialog('Saved', 'Saved file to ' + filepath, 'success');
-        } else {
-            throw new Error(data.error || 'Server rejected the save request.');
-        }
-    } catch (error) {
-        console.error('Save Error:', error);
-        showConfirmDialog(
-            error.message.includes('Unexpected token') ? 'Session Error' : 'Save Error',
-            error.message.includes('Unexpected token')
-                ? 'Your session might have expired. Try reloading the page.'
-                : error.message,
-            'error'
-        );
-    } finally {
-        if (saveBtn) { saveBtn.disabled = !isDirty; saveBtn.value = 'Save File'; }
-        hideSpinner();
-    }
-}
-window.executeSaved = executeSaved;
-
-// --- DIFF VIEWER ---
-export function initDiffModal() {
+// --- INIT ---
+export function initContextMenu() {
     document.addEventListener('DOMContentLoaded', () => {
-        const diffModal       = document.createElement('div');
-        diffModal.id          = 'ide-diff-modal';
-        diffModal.className   = 'diff-modal-overlay';
-        diffModal.innerHTML   = `
-            <div class="diff-modal-content">
-                <div class="diff-modal-header lhetop">
-                    <div>
-                        <span id="diff-modal-header-title" class="diff-modal-header-title">History Compare:</span>
-                        <span id="diff-filename" class="diff-filename">filename.php</span>
-                        <select id="diff-backup-select">
-                            <option value="">Loading backups...</option>
-                        </select>
-                    </div>
-                    <div style="display:flex; gap: 15px; align-items: center;">
-                        <span id="ide-diff-maximize" title="Maximize / Restore">
-                            <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" style="width: 16px; height: 16px;">
-                        </span>
-                        <button class="diff-close-x" onclick="closeDiffViewer()" title="Close">&times;</button>
-                    </div>
-                </div>
-                <div class="diff-modal-body" id="diff-monaco-container"></div>
+
+        // Inject context menu
+        const cm   = document.createElement('div');
+        cm.id      = 'ide-context-menu';
+        cm.innerHTML = CONTEXT_MENU_HTML;
+        document.body.appendChild(cm);
+        setContextMenu(cm);
+
+        // Inject new item modal
+        const modal       = document.createElement('div');
+        modal.id          = 'ide-new-item-modal';
+        modal.innerHTML   = `
+            <div class="ide-new-item-content">
+                <div id="ide-new-item-title" class="ide-new-item-title lhetop">New File</div>
+                <input type="text" id="ide-new-item-input" placeholder="Name" autocomplete="off" spellcheck="false">
             </div>`;
-        document.body.appendChild(diffModal);
+        document.body.appendChild(modal);
 
-        document.getElementById('ide-diff-maximize').addEventListener('click', () => {
-            document.getElementById('ide-diff-modal').classList.toggle('maximized');
-            setTimeout(() => diffEditorInstance?.layout(), 50);
-        });
-    });
-}
+        // Right-click listener
+        document.querySelector('.ide-file-list').addEventListener('contextmenu', (e) => {
+            const link = e.target.closest('.tree-item a');
+            if (!link) return;
+            e.preventDefault();
 
-export async function openDiffViewer(filepath, filename) {
-    spinner();
+            const liElement  = link.closest('.tree-item');
+            const isFolder   = liElement.classList.contains('folder-item');
+            let filepath     = '';
 
-    diffEditorInstance?.setModel(null);
-    setCurrentDiffFilepath(filepath);
-
-    document.getElementById('diff-filename').innerText = filename;
-    const selectEl    = document.getElementById('diff-backup-select');
-    selectEl.innerHTML = '<option value="">Loading backups...</option>';
-    selectEl.disabled  = true;
-
-    document.getElementById('ide-diff-modal').style.display = 'flex';
-
-    if (!diffEditorInstance) {
-        setDiffEditorInstance(monaco.editor.createDiffEditor(
-            document.getElementById('diff-monaco-container'), {
-                theme:               'vs',
-                readOnly:            true,
-                automaticLayout:     true,
-                renderSideBySide:    true,
-                renderOverviewRuler: false,
-                ignoreTrimWhitespace: false,
-                minimap:             { enabled: false },
-                scrollbar:           { verticalScrollbarSize: 10, horizontalScrollbarSize: 10 }
+            if (isFolder) {
+                const match = link.getAttribute('onclick')?.match(/toggleFolder\(.*?,\s*'([^']+)'\)/);
+                if (match) filepath = match[1];
+            } else {
+                filepath = new URL(link.href, window.location.origin).searchParams.get('filepath') ?? '';
             }
-        ));
-    }
 
-    const formData = new FormData(document.getElementById('iform'));
-    formData.append('ajax_get_backups', '1');
-    formData.append('filepath',         filepath);
+            if (!filepath) return;
 
-    try {
-        const response = await fetch(window.location.href, { method: 'POST', body: formData });
-        const rawText  = await response.text();
-        let data;
-        try { data = JSON.parse(rawText); }
-        catch { console.error('SERVER REJECTED DIFF REQUEST:', rawText); throw new Error('Invalid server response.'); }
+            const filenameEl   = link.querySelector('span:not(.tree-caret)');
+            const filename     = filenameEl?.innerText.trim() ?? 'Unknown';
+            const currentFlag  = liElement.getAttribute('data-flag') || '';
+            const isImmutable  = currentFlag.includes('schg');
 
-        if (data.success && data.backups?.length > 0) {
-            selectEl.innerHTML = '';
-            data.backups.forEach(bak => {
-                const opt      = document.createElement('option');
-                opt.value      = bak.path;
-                opt.innerText  = bak.date;
-                selectEl.appendChild(opt);
+            const parentUl     = liElement.closest('ul.ide-file-list');
+            const parentFlag   = parentUl?.closest('.folder-item')?.getAttribute('data-flag') || '';
+            const isParentImmutable = parentFlag.includes('schg');
+
+            const unlockBtn = document.getElementById('cm-unlock-item');
+            const deleteBtn = document.getElementById('cm-delete-file');
+
+            if (isImmutable) {
+                unlockBtn.style.display = 'flex';
+                deleteBtn.style.display = 'none';
+            } else if (isParentImmutable) {
+                unlockBtn.style.display = 'none';
+                deleteBtn.style.display = 'none';
+            } else {
+                unlockBtn.style.display = 'none';
+                deleteBtn.style.display = 'flex';
+            }
+
+            setCmTargetData({ filepath, filename, liElement, isFolder, flag: currentFlag });
+
+            document.getElementById('cm-download-file').style.display = isFolder ? 'none' : 'flex';
+            document.getElementById('cm-download-zip').style.display  = 'flex';
+
+            const refreshBtn  = document.getElementById('cm-refresh-dir');
+            refreshBtn.querySelector('.ide-cm-item-text').innerText = isFolder ? 'Refresh Directory' : 'Refresh Parent Dir';
+            refreshBtn.style.display = 'flex';
+
+            // Position
+            let left = e.pageX;
+            let top  = e.pageY;
+            if (e.clientX + cm.offsetWidth  > window.innerWidth)  left = e.pageX - cm.offsetWidth;
+            if (e.clientY + cm.offsetHeight > window.innerHeight)  top  = e.pageY - cm.offsetHeight;
+
+            cm.style.left    = `${left}px`;
+            cm.style.top     = `${top}px`;
+            cm.style.display = 'block';
+        });
+
+        // Submenu repositioning
+        document.querySelectorAll('.has-submenu').forEach(item => {
+            item.addEventListener('mouseenter', function() {
+                const sub = this.querySelector('.ide-cm-submenu');
+                if (!sub) return;
+                sub.style.top    = '0px';
+                sub.style.bottom = 'auto';
+                const rect       = this.getBoundingClientRect();
+                const subHeight  = sub.getBoundingClientRect().height || sub.scrollHeight;
+                if (rect.top + subHeight > window.innerHeight - 10) {
+                    sub.style.top    = 'auto';
+                    sub.style.bottom = '0px';
+                }
             });
-            selectEl.disabled = false;
-            await loadBackupDiff(data.backups[0].path);
-        } else {
-            selectEl.innerHTML = '<option value="">No history found</option>';
-            showConfirmDialog('Backup not found', 'No backup file found or could not read it.', 'success');
-            hideSpinner();
+        });
+
+        // Global hide
+        document.addEventListener('click',   (e) => { if (e.button !== 2) hideContextMenu(); });
+        document.addEventListener('keydown',  (e) => { if (e.key === 'Escape') hideContextMenu(); });
+
+        // --- ACTIONS ---
+        document.getElementById('cm-new-file').addEventListener('click', async () => {
+            if (!cmTargetData) return;
+            hideContextMenu();
+            const name = await showNewItemModal('file');
+            if (name) executeCreateItem(name, 'file', cmTargetData);
+        });
+
+        document.getElementById('cm-new-folder').addEventListener('click', async () => {
+            if (!cmTargetData) return;
+            hideContextMenu();
+            const name = await showNewItemModal('folder');
+            if (name) executeCreateItem(name, 'folder', cmTargetData);
+        });
+
+        document.getElementById('cm-copy-path').addEventListener('click', () => {
+            if (!cmTargetData) return;
+            navigator.clipboard?.writeText(cmTargetData.filepath)
+                ?? (() => {
+                    const ta = document.createElement('textarea');
+                    ta.value = cmTargetData.filepath;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                })();
+            hideContextMenu();
+        });
+
+        document.getElementById('cm-unlock-item').addEventListener('click', async () => {
+            if (!cmTargetData) return;
+            hideContextMenu();
+            const ok = await showConfirmDialog(
+                'Unlock Protection',
+                `The item "${cmTargetData.filename}" is protected with the flag: ${cmTargetData.flag}.\n\nDo you want to remove all protection flags now?`,
+                'warning'
+            );
+            if (ok) executeUnlock(cmTargetData.filepath, cmTargetData.liElement);
+        });
+
+        document.getElementById('cm-info-item').addEventListener('click', () => {
+            if (!cmTargetData) return;
+            hideContextMenu();
+            showFileInfo(cmTargetData.filepath);
+        });
+
+        document.getElementById('cm-compare-history').addEventListener('click', () => {
+            if (!cmTargetData) return;
+            hideContextMenu();
+            if (cmTargetData.isFolder) {
+                showConfirmDialog('Error', 'You can only compare the history of a file, not a directory.', 'error');
+                return;
+            }
+            openDiffViewer(cmTargetData.filepath, cmTargetData.filename);
+        });
+
+        document.getElementById('cm-download-file').addEventListener('click', () => {
+            if (!cmTargetData || cmTargetData.isFolder) return;
+            executeDownloadRequest(false);
+        });
+
+        document.getElementById('cm-download-zip').addEventListener('click',    () => cmTargetData && executeDownloadRequest('zip'));
+        document.getElementById('cm-download-targz').addEventListener('click',  () => cmTargetData && executeDownloadRequest('targz'));
+        document.getElementById('cm-download-tarlz4').addEventListener('click', () => cmTargetData && executeDownloadRequest('tarlz4'));
+        document.getElementById('cm-download-tarzst').addEventListener('click', () => cmTargetData && executeDownloadRequest('tarzst'));
+
+        document.getElementById('cm-refresh-dir').addEventListener('click', async () => {
+            if (!cmTargetData) return;
+            hideContextMenu();
+            const targetPath = cmTargetData.isFolder
+                ? cmTargetData.filepath
+                : cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
+            spinner();
+            try {
+                await refreshDir(targetPath);
+                showNotification('Refreshed', 'Directory contents updated from server.');
+            } catch (e) {
+                showConfirmDialog('Error', 'Failed to refresh directory.', 'error');
+            } finally {
+                hideSpinner();
+            }
+        });
+
+        document.getElementById('cm-delete-file').addEventListener('click', () => {
+            if (!cmTargetData) return;
+            hideContextMenu();
+            executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement, cmTargetData.isFolder);
+        });
+
+        // --- HEADER + BUTTON ---
+        const plusBtn  = document.querySelector('.plus-icon');
+        const plusMenu = document.querySelector('.header-plus-submenu');
+        const headerMain = document.querySelector('.ide-sidebar-header');
+
+        if (plusBtn && plusMenu && headerMain) {
+            plusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isOpen = plusMenu.classList.toggle('show');
+                headerMain.classList.toggle('menu-open', isOpen);
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!plusMenu.contains(e.target) && !plusBtn.contains(e.target)) {
+                    plusMenu.classList.remove('show');
+                    headerMain.classList.remove('menu-open');
+                }
+            });
+
+            const resetHeader = () => {
+                plusMenu.classList.remove('show');
+                headerMain.classList.remove('menu-open');
+            };
+
+            const handleHeaderCreate = async (type) => {
+                const targetPath = cfg.lastSelectedDir || cfg.jailRoot;
+                const name       = await showNewItemModal(type);
+                if (name) executeCreateItem(name, type, { filepath: targetPath, isFolder: true });
+            };
+
+            document.getElementById('header-new-file')?.addEventListener('click',   () => { resetHeader(); handleHeaderCreate('file'); });
+            document.getElementById('header-new-folder')?.addEventListener('click', () => { resetHeader(); handleHeaderCreate('folder'); });
         }
-    } catch (err) {
-        console.error('Diff Engine Error:', err);
-        showConfirmDialog('Diff Engine Error', err, 'error');
-        selectEl.innerHTML = '<option value="">Error loading history</option>';
-    }
-}
-window.openDiffViewer = openDiffViewer;
-
-export async function loadBackupDiff(backupPath) {
-    spinner();
-    const formData = new FormData(document.getElementById('iform'));
-    formData.append('ajax_read_backup', '1');
-    formData.append('bak_path',         backupPath);
-
-    try {
-        const resBak  = await fetch(window.location.href, { method: 'POST', body: formData });
-        const dataBak = await resBak.json();
-
-        if (!dataBak.success) {
-            diffEditorInstance?.setModel(null);
-            showConfirmDialog('Backup not found', dataBak.error || 'No backup file found.', 'success');
-            return;
-        }
-
-        const activeFilepath = document.querySelector('input[name="filepath"]')?.value;
-        let currentContent   = '';
-
-        if (currentDiffFilepath === activeFilepath && window.editor) {
-            currentContent = window.editor.getValue();
-        } else {
-            const resCur = await fetch(`${window.location.pathname}?ajax=1&filepath=${encodeURIComponent(currentDiffFilepath)}`);
-            if (resCur.ok) currentContent = await resCur.text();
-            else { showConfirmDialog('Error', 'Could not load the current file for comparison.', 'error'); return; }
-        }
-
-        const lang          = detectLang(currentDiffFilepath);
-        const originalModel = monaco.editor.createModel(dataBak.content, lang);
-        const modifiedModel = monaco.editor.createModel(currentContent,  lang);
-
-        diffEditorInstance.setModel({ original: originalModel, modified: modifiedModel });
-
-    } catch (err) {
-        console.error('Diff Load Error:', err);
-        showConfirmDialog('Diff Load Error', err, 'error');
-    } finally {
-        hideSpinner();
-    }
-}
-window.loadBackupDiff = loadBackupDiff;
-
-export function closeDiffViewer() {
-    document.getElementById('ide-diff-modal').style.display = 'none';
-}
-window.closeDiffViewer = closeDiffViewer;
-
-// --- PREVENT DATA LOSS ON F5 ---
-export function initBeforeUnload() {
-    window.addEventListener('beforeunload', (e) => {
-        if (isDirty) { e.preventDefault(); return ''; }
     });
 }
