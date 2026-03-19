@@ -161,8 +161,7 @@ export function initContextMenu() {
             let filepath     = '';
 
             if (isFolder) {
-                const match = link.getAttribute('onclick')?.match(/toggleFolder\(.*?,\s*'([^']+)'\)/);
-                if (match) filepath = match[1];
+                filepath = link.getAttribute('data-folder-path') ?? '';
             } else {
                 filepath = new URL(link.href, window.location.origin).searchParams.get('filepath') ?? '';
             }
