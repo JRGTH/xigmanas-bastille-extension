@@ -297,7 +297,7 @@ window.IDE_CONFIG = {
 <script src="ext/bastille/js/modules/apexcharts.v5.10.3.js"></script>
 <script src="js/spin.min.js"></script>
 
-<script src="ext/bastille/js/vs/monaco/loader.js"></script>
+<script src="ext/bastille/js/monaco/vs/loader.js"></script>
 <script type="module" src="ext/bastille/js/main.js"></script>
 
 <?php if (!empty($input_errors)): ?>
