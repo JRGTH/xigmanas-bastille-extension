@@ -158,16 +158,16 @@ export async function executeDownloadRequest(type) {
 
 // --- RESUME PENDING JOB ON PAGE LOAD ---
 export function initPendingJobResume() {
-    document.addEventListener('DOMContentLoaded', () => {
-        const pending = localStorage.getItem('bastille_pending_job');
-        if (!pending) return;
-        try {
-            const { job_id, filename, jailName, csrfToken, parentDir } = JSON.parse(pending);
-            localStorage.removeItem('bastille_pending_job');
-            spinner();
-            openSSE(job_id, filename, jailName, csrfToken, parentDir);
-        } catch (_) {
-            localStorage.removeItem('bastille_pending_job');
-        }
-    });
+
+    const pending = localStorage.getItem('bastille_pending_job');
+    if (!pending) return;
+    try {
+        const { job_id, filename, jailName, csrfToken, parentDir } = JSON.parse(pending);
+        localStorage.removeItem('bastille_pending_job');
+        spinner();
+        openSSE(job_id, filename, jailName, csrfToken, parentDir);
+    } catch (_) {
+        localStorage.removeItem('bastille_pending_job');
+    }
+
 }
