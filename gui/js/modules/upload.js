@@ -3,6 +3,7 @@
 import { cfg }                  from './state.js';
 import { spinner, hideSpinner } from './ui.js';
 import { showConfirmDialog }    from './modal.js';
+import { renderLockIcon } from './tree.js';
 
 const CHUNK_SIZE = 25 * 1024 * 1024; // 25MB
 

@@ -13,7 +13,7 @@ const BINARY_EXTS = new Set([
 ]);
 
 // --- HELPERS ---
-function renderLockIcon(flag) {
+export function renderLockIcon(flag) {
     return flag && flag !== '0'
         ? `<img src="ext/bastille/images/lock.svg" class="lock-icon" title="Flags: ${flag}">`
         : '';
