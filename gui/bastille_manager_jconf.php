@@ -299,7 +299,7 @@ if ($_POST):
 
 				if (isset($_POST['ipv4']) && $_POST['ipv4']):
 					if($jail_ipv4_def !== $jail_ipv4):
-						$cmd = "/usr/bin/sed -i '' 's/.*ip4.addr.*=.*;/  ip4.addr = $jail_ipv4;/' $jail_config";
+						$cmd = "/usr/bin/sed -i '' 's#.*ip4.addr.*=.*;#  ip4.addr = $jail_ipv4;#' $jail_config";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
 							//$savemsg .= gtext("IPv4 changed successfully.");
@@ -311,7 +311,7 @@ if ($_POST):
 
 				if (isset($_POST['ipv6']) && $_POST['ipv6']):
 					if($jail_ipv6_def !== $jail_ipv6):
-						$cmd = "/usr/bin/sed -i '' 's/.*ip6.addr.*=.*;/  ip6.addr = $jail_ipv6;/' $jail_config";
+						$cmd = "/usr/bin/sed -i '' 's#.*ip6.addr.*=.*;#  ip6.addr = $jail_ipv6;#' $jail_config";
 						unset($output,$retval);mwexec2($cmd,$output,$retval);
 						if($retval == 0):
 							//$savemsg .= gtext("IPv6 changed successfully.");
