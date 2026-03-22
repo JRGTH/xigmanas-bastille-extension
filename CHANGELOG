@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.4.10......Bug fix, change sed delimiters for the IP settings.
 1.4.09......Minor changes, update bastille.conf.sample file.
 1.4.08......Fix info message banner under base releases, thanks to rucko24.
 1.4.07......Improve third-party file permission checks.
