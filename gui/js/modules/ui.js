@@ -65,6 +65,10 @@ export function initResizer() {
         document.addEventListener('mouseup', stopResize);
         resizer.classList.add('resizing');
     });
+
+    // Toggle sidebar button
+    document.getElementById('toggle-sidebar-btn')?.addEventListener('click', toggleSidebar);
+
 }
 
 // --- BREADCRUMBS ---
