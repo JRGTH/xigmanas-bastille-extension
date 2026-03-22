@@ -194,6 +194,7 @@ export async function showFileInfo(filePath) {
             switchTab('overview', document.querySelector('.tab-link'));
         }
     } catch (e) {
+        console.error('[showFileInfo] error:', e);
         content.innerHTML = '<div class="modern-card" style="color:red">Connection error</div>';
     }
 }
