@@ -185,7 +185,7 @@ export async function showFileInfo(filePath) {
 
     try {
         const response = await fetch(window.location.href, { method: 'POST', body: formData });
-        currentFileData = await response.json();
+        setCurrentFileData(await response.json());
 
         if (currentFileData.success) {
             // Update Header
