@@ -366,8 +366,7 @@ export function initSidebarDragDrop() {
 
         let destination = cfg.jailRoot;
         if (targetFolder) {
-            const match = targetFolder.querySelector('a')?.getAttribute('onclick')?.match(/'([^']+)'/);
-            if (match) destination = match[1];
+            destination = targetFolder.querySelector('a')?.getAttribute('data-folder-path') ?? cfg.jailRoot;
         } else {
             destination = cfg.lastSelectedDir || cfg.currentDir || cfg.jailRoot;
         }
@@ -395,8 +394,7 @@ export function initSidebarDragDrop() {
 
         let path = cfg.jailRoot;
         if (item.classList.contains('folder-item')) {
-            const match = link.getAttribute('onclick')?.match(/['"]([^'"]+)['"]/);
-            if (match) path = match[1];
+            path = link.getAttribute('data-folder-path') ?? cfg.jailRoot;
         } else if (item.classList.contains('file-item')) {
             const url      = new URL(link.href, window.location.origin);
             const filepath = url.searchParams.get('filepath');
