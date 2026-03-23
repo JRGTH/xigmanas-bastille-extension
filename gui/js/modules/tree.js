@@ -362,6 +362,7 @@ export function initTreeClickHandler() {
 // --- HOME BUTTON ---
 export function initHomeButton() {
     const homeBtn = document.querySelector('.ide-sidebar-header a[title="Reset Tree"]');
+    console.log('[HomeBtn]', homeBtn);
     if (!homeBtn) return;
 
     homeBtn.addEventListener('click', (e) => {
