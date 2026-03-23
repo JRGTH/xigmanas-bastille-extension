@@ -319,11 +319,12 @@
     color: var(--txc-tnt-active);
 }
 
-.copy-icon-img {
+.copy-icon-img-header {
     width: 20px;
     height: 20px;
     margin-left: 2px;
     pointer-events: none;
+    filter: brightness(2) !important;
 }
 
 /* --- BREADCRUMBS --- */

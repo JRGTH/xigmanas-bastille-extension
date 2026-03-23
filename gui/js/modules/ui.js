@@ -98,7 +98,7 @@ export function updateBreadcrumbs(fullPath) {
             html += `
                 <span class="bc-part bc-file" title="Click: Relative path | Right-Click: Absolute path">
                     ${part}
-                    <img src="ext/bastille/images/copy.svg" class="copy-icon-img" style="filter: brightness(2); !important" alt="copy">
+                    <img src="ext/bastille/images/copy.svg" class="copy-icon-img-header" alt="copy">
                 </span>`;
         } else {
             html += `<span class="bc-part bc-folder" data-path="${currentPath}">${part}</span>`;
