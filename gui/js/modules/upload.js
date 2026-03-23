@@ -3,7 +3,7 @@
 import { cfg }                  from './state.js';
 import { spinner, hideSpinner } from './ui.js';
 import { showConfirmDialog }    from './modal.js';
-import { renderLockIcon } from './tree.js';
+import { renderLockIcon, refreshDir } from './tree.js';
 
 const CHUNK_SIZE = 25 * 1024 * 1024; // 25MB
 
@@ -281,7 +281,7 @@ export async function handleFileUpload(files, destination) {
 
                 if (vJson.success) {
                     if (bar) bar.style.background = '#4caf50';
-                    injectItemIntoTree(destination, file.name, false);
+                    await refreshDir(destination);
                 } else {
                     showConfirmDialog('Error', `Integrity fail for ${file.name}!`, 'error');
                 }
