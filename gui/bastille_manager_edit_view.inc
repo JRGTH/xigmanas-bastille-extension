@@ -62,7 +62,7 @@ window.IDE_CONFIG = {
                                 </div>
                             </div>
 
-                            <a href="?jailname=<?=urlencode($jailname)?>&filepath=<?=urlencode($filepath)?>" class="header-action-btn" title="Reset Tree">
+                            <a href="javascript:void(0)" class="header-action-btn" title="Reset Tree">
                                 <img src="images/fm_img/smallicons/house.png" alt="Home" width="18" height="18">
                             </a>
                         </div>
