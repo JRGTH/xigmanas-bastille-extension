@@ -29,7 +29,7 @@ import { initMonaco, executeSaved,
 import { closeInfoSidebar, showFileInfo,
         switchTab}                          from './modules/sidebar-info.js';
 import { initContextMenu }                  from './modules/context-menu.js';
-import { initFolderDelegation } from './modules/tree.js';
+import { initFolderDelegation, initHomeButton } from './modules/tree.js';
 
 // --- EXPOSE GLOBALS NEEDED BY PHP-GENERATED HTML ---
 window.toggleSidebar        = toggleSidebar;
