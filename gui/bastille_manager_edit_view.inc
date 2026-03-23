@@ -147,7 +147,7 @@ window.IDE_CONFIG = {
                                     <?php if ($is_last): ?>
                                         <span class="bc-part bc-file" title="Click: Relative path | Right-Click: Absolute path">
                                             <?=htmlspecialchars($part)?>
-                                            <img src="ext/bastille/images/copy.svg" class="copy-icon-img" alt="copy">
+                                            <img src="ext/bastille/images/copy.svg" class="copy-icon-img-header" alt="copy">
                                         </span>
                                     <?php else: ?>
                                         <span class="bc-part bc-folder" data-path="<?=htmlspecialchars($accumulated_path)?>">
