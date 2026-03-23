@@ -216,10 +216,8 @@ export async function refreshDir(dirPath) {
     let targetLi = cleanDest === cleanRoot
         ? document.querySelector('#fileList > li.folder-item')
         : Array.from(document.querySelectorAll('.folder-item > a'))
-            .find(a => {
-                const oc = a.getAttribute('onclick') || '';
-                return oc.includes(`'${cleanDest}'`) || oc.includes(`"${cleanDest}"`);
-            })?.closest('li') ?? null;
+            .find(a => a.getAttribute('data-folder-path') === cleanDest)
+            ?.closest('li') ?? null;
 
     if (!targetLi) return;
     const ul = targetLi.querySelector('ul');
