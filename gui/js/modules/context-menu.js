@@ -201,15 +201,25 @@ export function initContextMenu() {
         refreshBtn.querySelector('.ide-cm-item-text').innerText = isFolder ? 'Refresh Directory' : 'Refresh Parent Dir';
         refreshBtn.style.display = 'flex';
 
-        // Position
-        let left = e.pageX;
-        let top  = e.pageY;
-        if (e.clientX + cm.offsetWidth  > window.innerWidth)  left = e.pageX - cm.offsetWidth;
-        if (e.clientY + cm.offsetHeight > window.innerHeight)  top  = e.pageY - cm.offsetHeight;
+        // Position and display menu
+        contextMenu.style.display = 'block';
 
-        cm.style.left    = `${left}px`;
-        cm.style.top     = `${top}px`;
-        cm.style.display = 'block';
+        let left = e.pageX;
+        let top = e.pageY;
+
+        const menuWidth = contextMenu.offsetWidth;
+        const menuHeight = contextMenu.offsetHeight;
+
+        if (e.clientX + menuWidth > window.innerWidth) {
+            left = e.pageX - menuWidth;
+        }
+
+        if (e.clientY + menuHeight > window.innerHeight) {
+            top = e.pageY - menuHeight;
+        }
+
+        contextMenu.style.left = `${left}px`;
+        contextMenu.style.top = `${top}px`;
     });
 
     // Submenu repositioning
