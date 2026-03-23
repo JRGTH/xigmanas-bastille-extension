@@ -124,7 +124,7 @@ export async function executeCreateItem(name, type, targetData) {
         const data = await response.json();
 
         if (data.success) {
-            injectItemIntoTree(parentPath, name, type === 'folder');
+            await refreshDir(parentPath, name, type === 'folder');
         } else {
             throw new Error(data.error || 'Failed to create item.');
         }
