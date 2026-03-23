@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initSidebarDragDrop();
     initBeforeUnload();
     initPendingJobResume();
+    initHomeButton();
 });
 
 // Recover filepath from history.state on F5
