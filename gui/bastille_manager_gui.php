@@ -65,11 +65,28 @@ if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
         $jls_list = get_jail_infos();
     }
 
+    // --- NEW: INJECT INTERFACE INTO AJAX RESPONSE ---
+    foreach ($jls_list as &$jail_ref) {
+        $jname = $jail_ref['jailname'];
+        $jail_conf_file = "/usr/local/bastille/jails/{$jname}/jail.conf";
+        $jail_interface = '-';
+
+        if (file_exists($jail_conf_file)) {
+            $grep_cmd = "grep 'interface =' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \"; '";
+            $res_iface = shell_exec($grep_cmd);
+            $jail_interface = !empty($res_iface) ? trim($res_iface) : '-';
+        }
+        $jail_ref['interface'] = $jail_interface;
+    }
+
     // Return JSON
     ob_clean();
     header('Content-Type: application/json');
     header('Cache-Control: no-cache');
-    echo json_encode(['success' => true, 'jails' => $jls_list ?: []]);
+    echo json_encode([
+        'success' => true,
+        'jails' => $jls_list ?: []
+    ]);
     exit;
 }
 // --- END AUTO-REFRESH LOGIC ---
@@ -592,6 +609,7 @@ function updateJailTable() {
                     row.append($('<td class="lcell">').text(jail.ports || '-'));
                     row.append($('<td class="lcell">').text(jail.rel || '-'));
                     row.append($('<td class="lcell">').text(jail.tags || '-'));
+                    row.append($('<td class="lcell">').text(jail.interface || '-'));
 
                     var statImg = (jail.state === "Up") ? '<?=$img_path['ena'];?>' : '<?=$img_path['dis'];?>';
                     row.append($('<td class="lcell">').append($('<img>').attr('src', statImg)));
@@ -812,7 +830,6 @@ $document->render();
 			<col style="width:2%">
 			<col style="width:3%">
 			<col style="width:10%">
-            <!-- <col style="width:10%"> Description -->
 			<col style="width:4%">
 			<col style="width:4%">
 			<col style="width:4%">
@@ -821,6 +838,7 @@ $document->render();
 			<col style="width:12%">
 			<col style="width:7%">
 			<col style="width:10%">
+			<col style="width:8%">
 			<col style="width:4%">
 			<col style="width:4%">
 			<col style="width:10%">
@@ -828,7 +846,7 @@ $document->render();
 		<thead>
 <?php
 			html_separator2();
-			html_titleline2(gettext('Overview'), 14);
+			html_titleline2(gettext('Overview'), 15);
 ?>
 			<tr>
 				<th class="lhelc"><?=gtext('Select');?></th>
@@ -843,6 +861,7 @@ $document->render();
 				<th class="lhell"><?=gtext('Published Ports');?></th>
 				<th class="lhell"><?=gtext('Release');?></th>
 				<th class="lhell"><?=gtext('Tags');?></th>
+				<th class="lhell"><?=gtext('Interface');?></th>
 				<th class="lhell"><?=gtext('Active');?></th>
 				<th class="lhell"><?=gtext('Template');?></th>
 				<th class="lhebl"><?=gtext('Toolbox');?></th>
@@ -881,6 +900,19 @@ $document->render();
 					<td class="lcell"><?=htmlspecialchars($sphere_record['ports']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['rel']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
+					<td class="lcell"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
+                    <?php
+                        // --- NEW: GET INTERFACE FOR PHP RENDER ---
+                        $jname = $sphere_record['jailname'];
+                        $jail_conf_file = "/usr/local/bastille/jails/{$jname}/jail.conf";
+                        $jail_interface = '-';
+                        if (file_exists($jail_conf_file)) {
+                            $grep_cmd = "grep 'interface =' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \"; '";
+                            $res_iface = shell_exec($grep_cmd);
+                            $jail_interface = !empty($res_iface) ? trim($res_iface) : '-';
+                        }
+                    ?>
+                    <td class="lcell"><?=htmlspecialchars($jail_interface);?>&nbsp;</td>
 					<td class="lcell"><img src="<?=$sphere_record['stat'];?>"></td>
 					<td class="lcell"><img src="<?=$sphere_record['logo'];?>"></td>
 					<td class="lcebld">
