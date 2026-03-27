@@ -66,14 +66,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
         $jls_list = get_jail_infos();
     }
 
-    // --- NEW: INJECT INTERFACE INTO AJAX RESPONSE ---
+    $bastille_prefix = trim(shell_exec("sysrc -n -f /usr/local/etc/bastille/bastille.conf bastille_prefix 2>/dev/null"));
+    if (empty($bastille_prefix)) {
+        $bastille_prefix = '/usr/local/bastille'; // Fallback ??
+    }
+
     foreach ($jls_list as &$jail_ref) {
         $jname = $jail_ref['jailname'];
-        $jail_conf_file = "/usr/local/bastille/jails/{$jname}/jail.conf";
+        $jail_conf_file = "{$bastille_prefix}/jails/{$jname}/jail.conf";
         $jail_interface = '-';
-
         if (file_exists($jail_conf_file)) {
-            $grep_cmd = "grep 'interface =' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \"; '";
+            $grep_cmd = "grep -E '(vnet\.)?interface\s*=' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \";\''";
             $executor = new BastilleManagerMwExecParallel([$grep_cmd]);
             $exec_res = $executor->executeWithSelect();
             $res_iface = $exec_res[0]['stdout'] ?? '';
@@ -903,11 +906,15 @@ $document->render();
 					<td class="lcell"><?=htmlspecialchars($sphere_record['rel']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
                     <?php
+                        if (!isset($bastille_prefix)) {
+                            $bastille_prefix = trim(shell_exec("sysrc -n -f /usr/local/etc/bastille/bastille.conf bastille_prefix 2>/dev/null"));
+                            if (empty($bastille_prefix)) $bastille_prefix = '/usr/local/bastille';
+                        }
                         $jname = $sphere_record['jailname'];
-                        $jail_conf_file = "/usr/local/bastille/jails/{$jname}/jail.conf";
+                        $jail_conf_file = "{$bastille_prefix}/jails/{$jname}/jail.conf";
                         $jail_interface = '-';
                         if (file_exists($jail_conf_file)) {
-                            $grep_cmd = "grep 'interface =' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \"; '";
+                            $grep_cmd = "grep -E '(vnet\.)?interface\s*=' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \";\''";
                             $executor = new BastilleManagerMwExecParallel([$grep_cmd]);
                             $exec_res = $executor->executeWithSelect();
                             $res_iface = $exec_res[0]['stdout'] ?? '';
