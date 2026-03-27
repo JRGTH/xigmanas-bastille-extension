@@ -914,7 +914,7 @@ $document->render();
                         $jail_conf_file = "{$bastille_prefix}/jails/{$jname}/jail.conf";
                         $jail_interface = '-';
                         if (file_exists($jail_conf_file)) {
-                            $grep_cmd = "grep -E '(vnet\.)?interface\s*=' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \";\''";
+                            $grep_cmd = "grep -E '(vnet\.)?interface[[:space:]]*=' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \";\''";
                             $executor = new BastilleManagerMwExecParallel([$grep_cmd]);
                             $exec_res = $executor->executeWithSelect();
                             $res_iface = $exec_res[0]['stdout'] ?? '';
