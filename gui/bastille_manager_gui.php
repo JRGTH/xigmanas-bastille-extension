@@ -38,6 +38,7 @@
 require_once 'auth.inc';
 require_once 'guiconfig.inc';
 require_once 'bastille_manager-lib.inc';
+require_once 'BastilleManagerMwExecParallel.php';
 
 $img_path = [
 	'add' => 'images/add.png',
@@ -73,7 +74,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
 
         if (file_exists($jail_conf_file)) {
             $grep_cmd = "grep 'interface =' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \"; '";
-            $res_iface = shell_exec($grep_cmd);
+            $executor = new BastilleManagerMwExecParallel([$grep_cmd]);
+            $exec_res = $executor->executeWithSelect();
+            $res_iface = $exec_res[0]['stdout'] ?? '';
             $jail_interface = !empty($res_iface) ? trim($res_iface) : '-';
         }
         $jail_ref['interface'] = $jail_interface;
@@ -852,7 +855,6 @@ $document->render();
 				<th class="lhelc"><?=gtext('Select');?></th>
 				<th class="lhell"><?=gtext('JID');?></th>
 				<th class="lhell"><?=gtext('Name');?></th>
-                <!-- <th class="lhell"><?=gtext('Description');?></th> -->
 				<th class="lhell"><?=gtext('Boot');?></th>
 				<th class="lhell"><?=gtext('Prio');?></th>
 				<th class="lhell"><?=gtext('State');?></th>
@@ -900,15 +902,15 @@ $document->render();
 					<td class="lcell"><?=htmlspecialchars($sphere_record['ports']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['rel']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
                     <?php
-                        // --- NEW: GET INTERFACE FOR PHP RENDER ---
                         $jname = $sphere_record['jailname'];
                         $jail_conf_file = "/usr/local/bastille/jails/{$jname}/jail.conf";
                         $jail_interface = '-';
                         if (file_exists($jail_conf_file)) {
                             $grep_cmd = "grep 'interface =' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \"; '";
-                            $res_iface = shell_exec($grep_cmd);
+                            $executor = new BastilleManagerMwExecParallel([$grep_cmd]);
+                            $exec_res = $executor->executeWithSelect();
+                            $res_iface = $exec_res[0]['stdout'] ?? '';
                             $jail_interface = !empty($res_iface) ? trim($res_iface) : '-';
                         }
                     ?>
