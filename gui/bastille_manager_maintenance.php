@@ -397,7 +397,8 @@ $(document).ready(function(){
                 <?php html_checkbox2('show_refresh_button',gtext('Show refresh button'),'' ? true : false,gtext('This will display a refresh button in the Containers tab.'),'',false);?>
                 <?php html_separator();?>
                 <?php html_titleline(gtext("Web terminal"));?>
-                <?php html_checkbox2('show_web_terminal_button',gtext('Show web terminal button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail row, to open the ttyd in a modal window.'),'',false);?>
+                <?php html_checkbox2('show_web_terminal_button',gtext('Show web terminal button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail row, to open the ttyd in a modal windowl, aka “Web Terminal”'),'',false);?>
+                <?php html_text2("ssl_troubleshooting", gtext("MOZILLA_PKIX_ERROR_SELF_SIGNED_CERT"), gtext("Mozilla will display this initial warning, to fix it: Use the button “Open in New Tab” (Top right corner, in the same Web Terminal window.)"));?>
                 <?php html_separator();?>
 			</table>
 			<div id="remarks">
