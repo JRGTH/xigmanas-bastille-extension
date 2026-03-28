@@ -66,35 +66,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
         $jls_list = get_jail_infos();
     }
 
-    $bastille_prefix = '/usr/local/bastille';
-    $b_conf = '/usr/local/etc/bastille/bastille.conf';
-    if (file_exists($b_conf)) {
-        $lines = file($b_conf);
-        foreach ($lines as $line) {
-            if (preg_match('/^bastille_prefix="?(.*?)"?$/', trim($line), $matches)) {
-                $bastille_prefix = $matches[1];
-                break;
-            }
-        }
-    }
-
-    foreach ($jls_list as &$jail_ref) {
-        $jname = $jail_ref['jailname'];
-        $jail_conf_file = "{$bastille_prefix}/jails/{$jname}/jail.conf";
-        $jail_interface = '-';
-
-        if (file_exists($jail_conf_file)) {
-            $lines = file($jail_conf_file);
-            foreach ($lines as $line) {
-                if (preg_match('/(?:vnet\.)?interface\s*=\s*"?([^";\s]+)/', $line, $matches)) {
-                    $jail_interface = $matches[1];
-                    break;
-                }
-            }
-        }
-        $jail_ref['interface'] = $jail_interface;
-    }
-
     // Return JSON
     ob_clean();
     header('Content-Type: application/json');
@@ -106,12 +77,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
     exit;
 }
 // --- END AUTO-REFRESH LOGIC ---
-
-function mwexec_background($command)
-{
-    $command = $command . ' > /dev/null 2>&1 &';
-    exec($command);
-}
 
 $sphere_scriptname = basename(__FILE__);
 $sphere_scriptname_child = 'bastille_manager_util.php';
