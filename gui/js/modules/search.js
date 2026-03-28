@@ -1,12 +1,19 @@
 // modules/search.js
 
-import { cfg }                              from './state.js';
-import { spinner, hideSpinner }             from './ui.js';
-import { syncSidebarWithFolder }            from './tree.js';
-import { setSelectedIndex, setSearchTimer,
-         setSidebarTimer, setOriginalSidebarHTML,
-         selectedIndex, searchTimer,
-         sidebarTimer, originalSidebarHTML } from './state.js';
+import { cfg } from "./state.js";
+import { spinner, hideSpinner } from "./ui.js";
+import { syncSidebarWithFolder, syncSidebarWithFile } from "./tree.js";
+import {
+  setSelectedIndex,
+  setSearchTimer,
+  setSidebarTimer,
+  setOriginalSidebarHTML,
+  selectedIndex,
+  searchTimer,
+  sidebarTimer,
+  originalSidebarHTML,
+} from "./state.js";
+import { loadFileToEditor } from "./editor.js";
 
 // --- QUICK SEARCH ---
 const qsModal           = document.getElementById('quick-search-modal');
@@ -82,7 +89,7 @@ function updateSelection(items) {
 
 function runQuickSearch() {
     setSelectedIndex(-1);
-    const filter = qsInput.value.trim();
+    let filter = qsInput.value.trim();
     qsClearBtn.style.display = filter.length > 0 ? 'flex' : 'none';
 
     if (filter.length < 2) {
@@ -95,7 +102,7 @@ function runQuickSearch() {
         spinner();
         qsResultsList.innerHTML = '<li style="padding: 15px; color:#888;">Searching recursively...</li>';
 
-        const url = new URL(window.location.origin + window.location.pathname);
+        let url = new URL(window.location.origin + window.location.pathname);
         url.searchParams.set('jailname', cfg.jailname);
         url.searchParams.set('ajax_search', filter);
 
@@ -103,57 +110,61 @@ function runQuickSearch() {
             .then(r => r.json())
             .then(data => {
                 const perfInfo = document.getElementById('qs-perf-info');
-                if (perfInfo) perfInfo.innerText = data.perf;
-                qsResultsList.innerHTML = '';
+                if (perfInfo) perfInfo.innerText = data.perf || '';
 
-                if (!data.items?.length) {
-                    qsResultsList.innerHTML = `<li class="no-results" style="padding: 20px; text-align: center; color: #999;"><div style="font-size: 24px;">No files found!</div></li>`;
+                qsResultsList.innerHTML = '';
+                if (!data.items || data.items.length === 0) {
+                    qsResultsList.innerHTML = `<li class="no-results" style="padding: 20px; text-align: center; color: #999;">No files found!</li>`;
                     return;
                 }
 
-                data.items.forEach(file => {
-                    const li   = document.createElement('li');
-                    const a    = document.createElement('a');
-                    const icon = file.type === 'folder'
+                data.items.forEach((file) => {
+                    let li = document.createElement('li');
+                    let a = document.createElement('a');
+
+                    let iconSVG = file.type === 'folder'
                         ? '<img src="ext/bastille/images/folder.svg" style="width:16px; margin-right:8px; vertical-align:middle;">'
                         : '<img src="ext/bastille/images/file.svg" style="width:16px; margin-right:8px; vertical-align:middle;">';
 
-                    a.innerHTML = `<span class="qs-item-title">${icon}${file.name}</span><span class="qs-item-path">${file.relative}</span>`;
+                    a.innerHTML = `
+                        <span class="qs-item-title">${iconSVG}${file.name}</span>
+                        <span class="qs-item-path">${file.relative || file.path}</span>
+                    `;
 
-                    if (file.type === 'folder') {
-                        a.href = '#';
-                        a.addEventListener('click', async (e) => {
-                            e.preventDefault();
-                            saveHistory(filter);
-                            closeQuickSearch();
-                            await syncSidebarWithFolder(file.full);
-                        });
-                    } else {
-                        a.href = `bastille_manager_editor_v2.php?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
-                        a.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            saveHistory(filter);
-                            closeQuickSearch();
-                            const fakeLi   = document.createElement('li');
-                            fakeLi.className = 'tree-item is-recursive';
-                            fakeLi.style.display = 'none';
-                            const fakeLink = document.createElement('a');
-                            fakeLink.href  = a.href;
-                            fakeLi.appendChild(fakeLink);
-                            document.querySelector('.ide-file-list').appendChild(fakeLi);
-                            fakeLink.click();
-                            fakeLi.remove();
-                        });
-                    }
+                    a.href = `?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory || file.dir)}&filepath=${encodeURIComponent(file.full || file.path)}`;
+
+                    a.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const fullPath = file.full || file.path;
+                        const linkHref = a.href;
+
+                        saveHistory(filter);
+                        closeQuickSearch();
+
+                        if (file.type === 'folder') {
+                            console.log("[QS] Navegando a carpeta:", fullPath);
+                            await syncSidebarWithFolder(fullPath);
+                        } else {
+                            console.log("[QS] Cargando archivo SPA:", fullPath);
+                            loadFileToEditor(fullPath, linkHref);
+                            // We synchronize the side panel (the stable feature that opens folders)
+                            await syncSidebarWithFile(fullPath);
+                        }
+                    });
 
                     li.appendChild(a);
                     qsResultsList.appendChild(li);
                 });
             })
-            .catch(() => {
+            .catch(err => {
+                console.error("Search Error:", err);
                 qsResultsList.innerHTML = '<li style="padding: 15px; color:red;">Search engine offline.</li>';
             })
-            .finally(() => hideSpinner());
+            .finally(() => {
+                hideSpinner();
+            });
     }, 400));
 }
 
@@ -183,17 +194,16 @@ export function filterFiles() {
 
 export function clearFilter() {
     const input = document.getElementById('fileFilter');
-    const ul    = document.getElementById('fileList');
+    const ul = document.getElementById('fileList');
+    if (!input || !ul) return;
+
     input.value = '';
+    document.getElementById('clearFilterBtn').style.display = 'none';
 
     if (originalSidebarHTML !== '') {
         ul.innerHTML = originalSidebarHTML;
         setOriginalSidebarHTML('');
     }
-
-    Array.from(ul.getElementsByTagName('li')).forEach(li => li.style.display = '');
-    document.getElementById('clearFilterBtn').style.display = 'none';
-    input.focus();
 }
 window.clearFilter = clearFilter;
 
@@ -250,6 +260,7 @@ export function initSearch() {
     const sidebarClearBtn = document.getElementById('clearFilterBtn');
     if (fileFilterInput) fileFilterInput.addEventListener('keyup', filterFiles);
     if (sidebarClearBtn) sidebarClearBtn.addEventListener('click', clearFilter);
+
 }
 
 // --- GLOBAL KEYBINDS ---

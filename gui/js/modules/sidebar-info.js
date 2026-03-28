@@ -1,4 +1,4 @@
-// modules/download.js
+// modules/sidebar-info.js
 
 import { cfg, cmTargetData, currentFileData, setCurrentFileData } from './state.js';
 import { spinner, hideSpinner } from './ui.js';

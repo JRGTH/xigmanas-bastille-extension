@@ -1,13 +1,25 @@
 // modules/tree.js
 
-import { cfg, isDirty, isInjectingCode,
-         setIsDirty, setIsInjectingCode }  from './state.js';
-import { spinner, hideSpinner,
-         updateBreadcrumbs }               from './ui.js';
-import { showConfirmDialog }               from './modal.js';
-import { clearFilter }                     from './search.js';
+import {
+    cfg,
+    isDirty,
+    isInjectingCode,
+    setIsDirty,
+    setIsInjectingCode,
+    originalSidebarHTML
+} from './state.js';
 
-const BINARY_EXTS = new Set([
+import {
+    spinner,
+    hideSpinner,
+    updateBreadcrumbs
+} from './ui.js';
+
+import { showConfirmDialog } from './modal.js';
+import { clearFilter } from './search.js';
+import { showBinaryWarning, loadFileToEditor } from './editor.js';
+
+export const BINARY_EXTS = new Set([
     'png','jpg','jpeg','gif','svg','ico','mp3','mp4','mkv','avi','mov','wav','flac',
     'iso','gz','zip','tar','rar','7z','pdf','bin','exe','dll','so','db','sqlite'
 ]);
@@ -102,56 +114,82 @@ export function toggleFolder(element, path) {
 }
 window.toggleFolder = toggleFolder;
 
-// --- SYNC SIDEBAR WITH FILE ---
-export async function syncSidebarWithFile() {
-    const targetFile = cfg.filepath;
-    if (!targetFile) return;
+/**
+ * Synchronizes the sidebar tree with the current filepath on page load (F5)
+ * Refactored to handle the Persistent Root structure and null-safety.
+ - FIXED: Compatible with padlocks (schg) searching in all spans.
+ */
+export async function syncSidebarWithFile(specificPath = null) {
+    const targetFile = specificPath || cfg.filepath;
+    if (!targetFile) {
+        return;
+    }
 
-    const relativePath = targetFile.replace(cfg.jailRoot, '');
-    const segments     = relativePath.split('/').filter(s => s !== '');
+    console.log("[Tree] Synchronizing tree with:", targetFile);
+
+    let relativePath = targetFile.replace(cfg.jailRoot, '');
+    let segments = relativePath.split('/').filter(s => s !== '');
     segments.pop();
 
-    let currentPath       = cfg.jailRoot.replace(/\/$/, '');
+    let currentPath = cfg.jailRoot.replace(/\/$/, '');
     let $currentContainer = document.getElementById('fileList');
     if (!$currentContainer) return;
 
     for (const segment of segments) {
         currentPath += '/' + segment;
+
         const folderLink = Array.from($currentContainer.querySelectorAll('.folder-item > a'))
-            .find(a => Array.from(a.querySelectorAll('span')).some(s => s.innerText.trim() === segment));
+            .find(a => {
+                const spans = a.querySelectorAll('span');
+                return Array.from(spans).some(s => s.innerText.trim() === segment);
+            });
 
-        if (!folderLink) break;
+        if (folderLink) {
+            const li = folderLink.parentElement;
+            const subList = li.querySelector('ul');
 
-        const li      = folderLink.parentElement;
-        const subList = li.querySelector('ul');
-
-        if (subList && subList.style.display !== 'none' && li.classList.contains('open')) {
-            $currentContainer = subList;
+            if (subList && subList.style.display !== 'none' && li.classList.contains('open')) {
+                $currentContainer = subList;
+            } else {
+                await toggleFolder(folderLink, currentPath);
+                const nextUl = li.querySelector('ul');
+                if (nextUl) {
+                    $currentContainer = nextUl;
+                } else {
+                    break;
+                }
+            }
         } else {
-            await toggleFolder(folderLink, currentPath);
-            const nextUl = li.querySelector('ul');
-            if (nextUl) $currentContainer = nextUl;
-            else break;
+            break;
         }
     }
 
     setTimeout(() => {
-        const targetLink = Array.from(document.querySelectorAll('.file-item > a'))
-            .find(a => new URL(a.href, window.location.origin).searchParams.get('filepath') === targetFile);
+        const allFileLinks = document.querySelectorAll('.file-item > a');
+        let targetLink = null;
 
-        if (!targetLink) return;
+        allFileLinks.forEach(a => {
+            const linkUrl = new URL(a.href, window.location.origin);
+            if (linkUrl.searchParams.get('filepath') === targetFile) {
+                targetLink = a;
+            }
+        });
 
-        const li = targetLink.closest('.tree-item');
-        let parent = li.parentElement;
-        while (parent && parent.id !== 'fileList') {
-            if (parent.tagName === 'UL') parent.style.display = 'block';
-            if (parent.tagName === 'LI') parent.classList.add('open');
-            parent = parent.parentElement;
+        if (targetLink) {
+            const li = targetLink.closest('.tree-item');
+
+            let parent = li.parentElement;
+            while (parent && parent.id !== 'fileList') {
+                if (parent.tagName === 'UL') parent.style.display = 'block';
+                if (parent.tagName === 'LI') parent.classList.add('open');
+                parent = parent.parentElement;
+            }
+
+            document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+            li.classList.add('active');
+
+            li.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-
-        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
-        li.classList.add('active');
-        li.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 150);
 }
 
@@ -432,15 +470,36 @@ export function clearDirtyState() {
     document.querySelectorAll('.dirty-dot').forEach(dot => dot.remove());
     document.title = document.title.replace('* ', '');
     const saveBtn = document.getElementById('btn_save');
-    if (saveBtn) saveBtn.disabled = true;
+    if (saveBtn) {
+        saveBtn.disabled = true;
+    }
 }
 
 export function initFolderDelegation() {
     document.addEventListener('click', async (e) => {
-        const link = e.target.closest('a[data-folder-path]');
-        if (!link) return;
-        e.preventDefault();
-        const path = link.getAttribute('data-folder-path');
-        if (path) await toggleFolder(link, path);
+        // --- 1. ¿ES ARCHIVO? (Evitamos recarga) ---
+        const fileLink = e.target.closest('.file-item a');
+        if (fileLink) {
+            e.preventDefault(); // ¡PRIMERA LÍNEA! Bloqueo total
+            e.stopPropagation();
+            const url = new URL(fileLink.href, window.location.origin);
+            const filepath = url.searchParams.get('filepath');
+            await loadFileToEditor(filepath, fileLink.href);
+            return;
+        }
+
+        // --- 2. ¿ES CARPETA? (Fix visual) ---
+        const folderLink = e.target.closest('a[data-folder-path]');
+        if (folderLink) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (originalSidebarHTML !== '') {
+                clearFilter();
+            }
+
+            const path = folderLink.getAttribute('data-folder-path');
+            await toggleFolder(folderLink, path);  // toggleFolder maneja el open/close solo
+        }
     });
 }

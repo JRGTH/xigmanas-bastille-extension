@@ -6,6 +6,7 @@ import { cfg, isDirty, isInjectingCode,
          setDiffEditorInstance, setCurrentDiffFilepath } from './state.js';
 import { spinner, hideSpinner }                           from './ui.js';
 import { showConfirmDialog }                              from './modal.js';
+import { BINARY_EXTS } from './tree.js';
 
 const MONACO_PATH = '/ext/bastille/js/modules/monaco/vs';
 
@@ -283,6 +284,74 @@ export function closeDiffViewer() {
     document.getElementById('ide-diff-modal').style.display = 'none';
 }
 window.closeDiffViewer = closeDiffViewer;
+
+export function showBinaryWarning(filepath) {
+    if (!window.editor) {
+        return;
+    }
+
+    const filename = filepath.split('/').pop();
+    const warning = `/*
+ * BASTILLE EDITOR WARNING
+ * ------------------------
+ * The file '${filename}' is a binary or media file.
+ * It cannot be safely displayed or edited in a text editor.
+ */`;
+
+    setIsInjectingCode(true);
+    window.editor.setValue(warning);
+    window.editor.updateOptions({ readOnly: true });
+    setIsInjectingCode(false);
+    setIsDirty(false);
+}
+
+export async function loadFileToEditor(filepath, linkHref) {
+    console.log("[DEBUG] Loading:", filepath);
+    spinner();
+
+    try {
+        let url;
+        // If the linkHref is invalid, we construct the URL manually
+        if (!linkHref || linkHref === 'undefined' || typeof linkHref !== 'string') {
+            console.warn("[DEBUG] linkHref inválido, reconstruyendo URL...");
+            url = new URL(window.location.pathname, window.location.origin);
+            url.searchParams.set('jailname', cfg.jailname);
+            url.searchParams.set('filepath', filepath);
+            // We try to guess the dir (parent directory)
+            const dir = filepath.substring(0, filepath.lastIndexOf('/'));
+            url.searchParams.set('dir', dir);
+        } else {
+            url = new URL(linkHref, window.location.origin);
+        }
+
+        url.searchParams.set('ajax', '1');
+
+        const response = await fetch(url.toString());
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const content = await response.text();
+
+        if (window.editor) {
+            setIsInjectingCode(true);
+            window.editor.setValue(content);
+            window.editor.updateOptions({ readOnly: false });
+            setIsInjectingCode(false);
+            setIsDirty(false);
+        }
+
+        // Refresh the address bar and breadcrumbs
+        const cleanUrl = new URL(url.toString());
+        cleanUrl.searchParams.delete('ajax');
+        window.history.pushState({ filepath }, '', cleanUrl.toString());
+        updateBreadcrumbs(filepath);
+
+    } catch (err) {
+        console.error("[DEBUG] Error en loadFileToEditor:", err);
+    } finally {
+        hideSpinner();
+    }
+}
 
 // --- PREVENT DATA LOSS ON F5 ---
 export function initBeforeUnload() {

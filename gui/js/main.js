@@ -71,10 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initBeforeUnload();
     initPendingJobResume();
     initHomeButton();
+    initTree();
+    initMonaco();
 });
 
 // Recover filepath from history.state on F5
-if (history.state?.filepath) cfg.filepath = history.state.filepath;
-
-initTree();
-initMonaco();
+if (history.state?.filepath) {
+    cfg.filepath = history.state.filepath;
+}
