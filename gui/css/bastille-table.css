@@ -14,8 +14,8 @@ table.area_data_selection th {
     position: relative;
     padding: 5px 8px;
     white-space: nowrap;
-    /*overflow: hidden;
-    text-overflow: ellipsis;*/
+    overflow: visible !important;
+    z-index: 50;
 }
 
 /* The visible handle */
