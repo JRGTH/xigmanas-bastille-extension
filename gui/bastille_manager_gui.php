@@ -981,7 +981,7 @@ $document->render();
 		</tbody>
 		<tfoot>
 			<tr>
-				<td class="lcenl" colspan="14"></td>
+				<td class="lcenl" colspan="15"></td>
 				<td class="lceadd">
 					<a href="bastille_manager_add.php"><img src="<?=$img_path['add'];?>" title="<?=$gt_record_add;?>" border="0" alt="<?=$gt_record_add;?>" class="spin oneemhigh"/></a>
 				</td>
