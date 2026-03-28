@@ -1,14 +1,24 @@
 // modules/context-menu.js
 
-import { cfg, cmTargetData, setCmTargetData, contextMenu, setContextMenu } from './state.js';
-import { spinner, hideSpinner }     from './ui.js';
-import { showConfirmDialog }        from './modal.js';
-import { refreshDir }               from './tree.js';
-import { executeUnlock, executeDelete, executeCreateItem } from './filesystem.js';
-import { executeDownloadRequest }   from './download.js';
-import { showFileInfo }             from './sidebar-info.js';
-import { openDiffViewer }           from './editor.js';
-import { showNotification }         from './download.js';
+import {
+  cfg,
+  cmTargetData,
+  setCmTargetData,
+  contextMenu,
+  setContextMenu,
+} from "./state.js";
+import { spinner, hideSpinner } from "./ui.js";
+import { showConfirmDialog } from "./modal.js";
+import { refreshDir } from "./tree.js";
+import {
+  executeUnlock,
+  executeDelete,
+  executeCreateItem,
+} from "./filesystem.js";
+import { executeDownloadRequest } from "./download.js";
+import { showFileInfo } from "./sidebar-info.js";
+import { openDiffViewer } from "./editor.js";
+import { showNotification } from "./download.js";
 
 // --- CONTEXT MENU HTML ---
 const CONTEXT_MENU_HTML = `

@@ -30,7 +30,7 @@ export const MODAL_CONFIG = {
     }
 };
 
-// Variable de estado global para saber si hay cambios sin guardar
+// Global status variable to indicate whether there are unsaved changes
 export const State = {
     isDirty: false,
     isInjectingCode: false,
