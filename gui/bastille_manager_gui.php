@@ -938,7 +938,7 @@ $document->render();
             <div id="web-terminal-header">
                 <span id="web-terminal-title"></span>
                 <img src="ext/bastille/images/info-ssl.svg" class="icon-svg ssl-help-icon"
-                         title="SSL Troubleshooting: If this window does not open, use the button on the right to open it in a new tab." />
+                         title="MOZILLA_PKIX_ERROR_SELF_SIGNED_CERT Mozilla will display this initial warning, to fix it: Use the button “Open in New Tab” (Top right corner, in this window)" />
                 <div id="web-terminal-right-buttons">
                     <a href="#" id="web-terminal-fullscreen" class="web-terminal-btn-fullscreen" title="Fullscreen">
                         <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" />
