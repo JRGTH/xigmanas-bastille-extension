@@ -301,7 +301,7 @@ bindtextdomain("xigmanas", $textdomain_bastille);
 <script type="text/javascript">//<![CDATA[
 $(document).ready(function(){
 	var gui = new GUI;
-	gui.recall(0, 2000, 'bastille-gui.php', null, function(data) {
+	gui.recall(0, 2000, 'bastille_manager_gui.php', null, function(data) {
 		$('#getinfo').html(data.info);
 		$('#getinfo_bastille').html(data.bastille);
 		$('#getinfo_ext').html(data.ext);
