@@ -107,67 +107,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
 }
 // --- END AUTO-REFRESH LOGIC ---
 
-function mwexec_parallel($commands)
-{
-    $processes = [];
-    $results = [];
-
-    foreach ($commands as $key => $command) {
-        $descriptors = [
-            0 => ['pipe', 'r'],  // stdin
-            1 => ['pipe', 'w'],  // stdout
-            2 => ['pipe', 'w']   // stderr
-        ];
-
-        $process = proc_open($command, $descriptors, $pipes);
-
-        if (is_resource($process)) {
-            stream_set_blocking($pipes[1], false);
-            stream_set_blocking($pipes[2], false);
-
-            $processes[$key] = [
-                'process' => $process,
-                'pipes' => $pipes,
-                'command' => $command
-            ];
-        }
-    }
-
-    $timeout = 30;
-    $start_time = time();
-
-    foreach ($processes as $key => $proc) {
-        $elapsed = time() - $start_time;
-        if ($elapsed < $timeout) {
-            $stdout = stream_get_contents($proc['pipes'][1]);
-            $stderr = stream_get_contents($proc['pipes'][2]);
-
-            fclose($proc['pipes'][0]);
-            fclose($proc['pipes'][1]);
-            fclose($proc['pipes'][2]);
-
-            $return_code = proc_close($proc['process']);
-
-            $results[$key] = [
-                'return_code' => $return_code,
-                'stdout' => $stdout,
-                'stderr' => $stderr
-            ];
-        } else {
-            proc_terminate($proc['process']);
-            proc_close($proc['process']);
-
-            $results[$key] = [
-                'return_code' => -1,
-                'stdout' => '',
-                'stderr' => 'Command timeout'
-            ];
-        }
-    }
-
-    return $results;
-}
-
 function mwexec_background($command)
 {
     $command = $command . ' > /dev/null 2>&1 &';
@@ -249,7 +188,8 @@ if ($_POST):
         endforeach;
 
         if (!empty($commands)):
-            $results = mwexec_parallel($commands);
+            $executor = new BastilleManagerMwExecParallel($commands);
+            $results = $executor->executeWithSelect();
 
             $success_count = 0;
             $fail_count = 0;
@@ -289,7 +229,8 @@ if (isset($_POST['stop_selected_jail']) && $_POST['stop_selected_jail']):
     endforeach;
 
     if (!empty($commands)):
-        $results = mwexec_parallel($commands);
+        $executor = new BastilleManagerMwExecParallel($commands);
+        $results = $executor->executeWithSelect();
 
         $success_count = 0;
         $fail_count = 0;
@@ -329,7 +270,8 @@ if (isset($_POST['restart_selected_jail']) && $_POST['restart_selected_jail']):
     endforeach;
 
     if (!empty($commands)):
-        $results = mwexec_parallel($commands);
+        $executor = new BastilleManagerMwExecParallel($commands);
+        $results = $executor->executeWithSelect();
 
         $success_count = 0;
         $fail_count = 0;
@@ -369,7 +311,8 @@ if (isset($_POST['autoboot_selected_jail']) && $_POST['autoboot_selected_jail'])
     endforeach;
 
     if (!empty($commands)):
-        $results = mwexec_parallel($commands);
+        $executor = new BastilleManagerMwExecParallel($commands);
+        $results = $executor->executeWithSelect();
 
         $success_count = 0;
         $fail_count = 0;
