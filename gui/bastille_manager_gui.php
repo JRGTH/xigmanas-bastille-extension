@@ -66,24 +66,34 @@ if (isset($_GET['action']) && $_GET['action'] === 'refresh_table') {
         $jls_list = get_jail_infos();
     }
 
-    $bastille_prefix = trim(shell_exec("sysrc -n -f /usr/local/etc/bastille/bastille.conf bastille_prefix 2>/dev/null"));
-    if (empty($bastille_prefix)) {
-        $bastille_prefix = '/usr/local/bastille'; // Fallback ??
-    }
+   $bastille_prefix = '/usr/local/bastille';
+   $b_conf = '/usr/local/etc/bastille/bastille.conf';
+   if (file_exists($b_conf)) {
+       $lines = file($b_conf);
+       foreach ($lines as $line) {
+           if (preg_match('/^bastille_prefix="?(.*?)"?$/', trim($line), $matches)) {
+               $bastille_prefix = $matches[1];
+               break;
+           }
+       }
+   }
 
-    foreach ($jls_list as &$jail_ref) {
-        $jname = $jail_ref['jailname'];
-        $jail_conf_file = "{$bastille_prefix}/jails/{$jname}/jail.conf";
-        $jail_interface = '-';
-        if (file_exists($jail_conf_file)) {
-            $grep_cmd = "grep -E '(vnet\.)?interface\s*=' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \";\''";
-            $executor = new BastilleManagerMwExecParallel([$grep_cmd]);
-            $exec_res = $executor->executeWithSelect();
-            $res_iface = $exec_res[0]['stdout'] ?? '';
-            $jail_interface = !empty($res_iface) ? trim($res_iface) : '-';
-        }
-        $jail_ref['interface'] = $jail_interface;
-    }
+   foreach ($jls_list as &$jail_ref) {
+       $jname = $jail_ref['jailname'];
+       $jail_conf_file = "{$bastille_prefix}/jails/{$jname}/jail.conf";
+       $jail_interface = '-';
+
+       if (file_exists($jail_conf_file)) {
+           $lines = file($jail_conf_file);
+           foreach ($lines as $line) {
+               if (preg_match('/(?:vnet\.)?interface\s*=\s*"?([^";\s]+)/', $line, $matches)) {
+                   $jail_interface = $matches[1];
+                   break;
+               }
+           }
+       }
+       $jail_ref['interface'] = $jail_interface;
+   }
 
     // Return JSON
     ob_clean();
@@ -907,18 +917,29 @@ $document->render();
 					<td class="lcell"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
                     <?php
                         if (!isset($bastille_prefix)) {
-                            $bastille_prefix = trim(shell_exec("sysrc -n -f /usr/local/etc/bastille/bastille.conf bastille_prefix 2>/dev/null"));
-                            if (empty($bastille_prefix)) $bastille_prefix = '/usr/local/bastille';
+                            $bastille_prefix = '/usr/local/bastille';
+                            $b_conf = '/usr/local/etc/bastille/bastille.conf';
+                            if (file_exists($b_conf)) {
+                                $lines = file($b_conf);
+                                foreach ($lines as $line) {
+                                    if (preg_match('/^bastille_prefix="?(.*?)"?$/', trim($line), $matches)) {
+                                        $bastille_prefix = $matches[1];
+                                        break;
+                                    }
+                                }
+                            }
                         }
                         $jname = $sphere_record['jailname'];
                         $jail_conf_file = "{$bastille_prefix}/jails/{$jname}/jail.conf";
                         $jail_interface = '-';
                         if (file_exists($jail_conf_file)) {
-                            $grep_cmd = "grep -E '(vnet\.)?interface[[:space:]]*=' " . escapeshellarg($jail_conf_file) . " | cut -d'=' -f2 | tr -d ' \";\''";
-                            $executor = new BastilleManagerMwExecParallel([$grep_cmd]);
-                            $exec_res = $executor->executeWithSelect();
-                            $res_iface = $exec_res[0]['stdout'] ?? '';
-                            $jail_interface = !empty($res_iface) ? trim($res_iface) : '-';
+                            $lines = file($jail_conf_file);
+                            foreach ($lines as $line) {
+                                if (preg_match('/(?:vnet\.)?interface\s*=\s*"?([^";\s]+)/', $line, $matches)) {
+                                    $jail_interface = $matches[1];
+                                    break;
+                                }
+                            }
                         }
                     ?>
                     <td class="lcell"><?=htmlspecialchars($jail_interface);?>&nbsp;</td>
@@ -960,7 +981,7 @@ $document->render();
 		</tbody>
 		<tfoot>
 			<tr>
-				<td class="lcenl" colspan="13"></td>
+				<td class="lcenl" colspan="14"></td>
 				<td class="lceadd">
 					<a href="bastille_manager_add.php"><img src="<?=$img_path['add'];?>" title="<?=$gt_record_add;?>" border="0" alt="<?=$gt_record_add;?>" class="spin oneemhigh"/></a>
 				</td>
