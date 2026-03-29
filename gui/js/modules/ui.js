@@ -20,22 +20,29 @@ window.toggleSidebar = toggleSidebar;
 
 // --- SPINNER ---
 export function spinner() {
-  if (typeof $ !== "undefined") $("#spinner_overlay").show();
-  else {
-    const o = document.getElementById("spinner_overlay");
-    if (o) o.style.display = "block";
-  }
+    var overlay = document.getElementById('spinner_overlay');
+    overlay.style.display = 'block';
+    var target = document.getElementById('spinner_main');
+    if (typeof Spinner !== 'undefined') {
+        var opts = {
+            lines: 10, length: 7, width: 4, radius: 10, color: '#4D4D4D',
+            opacity: 0.45, speed: 1, trail: 60, zIndex: 2e9,
+            top: '50%', left: '50%', position: 'fixed'
+        };
+        new Spinner(opts).spin(target);
+    }
 }
 
+// --- HIDE SPINNER ---
 export function hideSpinner() {
-  if (typeof $ !== "undefined") $("#spinner_overlay").hide();
-  else {
-    const o = document.getElementById("spinner_overlay");
-    if (o) o.style.display = "none";
-  }
-  const main = document.getElementById("spinner_main");
-  if (main) main.innerHTML = "";
-  window.editor?.layout();
+    var overlay = document.getElementById('spinner_overlay');
+    var target = document.getElementById('spinner_main');
+    if (overlay) {
+        overlay.style.setProperty("display", "none", "important");
+    }
+    if (target) {
+        target.innerHTML = '';
+    }
 }
 
 // --- RESIZER ---

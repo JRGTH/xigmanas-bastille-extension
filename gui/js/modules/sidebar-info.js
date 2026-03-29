@@ -206,7 +206,7 @@ export async function showFileInfo(filePath) {
   content.innerHTML =
     '<div style="text-align:center; padding-top:50px; color:#adb5bd;">Loading...</div>';
 
-  const formData = new FormData(document.getElementById("iform"));
+  const formData = getBaseFormData();
   formData.append("ajax_get_info", "1");
   formData.append("target_path", filePath);
 
@@ -214,6 +214,7 @@ export async function showFileInfo(filePath) {
     const response = await fetch(window.location.href, {
       method: "POST",
       body: formData,
+      credentials: "same-origin",
     });
     setCurrentFileData(await response.json());
 
