@@ -13,9 +13,15 @@ import {
 } from "./state.js";
 import { spinner, hideSpinner } from "./ui.js";
 import { showConfirmDialog } from "./modal.js";
-import { BINARY_EXTS } from "./tree.js";
 
 const MONACO_PATH = "/ext/bastille/js/modules/monaco/vs";
+
+export const BINARY_EXTS = new Set([
+  "png", "jpg", "jpeg", "gif", "svg", "ico", "mp3", "mp4", "mkv", "avi", "mov",
+  "wav", "flac", "iso", "gz", "zip", "tar", "rar", "7z", "pdf", "bin", "exe",
+  "dll", "so", "db", "sqlite"
+]);
+
 const extensions = {
     image: ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'bmp'],
     video: ['mp4', 'webm', 'ogg'],

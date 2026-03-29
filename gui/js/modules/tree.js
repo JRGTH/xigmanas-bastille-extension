@@ -15,35 +15,6 @@ import { showConfirmDialog } from "./modal.js";
 import { clearFilter } from "./search.js";
 import { showBinaryWarning, loadFileToEditor } from "./editor.js";
 
-export const BINARY_EXTS = new Set([
-  "png",
-  "jpg",
-  "jpeg",
-  "gif",
-  "svg",
-  "ico",
-  "mp3",
-  "mp4",
-  "mkv",
-  "avi",
-  "mov",
-  "wav",
-  "flac",
-  "iso",
-  "gz",
-  "zip",
-  "tar",
-  "rar",
-  "7z",
-  "pdf",
-  "bin",
-  "exe",
-  "dll",
-  "so",
-  "db",
-  "sqlite",
-]);
-
 // --- HELPERS ---
 export function renderLockIcon(flag) {
   return flag && flag !== "0"
@@ -403,99 +374,47 @@ export function initTreeClickHandler() {
 
       e.preventDefault();
 
-      if (isDirty) {
-        hideSpinner();
+      if (typeof isDirty !== "undefined" && isDirty) {
         const ok = await showConfirmDialog(
           "Unsaved changes",
           "You have made changes. If you switch files now, you will lose your changes.",
           "warning",
         );
-        if (!ok) return;
+        if (!ok) {
+          return;
+        }
         clearDirtyState();
       }
 
-      const ext = filepath.split(".").pop().toLowerCase();
+      await loadFileToEditor(filepath, link.href);
 
-      if (BINARY_EXTS.has(ext)) {
-        if (window.editor) {
-          setIsInjectingCode(true);
-          window.editor.setValue(
-            `/*\n * BASTILLE EDITOR WARNING\n
-            * ------------------------\n *
-            The file '${filepath.split("/").pop()}' is a binary or media file.\n
-             * It cannot be safely displayed or edited in a text editor.\n */`,
-          );
-          window.editor.updateOptions({ readOnly: true });
-          setIsInjectingCode(false);
-          setIsDirty(false);
-          hideSpinner();
-        }
+      const isSearchResult = link.closest(".is-recursive");
+
+      if (isSearchResult) {
+        clearFilter();
+
+        document
+          .querySelector(".ide-search input")
+          ?.dispatchEvent(new Event("input"));
+
+        document
+          .querySelectorAll(".is-recursive, .no-results")
+          .forEach((el) => el.remove());
+
+        document
+          .querySelectorAll(".ide-file-list > li")
+          .forEach((el) => (el.style.display = ""));
+
+        cfg.filepath = filepath;
+        setTimeout(async () => {
+          if (typeof syncSidebarWithFile === "function")
+            await syncSidebarWithFile();
+        }, 50);
+      } else {
         document
           .querySelectorAll(".tree-item")
           .forEach((el) => el.classList.remove("active"));
         link.closest(".tree-item")?.classList.add("active");
-        _syncFormInputs(filepath);
-        url.searchParams.delete("ajax");
-        url.searchParams.delete("filepath");
-        window.history.pushState({ filepath }, "", url.toString());
-        updateBreadcrumbs(filepath);
-        return;
-      }
-
-      document.body.style.cursor = "wait";
-      spinner();
-
-      try {
-        url.searchParams.set("ajax", "1");
-        const response = await fetch(url.toString());
-        if (!response.ok) throw new Error("Fetch failed");
-
-        const fileContent = await response.text();
-
-        if (window.editor) {
-          setIsInjectingCode(true);
-          window.editor.setValue(fileContent);
-          window.editor.updateOptions({ readOnly: false });
-          setIsInjectingCode(false);
-          setIsDirty(false);
-        }
-
-        const isSearchResult = link.closest(".is-recursive");
-        if (isSearchResult) {
-          clearFilter();
-          document
-            .querySelector(".ide-search input")
-            ?.dispatchEvent(new Event("input"));
-          document
-            .querySelectorAll(".is-recursive, .no-results")
-            .forEach((el) => el.remove());
-          document
-            .querySelectorAll(".ide-file-list > li")
-            .forEach((el) => (el.style.display = ""));
-          cfg.filepath = filepath;
-          setTimeout(async () => await syncSidebarWithFile(), 50);
-        } else {
-          document
-            .querySelectorAll(".tree-item")
-            .forEach((el) => el.classList.remove("active"));
-          link.closest(".tree-item")?.classList.add("active");
-        }
-
-        _syncFormInputs(filepath);
-        url.searchParams.delete("ajax");
-        url.searchParams.delete("filepath");
-        window.history.pushState({ filepath }, "", url.toString());
-        updateBreadcrumbs(filepath);
-      } catch (error) {
-        console.error("Editor Error:", error);
-        showConfirmDialog(
-          "Error",
-          "The selected file could not be loaded.",
-          "error",
-        );
-      } finally {
-        document.body.style.cursor = "default";
-        hideSpinner();
       }
     });
 }
