@@ -58,6 +58,7 @@ import {
 } from "./modules/sidebar-info.js";
 import { initContextMenu } from "./modules/context-menu.js";
 import { initFolderDelegation, initHomeButton } from "./modules/tree.js";
+import { initDragAndDrop } from './modules/dragdrop.js';
 
 // --- EXPOSE GLOBALS NEEDED BY PHP-GENERATED HTML ---
 window.toggleSidebar = toggleSidebar;
@@ -101,6 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initHomeButton();
   initTree();
   initMonaco();
+  initDragAndDrop();
 });
 
 // Recover filepath from history.state on F5

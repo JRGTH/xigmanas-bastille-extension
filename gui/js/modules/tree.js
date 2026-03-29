@@ -53,6 +53,7 @@ export function renderLockIcon(flag) {
 
 function buildFolderLi(name, fullPath, flag) {
   const li = document.createElement("li");
+  li.setAttribute('draggable', 'true');
   li.className = "tree-item folder-item";
   li.dataset.flag = flag || "";
   li.innerHTML = `

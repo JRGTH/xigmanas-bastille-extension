@@ -266,6 +266,7 @@ export function initContextMenu() {
   document.addEventListener("click", (e) => {
     if (e.button !== 2) hideContextMenu();
   });
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") hideContextMenu();
   });
@@ -590,7 +591,16 @@ export function initContextMenu() {
             if (success) clearClipboard();
         }
     }
-
+    if (e.key === "Escape") {
+        hideContextMenu();
+        if (clipboard && clipboard.filepath) {
+            clearClipboard();
+            console.log("[IDE] Canceled Cut/Paste");
+        }
+        if (window.contextMenu) {
+            window.contextMenu.classList.remove('show');
+        }
+    }
   });
 }
 

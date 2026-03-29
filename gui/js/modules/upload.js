@@ -338,7 +338,9 @@ export async function handleFileUpload(files, destination) {
 // --- DROP ZONE INIT ---
 export function initDropZone() {
   const dropZone = document.querySelector(".up-drop-zone");
-  if (!dropZone) return;
+  if (!dropZone) {
+    return;
+  }
 
   const prevent = (e) => {
     e.preventDefault();
@@ -408,6 +410,10 @@ export function initSidebarDragDrop() {
   });
 
   sidebar.addEventListener("drop", (e) => {
+    if (e.dataTransfer.types.includes('application/x-ide-internal')) {
+        console.log("Sidebar internal data drag and drop")
+        return;
+    }
     dragCounter = 0;
     sidebar.classList.remove("drag-over-active");
     document
@@ -429,6 +435,7 @@ export function initSidebarDragDrop() {
     }
 
     handleFileUpload(files, destination);
+    console.log("Sidebar drop event handled" + files.length, destination)
   });
 
   document.addEventListener("dragleave", (e) => {
