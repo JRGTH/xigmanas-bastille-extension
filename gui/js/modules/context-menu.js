@@ -94,10 +94,15 @@ const CONTEXT_MENU_HTML = `
     </div>
 
     <div class="ide-cm-separator"></div>
-
+    <div class="ide-cm-item" id="cm-rename">
+        <div class="icon-wrapper"></div>
+        <span class="ide-cm-item-text">Rename</span>
+        <span class="ide-cm-item-text-secondary">F2</span>
+    </div>
     <div class="ide-cm-item cm-delete" id="cm-delete-file">
         <div class="icon-wrapper"><img src="ext/bastille/images/delete.svg" class="ide-cm-item-svg" alt="delete"></div>
         <span class="ide-cm-item-text">Delete</span>
+        <span class="ide-cm-item-text-secondary">(Supr - del)</span>
     </div>`;
 
 // --- NEW ITEM MODAL ---
@@ -375,4 +380,72 @@ export function initContextMenu() {
         document.getElementById('header-new-file')?.addEventListener('click',   () => { resetHeader(); handleHeaderCreate('file'); });
         document.getElementById('header-new-folder')?.addEventListener('click', () => { resetHeader(); handleHeaderCreate('folder'); });
     }
+
+    document.addEventListener('keydown', async (e) => {
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      const isMonaco = document.activeElement?.classList.contains('inputarea');
+      if (activeTag === 'input' || activeTag === 'textarea' || isMonaco) {
+          return;
+      }
+
+      // --- TECLA SUPRIMIR / DELETE ---
+      if (e.key === 'Delete') {
+          const target = getActiveTreeItemData();
+          if (target) {
+              e.preventDefault();
+              if (window.contextMenu) window.contextMenu.classList.remove('show');
+              // ORDEN CORRECTO: filepath, fileName, liElement, isFolder
+              executeDelete(target.filepath, target.name, target.liElement, target.isFolder);
+          }
+      }
+
+      // --- TECLA F2 (RENOMBRAR) ---
+      if (e.key === 'F2') {
+          const target = getActiveTreeItemData();
+          if (target) {
+              e.preventDefault();
+              if (window.contextMenu) window.contextMenu.classList.remove('show');
+
+              if (typeof window.showNewItemModal === 'function') {
+                  const newName = await window.showNewItemModal(target.isFolder ? 'folder' : 'file', target.name, true);
+                  if (newName && newName !== target.name) {
+                      console.log(`[IDE] F2 Renombrando: ${target.name} a ${newName}`);
+                      // Aquí llamarás a executeRename cuando lo tengas
+                  }
+              }
+          }
+      }
+    });
+
+}
+
+function getActiveTreeItemData() {
+    const activeLi = document.querySelector('.tree-item.active');
+    if (!activeLi) {
+        return null;
+    }
+
+    const folderLink = activeLi.querySelector('a[data-folder-path]');
+    if (folderLink) {
+        const path = folderLink.getAttribute('data-folder-path');
+        const spans = folderLink.querySelectorAll('span');
+        let name = path.split('/').pop();
+        if (spans.length > 0) name = spans[spans.length - 1].innerText.trim();
+        return {
+            filepath: path,
+            isFolder: true,
+             name: name, liElement: activeLi };
+    }
+
+    const fileLink = activeLi.querySelector('a');
+    if (fileLink && fileLink.href.includes('filepath=')) {
+        const url = new URL(fileLink.href, window.location.origin);
+        const path = url.searchParams.get('filepath');
+        const spans = fileLink.querySelectorAll('span');
+        let name = path.split('/').pop();
+        if (spans.length > 0) name = spans[spans.length - 1].innerText.trim();
+        return { filepath: path, isFolder: false, name: name, liElement: activeLi };
+    }
+
+    return null;
 }

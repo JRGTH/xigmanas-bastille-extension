@@ -697,6 +697,17 @@
     background: rgba(0, 0, 0, 0.05);
 }
 
+.ide-cm-item-text {
+    margin-left: 0;
+    color: var(--text-color-secondary);
+}
+
+.ide-cm-item-text-secondary {
+     margin-left: auto;
+     font-size: 10px;
+     color: var(--text-color-secondary);
+ }
+
 .ide-cm-separator {
     height: 1px;
     background: #eee;
@@ -782,7 +793,7 @@ body.is-dragging .ide-sidebar .tree-item a * {
 .ide-cm-submenu {
     display: none;
     position: absolute;
-    top: -5px;
+    top: -6px !important;
     left: 100%;
     background-color: #ffffff;
     border: 1px solid #ccc;
