@@ -45,13 +45,62 @@
     background: #fff;
 }
 
-/* MONACO CONTAINER FILLING REMAINING SPACE */
-#monaco-container {
+/* MAIN CONTENT CONTAINER */
+#editor-content-area {
     flex: 1;
     width: 100%;
     min-height: 0;
     position: relative;
+    background-color: var(--bgc-root) !important;
     overflow: hidden;
+}
+
+/* Monaco Editor */
+#monaco-container {
+    height: 100%;
+    width: 100%;
+    display: block;
+    background-color: var(--txc-tnt-active);
+}
+
+/* MULTIMEDIA PREVIEW SLIDE */
+.media-preview-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: var(--bgc-root);
+}
+
+/* IMAGE DESIGN (USING THE TRANSPARENCY CHECKERBOARD) */
+.media-preview-layer img {
+    max-width: 95%;
+    max-height: 95%;
+    object-fit: contain;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+    /* El tablero de ajedrez solo vive "detrás" de la foto */
+    background-image: linear-gradient(45deg, #ccc 25%, transparent 25%),
+                      linear-gradient(-45deg, #ccc 25%, transparent 25%),
+                      linear-gradient(45deg, transparent 75%, #ccc 75%),
+                      linear-gradient(-45deg, transparent 75%, #ccc 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color: var(--txc-tnt-active);
+}
+
+/* VIDEO DESIGN */
+.media-preview-layer video {
+    max-width: 100%;
+    max-height: 100%;
+    box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    outline: none;
 }
 
 /* SIDEBAR TOGGLE (ZEN MODE) */

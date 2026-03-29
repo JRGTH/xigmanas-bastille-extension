@@ -36,6 +36,7 @@ if ($real_current_dir === false || strpos($real_current_dir, $jail_root) !== 0) 
 // ROUTER AJAX (API) ---
 // If there is an asynchronous request
 if (isset($_GET['ajax'])
+    || isset($_GET['action'])
     || isset($_GET['ajax_search'])
     || isset($_GET['ajax_get_dir'])
     || isset($_POST['ajax_save'])
@@ -60,17 +61,29 @@ if (isset($_GET['ajax'])
     exit;
 }
 
-// --- INITIAL STATUS LOAD ---
+// --- INITIAL STATUS LOAD (SAFE DEEP LINK) ---
 $content = "";
 $filepath_safe = realpath($filepath);
 if (
     !empty($filepath)
     && $filepath_safe !== false
-    && strpos($filepath_safe, $jail_root) === 0  // dentro del jail
+    && strpos($filepath_safe, $jail_root) === 0
     && file_exists($filepath_safe)
     && is_file($filepath_safe)
 ) {
-    $content = file_get_contents($filepath_safe);
+    // SECURITY FILTERS
+    $filesize = filesize($filepath_safe);
+    $max_size = 5 * 1024 * 1024; // 5 MB
+    $ext = strtolower(pathinfo($filepath_safe, PATHINFO_EXTENSION));
+    $binary_exts = ['mp4', 'mkv', 'avi', 'mov', 'zip', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'pdf', 'exe', 'bin'];
+
+    // We only read as text if it's NOT binary AND it's under 5MB
+    if (!in_array($ext, $binary_exts) && $filesize < $max_size) {
+        $content = file_get_contents($filepath_safe);
+    } else {
+        // We set a placeholder. The JS will handle the visual preview via action=stream_binary
+        $content = "[MEDIA OR LARGE FILE]";
+    }
 }
 
 $items = @scandir($real_current_dir);

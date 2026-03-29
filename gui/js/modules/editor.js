@@ -16,6 +16,11 @@ import { showConfirmDialog } from "./modal.js";
 import { BINARY_EXTS } from "./tree.js";
 
 const MONACO_PATH = "/ext/bastille/js/modules/monaco/vs";
+const extensions = {
+    image: ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'bmp'],
+    video: ['mp4', 'webm', 'ogg'],
+    // Tomorrow['mp3', 'wav']
+};
 
 // --- LANGUAGE DETECTION ---
 function detectLang(filepath) {
@@ -371,44 +376,84 @@ export async function loadFileToEditor(filepath, linkHref) {
   console.log("[DEBUG] Loading:", filepath);
   spinner();
 
+  // Containers references
+  const monacoContainer = document.getElementById('monaco-container');
+  const mediaContainer = document.getElementById('media-preview-container');
+
   try {
+    // 1. Determine file type
+    const ext = filepath.split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico'].includes(ext);
+    const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
+
+    // 2. Construct Base URL
     let url;
-    // If the linkHref is invalid, we construct the URL manually
     if (!linkHref || linkHref === "undefined" || typeof linkHref !== "string") {
-      console.warn("[DEBUG] linkHref inválido, reconstruyendo URL...");
+      console.log("[IDE] Deep Link detected, generating URL for:", filepath);
       url = new URL(window.location.pathname, window.location.origin);
       url.searchParams.set("jailname", cfg.jailname);
       url.searchParams.set("filepath", filepath);
-      // We try to guess the dir (parent directory)
       const dir = filepath.substring(0, filepath.lastIndexOf("/"));
       url.searchParams.set("dir", dir);
     } else {
       url = new URL(linkHref, window.location.origin);
     }
 
-    url.searchParams.set("ajax", "1");
+    // 3. Branching Logic: Media vs Text
+    if (isImage || isVideo) {
+      // --- MEDIA VIEW ---
+      if (monacoContainer) monacoContainer.style.display = 'none';
+      if (mediaContainer) {
+        mediaContainer.style.display = 'flex';
 
-    const response = await fetch(url.toString());
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+        // Use the action for binary streaming
+        const streamUrl = new URL(url.toString());
+        streamUrl.searchParams.set("action", "stream_binary");
+
+        if (isImage) {
+          mediaContainer.innerHTML = `<img src="${streamUrl.toString()}" alt="Preview" class="img-preview" />`;
+        } else if (isVideo) {
+          mediaContainer.innerHTML = `
+            <video controls autoplay class="video-preview">
+              <source src="${streamUrl.toString()}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>`;
+        }
+      }
+    } else {
+      // --- TEXT VIEW (Standard Editor) ---
+      if (mediaContainer) {
+        mediaContainer.style.display = 'none';
+        mediaContainer.innerHTML = '';
+      }
+      if (monacoContainer) monacoContainer.style.display = 'block';
+
+      url.searchParams.set("ajax", "1");
+
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const content = await response.text();
+
+      if (window.editor) {
+        setIsInjectingCode(true);
+        window.editor.setValue(content);
+        window.editor.updateOptions({ readOnly: false });
+        setIsInjectingCode(false);
+        setIsDirty(false);
+      }
     }
-    const content = await response.text();
 
-    if (window.editor) {
-      setIsInjectingCode(true);
-      window.editor.setValue(content);
-      window.editor.updateOptions({ readOnly: false });
-      setIsInjectingCode(false);
-      setIsDirty(false);
-    }
-
-    // Refresh the address bar and breadcrumbs
+    // 4. Common: Refresh the address bar and breadcrumbs
     const cleanUrl = new URL(url.toString());
     cleanUrl.searchParams.delete("ajax");
+    cleanUrl.searchParams.delete("action");
     window.history.pushState({ filepath }, "", cleanUrl.toString());
     updateBreadcrumbs(filepath);
+
   } catch (err) {
-    console.error("[DEBUG] Error en loadFileToEditor:", err);
+    console.error("[DEBUG] Error in loadFileToEditor:", err);
   } finally {
     hideSpinner();
   }

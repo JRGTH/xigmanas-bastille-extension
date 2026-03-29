@@ -170,7 +170,10 @@ window.IDE_CONFIG = {
                             <input name="save" id="btn_save" type="button" class="formbtn" title= "Save File (Ctrl + S)" value="<?=gtext("Save File");?>" onclick="executeSaved();" <?=empty($filepath) ? 'disabled' : ''?> />
                         </div>
                     </div>
-                    <div id="monaco-container"></div>
+                    <div id="editor-content-area">
+                      <div id="monaco-container"></div>
+                      <div id="media-preview-container" class="media-preview-layer" style="display: none;"></div>
+                    </div>
                 </div>
             </div>
 

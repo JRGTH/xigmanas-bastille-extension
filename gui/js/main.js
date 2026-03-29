@@ -50,6 +50,7 @@ import {
   loadBackupDiff,
   closeDiffViewer,
   initBeforeUnload,
+  loadFileToEditor,
 } from "./modules/editor.js";
 import {
   closeInfoSidebar,
@@ -103,6 +104,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initTree();
   initMonaco();
   initDragAndDrop();
+  const initialFile = window.IDE_CONFIG.filepath;
+  if (initialFile) {
+    loadFileToEditor(initialFile);
+  }
 });
 
 // Recover filepath from history.state on F5

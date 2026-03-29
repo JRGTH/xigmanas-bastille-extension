@@ -2,38 +2,77 @@
 // bastille_manager_edit_api.inc
 use common\session;
 
-// FILE CONTENT LOAD (SPA)
-if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
-    while (ob_get_level() > 0) {
-        ob_end_clean();
+$file_to_read = $_GET['filepath'] ?? '';
+$action = $_GET['action'] ?? '';
+$is_ajax = (isset($_GET['ajax']) && $_GET['ajax'] == '1');
+
+// --- 1. PRE-CHECK & FILTERS ---
+$is_binary = false;
+$too_large = false;
+$max_size = 5 * 1024 * 1024; // 5 MB
+
+if (!empty($file_to_read) && file_exists($file_to_read) && is_file($file_to_read)) {
+    $filesize = filesize($file_to_read);
+    $ext = strtolower(pathinfo($file_to_read, PATHINFO_EXTENSION));
+
+    // Extensions that should NOT be opened as text in Monaco
+    $binary_exts = ['mp4', 'mkv', 'avi', 'mov', 'zip', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'pdf', 'exe', 'bin'];
+
+    if (in_array($ext, $binary_exts)) {
+        $is_binary = true;
+    } elseif ($filesize > $max_size) {
+        $too_large = true;
     }
+}
+
+// --- 2. ACTION: STREAM BINARY (For Image/Video Preview) ---
+if ($action === 'stream_binary' && !empty($file_to_read) && file_exists($file_to_read)) {
+    while (ob_get_level() > 0) ob_end_clean();
     session_write_close();
-    $file_to_read = $_GET['filepath'] ?? '';
 
-    if (!empty($file_to_read) && file_exists($file_to_read)) {
-        // Files up to 5 MB to the editor
-        $filesize = filesize($file_to_read);
-        $max_size = 5 * 1024 * 1024; // 5 MB
+    $ext = strtolower(pathinfo($file_to_read, PATHINFO_EXTENSION));
+    $mimes = [
+        'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
+        'gif' => 'image/gif', 'svg' => 'image/svg+xml', 'webp' => 'image/webp',
+        'mp4' => 'video/mp4', 'webm' => 'video/webm', 'ogg' => 'video/ogg'
+    ];
 
-        header('Content-Type: text/plain; charset=utf-8');
+    $content_type = $mimes[$ext] ?? 'application/octet-stream';
 
-        if ($filesize > $max_size) {
-            echo "/*\n";
-            echo " * BASTILLE EDITOR WARNING\n";
-            echo " * ------------------------\n";
-            echo " * This file is too large to safely edit in the browser.\n";
-            echo " * Viewing and editing is restricted to text files under 5 MB to prevent server memory exhaustion.\n";
-            echo " */";
-        } else {
-            echo file_get_contents($file_to_read);
-        }
-    } else {
-        header("HTTP/1.1 404 Not Found");
-        echo "Error: File not found.";
+    header('Content-Type: ' . $content_type);
+    header('Content-Length: ' . filesize($file_to_read));
+    header('Cache-Control: public, max-age=86400');
+
+    if (in_array($ext, ['mp4', 'webm', 'ogg'])) {
+        header('Accept-Ranges: bytes');
     }
+
+    // Direct output from disk to browser (No RAM used)
+    readfile($file_to_read);
     exit;
 }
 
+// --- 3. ACTION: AJAX LOAD (For Monaco Editor) ---
+if ($is_ajax) {
+    while (ob_get_level() > 0) {
+      ob_end_clean();
+    }
+    session_write_close();
+    header('Content-Type: text/plain; charset=utf-8');
+
+    if (empty($file_to_read) || !file_exists($file_to_read)) {
+        header("HTTP/1.1 404 Not Found");
+        echo "Error: File not found.";
+    } elseif ($is_binary) {
+        // We don't die(500), we return a friendly message
+        echo "[BINARY FILE: PREVIEW ONLY]";
+    } elseif ($too_large) {
+        echo "/*\n * BASTILLE EDITOR WARNING\n * ------------------------\n * This file is too large to safely edit (> 5MB).\n */";
+    } else {
+        echo file_get_contents($file_to_read);
+    }
+    exit;
+}
 // DELETE FILES & FOLDERS
 if (isset($_POST['delete_file'])) {
     $is_ajax_delete = isset($_POST['ajax_delete']) && $_POST['ajax_delete'] === '1';
