@@ -13,7 +13,7 @@ import { spinner, hideSpinner, updateBreadcrumbs } from "./ui.js";
 
 import { showConfirmDialog } from "./modal.js";
 import { clearFilter } from "./search.js";
-import { showBinaryWarning, loadFileToEditor } from "./editor.js";
+import { showBinaryWarning, loadFileToEditor, clearDirtyState } from "./editor.js";
 
 // --- HELPERS ---
 export function renderLockIcon(flag) {
@@ -365,24 +365,26 @@ export function initTreeClickHandler() {
     .querySelector(".ide-file-list")
     .addEventListener("click", async (e) => {
       const link = e.target.closest("a");
-      if (!link || link.getAttribute("onclick")?.includes("toggleFolder"))
-        return;
-
+      if (!link || link.getAttribute("onclick")?.includes("toggleFolder")) {
+        return
+      }
       const url = new URL(link.href, window.location.origin);
       const filepath = url.searchParams.get("filepath");
-      if (!filepath) return;
-
+      if (!filepath) {
+        return;
+      }
       e.preventDefault();
-
-      if (typeof isDirty !== "undefined" && isDirty) {
+      console.log("[DEBUG] Click on the tree. Is it dirty? ", window.isDirty);
+      if (window.isDirty) {
         const ok = await showConfirmDialog(
           "Unsaved changes",
-          "You have made changes. If you switch files now, you will lose your changes.",
+          "You have unsaved changes in the current file. If you switch files now, your changes will be lost. Do you want to discard them?",
           "warning",
         );
         if (!ok) {
           return;
         }
+        window.isDirty = false;
         clearDirtyState();
       }
 
@@ -511,16 +513,6 @@ function _syncFormInputs(filepath) {
   const inputDr = document.querySelector('input[name="dir"]');
   if (inputFp) inputFp.value = filepath;
   if (inputDr) inputDr.value = filepath.substring(0, filepath.lastIndexOf("/"));
-}
-
-export function clearDirtyState() {
-  setIsDirty(false);
-  document.querySelectorAll(".dirty-dot").forEach((dot) => dot.remove());
-  document.title = document.title.replace("* ", "");
-  const saveBtn = document.getElementById("btn_save");
-  if (saveBtn) {
-    saveBtn.disabled = true;
-  }
 }
 
 export function initFolderDelegation() {

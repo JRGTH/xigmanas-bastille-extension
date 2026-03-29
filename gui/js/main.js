@@ -17,7 +17,6 @@ import {
   syncSidebarWithFolder,
   syncSidebarWithFile,
   refreshDir,
-  clearDirtyState,
 } from "./modules/tree.js";
 import {
   executeDownloadRequest,
@@ -81,7 +80,6 @@ window.closeInfoSidebar = closeInfoSidebar;
 window.showFileInfo = showFileInfo;
 window.switchTab = switchTab;
 window.refreshDir = refreshDir;
-window.clearDirtyState = clearDirtyState;
 window.clearFilter = clearFilter;
 window.spinner = spinner;
 window.hideSpinner = hideSpinner;

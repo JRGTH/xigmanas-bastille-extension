@@ -86,19 +86,26 @@ export function initMonaco() {
     );
 
     window.editor.onDidChangeModelContent(() => {
-      if (isInjectingCode) return;
-      if (!isDirty) {
+      if (isInjectingCode) {
+        return;
+      }
+      if (!window.isDirty) {
         setIsDirty(true);
         const saveBtn = document.getElementById("btn_save");
-        if (saveBtn) saveBtn.disabled = false;
-
+        if (saveBtn) {
+            saveBtn.disabled = false;
+        }
         const activeFileLink = document.querySelector(".tree-item.active > a");
         if (activeFileLink && !activeFileLink.querySelector(".dirty-dot")) {
-          const dot = document.createElement("span");
-          dot.className = "dirty-dot";
-          dot.innerHTML = "•";
-          activeFileLink.appendChild(dot);
+          const dotContainer = document.createElement("span");
+          dotContainer.className = "dirty-ping-indicator dirty-dot";
+          dotContainer.innerHTML = `
+            <span class="ping-bg"></span>
+            <span class="ping-core"></span>
+          `;
+          activeFileLink.appendChild(dotContainer);
         }
+        console.log("[IDE] Document modified. 'Dirty' status enabled");
       }
     });
 
@@ -157,8 +164,7 @@ export async function executeSaved() {
     const data = await response.json();
 
     if (data.success) {
-      // clearDirtyState imported from tree to avoid circular dep
-      window.clearDirtyState?.();
+      clearDirtyState();
       showConfirmDialog("Saved", "Saved file to " + filepath, "success");
     } else {
       throw new Error(data.error || "Server rejected the save request.");
@@ -183,6 +189,17 @@ export async function executeSaved() {
   }
 }
 window.executeSaved = executeSaved;
+
+export function clearDirtyState() {
+  setIsDirty(false);
+  document.querySelectorAll(".dirty-dot").forEach((dot) => dot.remove());
+  document.title = document.title.replace("* ", "");
+  const saveBtn = document.getElementById("btn_save");
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.value = "Save File";
+  }
+}
 
 // --- DIFF VIEWER ---
 export function initDiffModal() {
@@ -468,7 +485,7 @@ export async function loadFileToEditor(filepath, linkHref) {
 // --- PREVENT DATA LOSS ON F5 ---
 export function initBeforeUnload() {
   window.addEventListener("beforeunload", (e) => {
-    if (isDirty) {
+    if (window.isDirty) {
       e.preventDefault();
       return "";
     }

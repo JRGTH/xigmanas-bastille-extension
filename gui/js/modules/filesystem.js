@@ -3,8 +3,9 @@
 import { cfg, getBaseFormData } from "./state.js";
 import { spinner, hideSpinner } from "./ui.js";
 import { showConfirmDialog } from "./modal.js";
-import { clearDirtyState, refreshDir } from "./tree.js";
+import { refreshDir } from "./tree.js";
 import { injectItemIntoTree } from "./upload.js";
+import { clearDirtyState } from "./editor.js";
 
 // --- UNLOCK ---
 export async function executeUnlock(filepath, liElement) {
