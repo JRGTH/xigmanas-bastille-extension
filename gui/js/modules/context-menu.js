@@ -399,11 +399,12 @@ export function initContextMenu() {
       if (!cmTargetData) {
         return;
       }
+      const currentName = cmTargetData.filename
       const newName = await showRenameModal(
         cmTargetData.isFolder ? "folder" : "file",
-        cmTargetData.name,
+        currentName
       );
-      if (newName && newName !== cmTargetData.name) {
+      if (newName && newName !== currentName) {
         executeRename(
           cmTargetData.filepath,
           newName,
