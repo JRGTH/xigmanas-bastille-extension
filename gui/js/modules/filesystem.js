@@ -1,6 +1,6 @@
 // modules/filesystem.js
 
-import { cfg } from "./state.js";
+import { cfg, getBaseFormData } from "./state.js";
 import { spinner, hideSpinner } from "./ui.js";
 import { showConfirmDialog } from "./modal.js";
 import { clearDirtyState, refreshDir } from "./tree.js";
@@ -9,11 +9,9 @@ import { injectItemIntoTree } from "./upload.js";
 // --- UNLOCK ---
 export async function executeUnlock(filepath, liElement) {
   spinner();
-  const form = document.getElementById("iform");
-  const formData = new FormData(form);
+  const formData = getBaseFormData();
   formData.set("ajax_unlock", "1");
   formData.set("filepath", filepath);
-  formData.set("jailname", cfg.jailname);
 
   try {
     const response = await fetch(window.location.href, {
@@ -67,18 +65,10 @@ export async function executeDelete(
 
   spinner();
 
-  const form = document.getElementById("iform");
-  if (!form) {
-    console.error("Critical: #iform not found.");
-    hideSpinner();
-    return;
-  }
-
-  const formData = new FormData(form);
+  const formData = getBaseFormData();
   formData.set("ajax_delete", "1");
   formData.set("delete_file", "1");
   formData.set("filepath", filepath);
-  formData.set("jailname", cfg.jailname);
 
   try {
     const response = await fetch(window.location.href, {
@@ -130,18 +120,17 @@ export async function executeRename(oldFilepath, newName, liElement, isFolder) {
   spinner();
 
   try {
-      const authToken = document.querySelector('input[name="authtoken"]')?.value || '';
-      const formData = new FormData();
+      const formData = getBaseFormData();
       formData.append('rename_file', '1');
       formData.append('ajax_rename', '1');
-      formData.append('jailname', cfg.jailname);
       formData.append('filepath', oldFilepath);
       formData.append('newname', newName);
       formData.append('authtoken', authToken);
 
       const response = await fetch(window.location.pathname, {
           method: 'POST',
-          body: formData
+          body: formData,
+          credentials: "same-origin"
       });
 
       const result = await response.json();
@@ -178,13 +167,11 @@ export async function executeCreateItem(name, type, targetData) {
     ? targetData.filepath
     : targetData.filepath.substring(0, targetData.filepath.lastIndexOf("/"));
 
-  const form = document.getElementById("iform");
-  const formData = new FormData(form);
+  const formData = getBaseFormData();
   formData.set("ajax_create_item", "1");
   formData.set("parent_dir", parentPath);
   formData.set("new_name", name);
   formData.set("type", type);
-  formData.set("jailname", cfg.jailname);
 
   try {
     const response = await fetch(window.location.href, {
@@ -225,40 +212,32 @@ export async function executeMove(sourcePath, destDirPath, itemName) {
     spinner();
 
     try {
-        const formData = new FormData();
+        const formData = getBaseFormData();
         formData.append('move_item', '1');
         formData.append('ajax_move', '1');
-        formData.append('jailname', cfg.jailname);
         formData.append('source', sourcePath);
         formData.append('dest_dir', destDirPath);
         formData.append('name', itemName);
-        formData.append('authtoken', document.querySelector('input[name="authtoken"]')?.value || '');
 
         const response = await fetch(window.location.pathname, {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         });
 
         const result = await response.json();
 
         if (result.success) {
             console.log(`[IDE] Moved successfully: ${sourcePath} -> ${result.newpath}`);
-
-            // 1. Refrescar la carpeta ORIGEN (para que el archivo desaparezca)
             await refreshDir(sourceBaseDir || cfg.jailRoot);
-
-            // 2. Refrescar la carpeta DESTINO (para que el archivo aparezca)
             await refreshDir(destDirPath);
-
-            // 3. (Opcional) Si estamos moviendo el archivo activo, actualizamos URL
             const currentUrl = new URL(window.location.href);
             if (currentUrl.searchParams.get('filepath') === sourcePath) {
                 currentUrl.searchParams.set('filepath', result.newpath);
                 window.history.replaceState({ filepath: result.newpath }, '', currentUrl.toString());
                 if (typeof window.updateBreadcrumbs === 'function') window.updateBreadcrumbs(result.newpath);
             }
-
-            return true; // Éxito
+            return true;
         } else {
             showConfirmDialog('Move Error', result.error || 'Could not move item.', 'error');
             return false;

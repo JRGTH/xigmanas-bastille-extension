@@ -83,3 +83,15 @@ export function clearClipboard() {
     }
     clipboard = { filepath: null, name: null, isFolder: false, liElement: null };
 }
+
+export function getBaseFormData() {
+  const formData = new FormData();
+  const authToken = document.querySelector('input[name="authtoken"]')?.value || '';
+  if (authToken) {
+      formData.append('authtoken', authToken);
+  }
+  if (cfg && cfg.jailname) {
+      formData.append('jailname', cfg.jailname);
+  }
+  return formData;
+}
