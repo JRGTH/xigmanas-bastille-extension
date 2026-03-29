@@ -6,6 +6,9 @@ import {
   setCmTargetData,
   contextMenu,
   setContextMenu,
+  clipboard,
+  setClipboard,
+  clearClipboard,
 } from "./state.js";
 import { spinner, hideSpinner } from "./ui.js";
 import {
@@ -19,6 +22,7 @@ import {
   executeDelete,
   executeCreateItem,
   executeRename,
+  executeMove,
 } from "./filesystem.js";
 import { executeDownloadRequest } from "./download.js";
 import { showFileInfo } from "./sidebar-info.js";
@@ -104,6 +108,18 @@ const CONTEXT_MENU_HTML = `
         <span class="ide-cm-item-text">Rename</span>
         <span class="ide-cm-item-text-secondary">F2</span>
     </div>
+    <div class="ide-cm-separator"></div>
+        <div class="ide-cm-item" id="cm-cut">
+            <div class="icon-wrapper"><img src="ext/bastille/images/cut.svg" class="ide-cm-item-svg" onerror="this.style.display='none'"></div>
+            <span class="ide-cm-item-text">Cut</span>
+            <span class="ide-cm-item-text-secondary">Ctrl+X</span>
+        </div>
+        <div class="ide-cm-item" id="cm-paste">
+            <div class="icon-wrapper"><img src="ext/bastille/images/paste.svg" class="ide-cm-item-svg" onerror="this.style.display='none'"></div>
+            <span class="ide-cm-item-text">Paste</span>
+            <span class="ide-cm-item-text-secondary">Ctrl+V</span>
+        </div>
+    <div class="ide-cm-separator"></div>
     <div class="ide-cm-item cm-delete" id="cm-delete-file">
         <div class="icon-wrapper"><img src="ext/bastille/images/delete.svg" class="ide-cm-item-svg" alt="delete"></div>
         <span class="ide-cm-item-text">Delete</span>
@@ -397,6 +413,52 @@ export function initContextMenu() {
     });
   }
 
+  // --- CUT LOGIC ---
+  document.getElementById('cm-cut')?.addEventListener('click', () => {
+      if (window.contextMenu) {
+        window.contextMenu.classList.remove('show');
+      }
+      if (!cmTargetData) {
+        return;
+      }
+
+      setClipboard({
+          filepath: cmTargetData.filepath,
+          name: cmTargetData.fileName,
+          isFolder: cmTargetData.isFolder,
+          liElement: cmTargetData.liElement
+      });
+      console.log("[IDE] Cut:", clipboard.filepath);
+  });
+
+  // --- PASTING LOGIC ---
+  document.getElementById('cm-paste')?.addEventListener('click', async () => {
+      hideContextMenu();
+
+      console.log("[IDE] The Paste button has been clicked. Verifying data...");
+      console.log(" -> cmTargetData:", cmTargetData);
+      console.log(" -> clipboard:", clipboard);
+
+      if (!cmTargetData || !clipboard.filepath) {
+          console.warn("[IDE] Paste failed: Data is missing from cmTargetData or the Clipboard.");
+          return;
+      }
+
+      let destDirPath = cmTargetData.isFolder ?
+                        cmTargetData.filepath :
+                        cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
+
+      console.log(`[IDE] Executing Move: Origin(${clipboard.filepath}) -> Destination(${destDirPath})`);
+
+      const success = await executeMove(clipboard.filepath, destDirPath, clipboard.name);
+
+      if (success) {
+          clearClipboard();
+          console.log("[IDE] Move completed. Clipboard cleared..");
+      }
+  });
+
+
   document.getElementById("cm-delete-file").addEventListener("click", () => {
     if (!cmTargetData) return;
     hideContextMenu();
@@ -500,6 +562,35 @@ export function initContextMenu() {
         }
       }
     }
+
+    // --- Keyboard shortcuts: CTRL+X (Cut) and CTRL+V (Paste) ---
+    if (e.ctrlKey && e.key.toLowerCase() === 'x') {
+        const target = getActiveTreeItemData();
+        if (target) {
+            e.preventDefault();
+            setClipboard({
+                filepath: target.filepath,
+                name: target.name,
+                isFolder: target.isFolder,
+                liElement: target.liElement
+            });
+            console.log("[IDE] Ctrl+X Cut:", clipboard.filepath);
+        }
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === 'v') {
+        const target = getActiveTreeItemData();
+        if (target && clipboard.filepath) {
+            e.preventDefault();
+            let destDirPath = target.isFolder ?
+                              target.filepath :
+                              target.filepath.substring(0, target.filepath.lastIndexOf('/'));
+
+            const success = await executeMove(clipboard.filepath, destDirPath, clipboard.name);
+            if (success) clearClipboard();
+        }
+    }
+
   });
 }
 

@@ -59,3 +59,27 @@ export function setSelectedIndex(v) {
 export function setOriginalSidebarHTML(v) {
   originalSidebarHTML = v;
 }
+
+export let clipboard = {
+    filepath: null,
+    name: null,
+    isFolder: false,
+    liElement: null
+};
+
+export function setClipboard(data) {
+    if (clipboard.liElement) clipboard.liElement.classList.remove('cut-element');
+
+    clipboard = { ...clipboard, ...data };
+
+    if (clipboard.liElement) {
+        clipboard.liElement.classList.add('cut-element');
+    }
+}
+
+export function clearClipboard() {
+    if (clipboard.liElement) {
+        clipboard.liElement.classList.remove('cut-element');
+    }
+    clipboard = { filepath: null, name: null, isFolder: false, liElement: null };
+}

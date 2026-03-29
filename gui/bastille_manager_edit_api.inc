@@ -1084,6 +1084,87 @@ if (isset($_POST['rename_file'])) {
     }
 }
 
+// MOVE FILES & FOLDERS
+if (isset($_POST['move_item'])) {
+    $is_ajax_move = isset($_POST['ajax_move']) && $_POST['ajax_move'] === '1';
+
+    if ($is_ajax_move) {
+        while (ob_get_level() > 0) ob_end_clean();
+        header('Content-Type: application/json; charset=utf-8');
+    }
+
+    $source   = $_POST['source'] ?? '';
+    $dest_dir = $_POST['dest_dir'] ?? '';
+    $name     = $_POST['name'] ?? '';
+
+    $source   = trim($source);
+    $dest_dir = trim($dest_dir);
+    $name     = trim($name);
+
+    if (!empty($source) && !empty($dest_dir) && file_exists($source) && strpos($source, '..') === false && strpos($dest_dir, '..') === false) {
+
+        $newpath = $dest_dir . '/' . $name;
+
+        // Evitar sobreescribir
+        if (file_exists($newpath)) {
+            if ($is_ajax_move) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'An item with that name already exists in the destination.'
+                ]);
+                exit;
+            }
+        }
+
+        conf_mount_rw();
+
+        // Intentamos mover nativamente (rename en PHP sirve para mover también)
+        $move_success = @rename($source, $newpath);
+
+        if (!$move_success) {
+            // Si falla, sacamos la artillería pesada del sistema
+            $cmd = "mv " . escapeshellarg($source) . " " . escapeshellarg($newpath);
+
+            $executor = new BastilleManagerMwExecParallel([
+                'force_move' => $cmd
+            ]);
+            $executor->executeWithSelect();
+
+            clearstatcache(true, $source);
+            clearstatcache(true, $newpath);
+            $move_success = file_exists($newpath) && !file_exists($source);
+        }
+
+        conf_mount_ro();
+
+        if ($move_success) {
+            if ($is_ajax_move) {
+                echo json_encode([
+                    'success' => true,
+                    'newpath' => $newpath
+                ]);
+                exit;
+            }
+        } else {
+            if ($is_ajax_move) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Permission denied. Could not move the item.'
+                ]);
+                exit;
+            }
+        }
+    } else {
+        if ($is_ajax_move) {
+            echo json_encode([
+                'success' => false,
+                 'error' => 'Invalid source, destination, or item not found.'
+            ]);
+            exit;
+        }
+    }
+}
+
 function validateGetToken(): void
 {
     $authtoken = $_GET['authtoken'] ?? '';

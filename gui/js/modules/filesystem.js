@@ -207,3 +207,68 @@ export async function executeCreateItem(name, type, targetData) {
   }
 }
 window.executeCreateItem = executeCreateItem;
+
+export async function executeMove(sourcePath, destDirPath, itemName) {
+    if (!sourcePath || !destDirPath || !itemName) return;
+
+    const sourceBaseDir = sourcePath.substring(0, sourcePath.lastIndexOf('/'));
+    if (sourceBaseDir === destDirPath) {
+        console.log("[IDE] The file is already in that directory..");
+        return false;
+    }
+
+    if (destDirPath.startsWith(sourcePath + '/')) {
+        showConfirmDialog('Move Error', 'Cannot move a directory into its own subdirectory.', 'error');
+        return false;
+    }
+
+    spinner();
+
+    try {
+        const formData = new FormData();
+        formData.append('move_item', '1');
+        formData.append('ajax_move', '1');
+        formData.append('jailname', cfg.jailname);
+        formData.append('source', sourcePath);
+        formData.append('dest_dir', destDirPath);
+        formData.append('name', itemName);
+        formData.append('authtoken', document.querySelector('input[name="authtoken"]')?.value || '');
+
+        const response = await fetch(window.location.pathname, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            console.log(`[IDE] Moved successfully: ${sourcePath} -> ${result.newpath}`);
+
+            // 1. Refrescar la carpeta ORIGEN (para que el archivo desaparezca)
+            await refreshDir(sourceBaseDir || cfg.jailRoot);
+
+            // 2. Refrescar la carpeta DESTINO (para que el archivo aparezca)
+            await refreshDir(destDirPath);
+
+            // 3. (Opcional) Si estamos moviendo el archivo activo, actualizamos URL
+            const currentUrl = new URL(window.location.href);
+            if (currentUrl.searchParams.get('filepath') === sourcePath) {
+                currentUrl.searchParams.set('filepath', result.newpath);
+                window.history.replaceState({ filepath: result.newpath }, '', currentUrl.toString());
+                if (typeof window.updateBreadcrumbs === 'function') window.updateBreadcrumbs(result.newpath);
+            }
+
+            return true; // Éxito
+        } else {
+            showConfirmDialog('Move Error', result.error || 'Could not move item.', 'error');
+            return false;
+        }
+
+    } catch (error) {
+        console.error("AJAX Move Error:", error);
+        showConfirmDialog('Move Error', 'Server connection failed.', 'error');
+        return false;
+    } finally {
+        hideSpinner();
+    }
+}

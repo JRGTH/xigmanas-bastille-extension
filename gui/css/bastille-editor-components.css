@@ -994,3 +994,7 @@ body.is-dragging .ide-sidebar .tree-item a * {
     100% { opacity: 1; transform: translateX(0); }
 }
 /**/
+
+.cut-element {
+    opacity: 0.5;
+}

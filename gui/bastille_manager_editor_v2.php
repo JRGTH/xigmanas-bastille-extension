@@ -41,6 +41,8 @@ if (isset($_GET['ajax'])
     || isset($_POST['ajax_save'])
     || isset($_POST['ajax_delete'])
     || isset($_POST['ajax_unlock'])
+    || isset($_POST['ajax_rename'])
+    || isset($_POST['ajax_move'])
     || isset($_POST['ajax_upload'])
     || isset($_POST['ajax_create_item'])
     || isset($_POST['ajax_upload_chunk'])
@@ -53,7 +55,6 @@ if (isset($_GET['ajax'])
     || isset($_POST['ajax_compress_type'])
     || isset($_GET['ajax_download_prepared'])
     || isset($_GET['ajax_job_sse'])
-    || isset($_POST['ajax_rename'])
     ) {
     include 'bastille_manager_edit_api.inc';
     exit;
