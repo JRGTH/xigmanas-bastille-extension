@@ -57,7 +57,7 @@ import {
   switchTab,
 } from "./modules/sidebar-info.js";
 import { initContextMenu } from "./modules/context-menu.js";
-import { initFolderDelegation, initHomeButton } from "./modules/tree.js";
+import { initTreeDelegation, initHomeButton } from "./modules/tree.js";
 import { initDragAndDrop } from './modules/dragdrop.js';
 
 // --- EXPOSE GLOBALS NEEDED BY PHP-GENERATED HTML ---
@@ -87,7 +87,7 @@ window.updateBreadcrumbs = updateBreadcrumbs;
 
 // --- INIT ---
 document.addEventListener("DOMContentLoaded", () => {
-  initFolderDelegation();
+  initTreeDelegation();
   initResizer();
   initBreadcrumbListener();
   initSearch();

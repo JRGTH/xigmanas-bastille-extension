@@ -359,68 +359,6 @@ export async function refreshDir(dirPath) {
   }
 }
 
-// --- SPA CLICK HANDLER ---
-export function initTreeClickHandler() {
-  document
-    .querySelector(".ide-file-list")
-    .addEventListener("click", async (e) => {
-      const link = e.target.closest("a");
-      if (!link || link.getAttribute("onclick")?.includes("toggleFolder")) {
-        return
-      }
-      const url = new URL(link.href, window.location.origin);
-      const filepath = url.searchParams.get("filepath");
-      if (!filepath) {
-        return;
-      }
-      e.preventDefault();
-      console.log("[DEBUG] Click on the tree. Is it dirty? ", window.isDirty);
-      if (window.isDirty) {
-        const ok = await showConfirmDialog(
-          "Unsaved changes",
-          "You have unsaved changes in the current file. If you switch files now, your changes will be lost. Do you want to discard them?",
-          "warning",
-        );
-        if (!ok) {
-          return;
-        }
-        window.isDirty = false;
-        clearDirtyState();
-      }
-
-      await loadFileToEditor(filepath, link.href);
-
-      const isSearchResult = link.closest(".is-recursive");
-
-      if (isSearchResult) {
-        clearFilter();
-
-        document
-          .querySelector(".ide-search input")
-          ?.dispatchEvent(new Event("input"));
-
-        document
-          .querySelectorAll(".is-recursive, .no-results")
-          .forEach((el) => el.remove());
-
-        document
-          .querySelectorAll(".ide-file-list > li")
-          .forEach((el) => (el.style.display = ""));
-
-        cfg.filepath = filepath;
-        setTimeout(async () => {
-          if (typeof syncSidebarWithFile === "function")
-            await syncSidebarWithFile();
-        }, 50);
-      } else {
-        document
-          .querySelectorAll(".tree-item")
-          .forEach((el) => el.classList.remove("active"));
-        link.closest(".tree-item")?.classList.add("active");
-      }
-    });
-}
-
 // --- HOME BUTTON ---
 export function initHomeButton() {
   const homeBtn = document.querySelector(
@@ -515,16 +453,68 @@ function _syncFormInputs(filepath) {
   if (inputDr) inputDr.value = filepath.substring(0, filepath.lastIndexOf("/"));
 }
 
-export function initFolderDelegation() {
+/**
+ * @function initTreeDelegation
+ * @description
+ * Central controller (God Function) for all clicks within the file tree.
+ * Uses the "Event Delegation" pattern by listening on the global `document`.
+ * This ensures that clicks are detected even on folders or files that
+ * have been dynamically injected via AJAX (e.g., after expanding a subfolder or searching).
+ * * Responsibilities:
+ * 1. Intercept File Clicks: Checks for unsaved changes (isDirty check),
+ * loads the file into the editor, and handles visual cleanup if the click came from a search result.
+ * 2. Intercept Folder Clicks: Expands/Collapses folder content dynamically.
+ */
+export function initTreeDelegation() {
   document.addEventListener("click", async (e) => {
 
-    const fileLink = e.target.closest(".file-item a");
-    if (fileLink) {
+    const fileLink = e.target.closest(".ide-file-list a");
+    const isFolder = fileLink?.hasAttribute("data-folder-path") || fileLink?.getAttribute("onclick")?.includes("toggleFolder");
+
+    if (fileLink && !isFolder) {
       e.preventDefault();
       e.stopPropagation();
+
       const url = new URL(fileLink.href, window.location.origin);
       const filepath = url.searchParams.get("filepath");
+      if (!filepath) {
+        return;
+      }
+
+      console.log("[DEBUG] File Click atrapado por Delegation. isDirty:", window.isDirty);
+
+      if (window.isDirty) {
+        const ok = await showConfirmDialog(
+          "Unsaved changes",
+          "You have unsaved changes in the current file. If you switch files now, your changes will be lost. Do you want to discard them?",
+          "warning"
+        );
+        if (!ok) {
+          return;
+        }
+        window.isDirty = false;
+        clearDirtyState();
+      }
+
       await loadFileToEditor(filepath, fileLink.href);
+
+      const isSearchResult = fileLink.closest(".is-recursive");
+
+      if (isSearchResult) {
+        clearFilter();
+        document.querySelector(".ide-search input")?.dispatchEvent(new Event("input"));
+        document.querySelectorAll(".is-recursive, .no-results").forEach((el) => el.remove());
+        document.querySelectorAll(".ide-file-list > li").forEach((el) => (el.style.display = ""));
+        if (typeof cfg !== 'undefined') {
+            cfg.filepath = filepath;
+        }
+        setTimeout(async () => {
+          await syncSidebarWithFile();
+        }, 50);
+      } else {
+        document.querySelectorAll(".tree-item").forEach((el) => el.classList.remove("active"));
+        fileLink.closest(".tree-item")?.classList.add("active");
+      }
       return;
     }
 
@@ -533,7 +523,7 @@ export function initFolderDelegation() {
       e.preventDefault();
       e.stopPropagation();
 
-      if (originalSidebarHTML !== "") {
+      if (typeof originalSidebarHTML !== 'undefined' && originalSidebarHTML !== "") {
         clearFilter();
       }
 
