@@ -1004,6 +1004,86 @@ function rrmdir($dir)
     return false;
 }
 
+// RENAME FILES & FOLDERS
+if (isset($_POST['rename_file'])) {
+    $is_ajax_rename = isset($_POST['ajax_rename']) && $_POST['ajax_rename'] === '1';
+
+    if ($is_ajax_rename) {
+        while (ob_get_level() > 0) ob_end_clean();
+        header('Content-Type: application/json; charset=utf-8');
+    }
+
+    $filepath = $_POST['filepath'] ?? '';
+    $newname  = $_POST['newname'] ?? '';
+    $filepath = trim($filepath);
+    $newname  = trim($newname);
+
+    // Validamos que exista, que no haya hacks de ruta y que el nuevo nombre no contenga barras
+    if (!empty($filepath) && !empty($newname) && file_exists($filepath) && strpos($filepath, '..') === false && strpos($newname, '/') === false) {
+
+        $base_dir = dirname($filepath);
+        $newpath  = $base_dir . '/' . $newname;
+
+        // We avoid overwriting something that already exists with that name
+        if (file_exists($newpath)) {
+            if ($is_ajax_rename) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'An item with that name already exists.'
+                ]);
+                exit;
+            }
+        }
+
+        conf_mount_rw();
+
+        $rename_success = @rename($filepath, $newpath);
+
+        if (!$rename_success) {
+            // If native PHP fails, we'll use the system's command-line tool (mv)
+            $cmd = "mv " . escapeshellarg($filepath) . " " . escapeshellarg($newpath);
+
+            $executor = new BastilleManagerMwExecParallel([
+                'force_rename' => $cmd
+            ]);
+            $executor->executeWithSelect();
+
+            clearstatcache(true, $filepath);
+            clearstatcache(true, $newpath);
+            $rename_success = file_exists($newpath) && !file_exists($filepath);
+        }
+
+        conf_mount_ro();
+
+        if ($rename_success) {
+            if ($is_ajax_rename) {
+                // We return the newpath so that JS can easily update the DOM
+                echo json_encode([
+                    'success' => true,
+                    'newpath' => $newpath
+                ]);
+                exit;
+            }
+        } else {
+            if ($is_ajax_rename) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Permission denied. System executor could not rename the item.'
+                ]);
+                exit;
+            }
+        }
+    } else {
+        if ($is_ajax_rename) {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Invalid path, invalid name, or item not found.'
+            ]);
+            exit;
+        }
+    }
+}
+
 function validateGetToken(): void
 {
     $authtoken = $_GET['authtoken'] ?? '';

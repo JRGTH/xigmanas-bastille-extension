@@ -122,6 +122,54 @@ export async function executeDelete(
 }
 window.executeDelete = executeDelete;
 
+export async function executeRename(oldFilepath, newName, liElement, isFolder) {
+  if (!oldFilepath || !newName || !liElement) {
+    return;
+  }
+
+  spinner();
+
+  try {
+      const authToken = document.querySelector('input[name="authtoken"]')?.value || '';
+      const formData = new FormData();
+      formData.append('rename_file', '1');
+      formData.append('ajax_rename', '1');
+      formData.append('jailname', cfg.jailname);
+      formData.append('filepath', oldFilepath);
+      formData.append('newname', newName);
+      formData.append('authtoken', authToken);
+
+      const response = await fetch(window.location.pathname, {
+          method: 'POST',
+          body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log(`[IDE] Renamed successfully: ${oldFilepath} -> ${result.newpath}`);
+        let basePath = oldFilepath.substring(0, oldFilepath.lastIndexOf('/'));
+        if (!basePath || basePath === '') {
+            basePath = cfg.jailRoot;
+        }
+        await refreshDir(basePath);
+        const currentUrl = new URL(window.location.href);
+        if (currentUrl.searchParams.get('filepath') === oldFilepath) {
+            currentUrl.searchParams.set('filepath', result.newpath);
+            window.history.replaceState({ filepath: result.newpath }, '', currentUrl.toString());
+            window.updateBreadcrumbs(result.newpath);
+        }
+      } else {
+          showConfirmDialog('Rename Error', result.error || 'Could not rename item.', 'error');
+      }
+  } catch (error) {
+      console.error("AJAX Rename Error:", error);
+      showConfirmDialog('Rename Error', 'Server connection failed. Check console.', 'error');
+  } finally {
+      hideSpinner();
+  }
+}
+
 // --- CREATE ITEM ---
 export async function executeCreateItem(name, type, targetData) {
   spinner();

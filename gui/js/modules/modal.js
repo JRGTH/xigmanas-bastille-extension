@@ -84,3 +84,81 @@ export function showConfirmDialog(title, message, type = "warning") {
 }
 
 window.showConfirmDialog = showConfirmDialog;
+
+// --- NEW ITEM MODAL ---
+export function showNewItemModal(type) {
+    return new Promise((resolve) => {
+        const modal   = document.getElementById('ide-new-item-modal');
+        const titleEl = document.getElementById('ide-new-item-title');
+        const input   = document.getElementById('ide-new-item-input');
+
+        titleEl.innerText = type === 'folder' ? 'New Directory' : 'New File';
+        input.value       = '';
+        modal.style.display = 'flex';
+        setTimeout(() => input.focus(), 50);
+
+        const cleanup = () => {
+            modal.style.display = 'none';
+            input.removeEventListener('keydown', handleKey);
+            modal.removeEventListener('click', handleClickOutside);
+        };
+
+        const handleKey = (e) => {
+            if (e.key === 'Enter')  { cleanup(); resolve(input.value.trim() || null); }
+            if (e.key === 'Escape') { cleanup(); resolve(null); }
+        };
+
+        const handleClickOutside = (e) => {
+            if (e.target === modal) { cleanup(); resolve(null); }
+        };
+
+        input.addEventListener('keydown', handleKey);
+        modal.addEventListener('click', handleClickOutside);
+    });
+}
+
+// --- RENAME MODAL  ---
+export function showRenameModal(type, currentName) {
+    return new Promise((resolve) => {
+        const modal   = document.getElementById('ide-new-item-modal');
+        const titleEl = document.getElementById('ide-new-item-title');
+        const input   = document.getElementById('ide-new-item-input');
+
+        titleEl.innerText = type === 'folder' ? 'Rename Directory' : 'Rename File';
+
+        input.value = currentName;
+        modal.style.display = 'flex';
+
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 50);
+
+        const cleanup = () => {
+            modal.style.display = 'none';
+            input.removeEventListener('keydown', handleKey);
+            modal.removeEventListener('click', handleClickOutside);
+        };
+
+        const handleKey = (e) => {
+            if (e.key === 'Enter') {
+              cleanup();
+              resolve(input.value.trim() || null);
+            }
+            if (e.key === 'Escape') {
+              cleanup();
+              resolve(null);
+            }
+        };
+
+        const handleClickOutside = (e) => {
+            if (e.target === modal) {
+              cleanup();
+              resolve(null);
+            }
+        };
+
+        input.addEventListener('keydown', handleKey);
+        modal.addEventListener('click', handleClickOutside);
+    });
+}

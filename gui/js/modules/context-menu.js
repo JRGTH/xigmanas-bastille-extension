@@ -8,12 +8,17 @@ import {
   setContextMenu,
 } from "./state.js";
 import { spinner, hideSpinner } from "./ui.js";
-import { showConfirmDialog } from "./modal.js";
+import {
+  showConfirmDialog,
+  showNewItemModal,
+  showRenameModal,
+} from "./modal.js";
 import { refreshDir } from "./tree.js";
 import {
   executeUnlock,
   executeDelete,
   executeCreateItem,
+  executeRename,
 } from "./filesystem.js";
 import { executeDownloadRequest } from "./download.js";
 import { showFileInfo } from "./sidebar-info.js";
@@ -105,347 +110,428 @@ const CONTEXT_MENU_HTML = `
         <span class="ide-cm-item-text-secondary">(Supr - del)</span>
     </div>`;
 
-// --- NEW ITEM MODAL ---
-function showNewItemModal(type) {
-    return new Promise((resolve) => {
-        const modal   = document.getElementById('ide-new-item-modal');
-        const titleEl = document.getElementById('ide-new-item-title');
-        const input   = document.getElementById('ide-new-item-input');
-
-        titleEl.innerText = type === 'folder' ? 'New Directory' : 'New File';
-        input.value       = '';
-        modal.style.display = 'flex';
-        setTimeout(() => input.focus(), 50);
-
-        const cleanup = () => {
-            modal.style.display = 'none';
-            input.removeEventListener('keydown', handleKey);
-            modal.removeEventListener('click', handleClickOutside);
-        };
-
-        const handleKey = (e) => {
-            if (e.key === 'Enter')  { cleanup(); resolve(input.value.trim() || null); }
-            if (e.key === 'Escape') { cleanup(); resolve(null); }
-        };
-
-        const handleClickOutside = (e) => {
-            if (e.target === modal) { cleanup(); resolve(null); }
-        };
-
-        input.addEventListener('keydown', handleKey);
-        modal.addEventListener('click', handleClickOutside);
-    });
-}
-window.showNewItemModal = showNewItemModal;
-
 // --- HIDE CONTEXT MENU ---
 function hideContextMenu() {
-    const cm = document.getElementById('ide-context-menu');
-    if (cm) cm.style.display = 'none';
+  const cm = document.getElementById("ide-context-menu");
+  if (cm) cm.style.display = "none";
 }
 
 // --- INIT ---
 export function initContextMenu() {
-    console.log('[CM] fileList:', document.querySelector('.ide-file-list'));
-    console.log('[CM] contextmenu init');
-    // Inject context menu
-    const cm   = document.createElement('div');
-    cm.id      = 'ide-context-menu';
-    cm.innerHTML = CONTEXT_MENU_HTML;
-    document.body.appendChild(cm);
-    setContextMenu(cm);
+  console.log("[CM] fileList:", document.querySelector(".ide-file-list"));
+  console.log("[CM] contextmenu init");
+  // Inject context menu
+  const cm = document.createElement("div");
+  cm.id = "ide-context-menu";
+  cm.innerHTML = CONTEXT_MENU_HTML;
+  document.body.appendChild(cm);
+  setContextMenu(cm);
 
-    // Inject new item modal
-    const modal       = document.createElement('div');
-    modal.id          = 'ide-new-item-modal';
-    modal.innerHTML   = `
+  // Inject new item modal
+  const modal = document.createElement("div");
+  modal.id = "ide-new-item-modal";
+  modal.innerHTML = `
         <div class="ide-new-item-content">
             <div id="ide-new-item-title" class="ide-new-item-title lhetop">New File</div>
             <input type="text" id="ide-new-item-input" placeholder="Name" autocomplete="off" spellcheck="false">
         </div>`;
-    document.body.appendChild(modal);
+  document.body.appendChild(modal);
 
-    // Right-click listener
-    document.querySelector('.ide-file-list').addEventListener('contextmenu', (e) => {
-        const link = e.target.closest('.tree-item a');
-        if (!link) return;
-        e.preventDefault();
+  // Right-click listener
+  document
+    .querySelector(".ide-file-list")
+    .addEventListener("contextmenu", (e) => {
+      const link = e.target.closest(".tree-item a");
+      if (!link) return;
+      e.preventDefault();
 
-        const liElement  = link.closest('.tree-item');
-        const isFolder   = liElement.classList.contains('folder-item');
-        let filepath     = '';
+      const liElement = link.closest(".tree-item");
+      const isFolder = liElement.classList.contains("folder-item");
+      let filepath = "";
 
-        if (isFolder) {
-            filepath = link.getAttribute('data-folder-path') ?? '';
-            console.log(' folder filepath:', filepath, 'data-folder-path:', link.getAttribute('data-folder-path'));
-        } else {
-            filepath = new URL(link.href, window.location.origin).searchParams.get('filepath') ?? '';
-        }
-
-        if (!filepath) return;
-
-        const filenameEl   = link.querySelector('span:not(.tree-caret)');
-        const filename     = filenameEl?.innerText.trim() ?? 'Unknown';
-        const currentFlag  = liElement.getAttribute('data-flag') || '';
-        const isImmutable  = currentFlag.includes('schg');
-
-        const parentUl     = liElement.closest('ul.ide-file-list');
-        const parentFlag   = parentUl?.closest('.folder-item')?.getAttribute('data-flag') || '';
-        const isParentImmutable = parentFlag.includes('schg');
-
-        const unlockBtn = document.getElementById('cm-unlock-item');
-        const deleteBtn = document.getElementById('cm-delete-file');
-
-        if (isImmutable) {
-            unlockBtn.style.display = 'flex';
-            deleteBtn.style.display = 'none';
-        } else if (isParentImmutable) {
-            unlockBtn.style.display = 'none';
-            deleteBtn.style.display = 'none';
-        } else {
-            unlockBtn.style.display = 'none';
-            deleteBtn.style.display = 'flex';
-        }
-
-        setCmTargetData({ filepath, filename, liElement, isFolder, flag: currentFlag });
-
-        document.getElementById('cm-download-file').style.display = isFolder ? 'none' : 'flex';
-        document.getElementById('cm-download-zip').style.display  = 'flex';
-
-        const refreshBtn  = document.getElementById('cm-refresh-dir');
-        refreshBtn.querySelector('.ide-cm-item-text').innerText = isFolder ? 'Refresh Directory' : 'Refresh Parent Dir';
-        refreshBtn.style.display = 'flex';
-
-        // Position and display menu
-        contextMenu.style.display = 'block';
-
-        let left = e.pageX;
-        let top = e.pageY;
-
-        const menuWidth = contextMenu.offsetWidth;
-        const menuHeight = contextMenu.offsetHeight;
-
-        if (e.clientX + menuWidth > window.innerWidth) {
-            left = e.pageX - menuWidth;
-        }
-
-        if (e.clientY + menuHeight > window.innerHeight) {
-            top = e.pageY - menuHeight;
-        }
-
-        contextMenu.style.left = `${left}px`;
-        contextMenu.style.top = `${top}px`;
-    });
-
-    // Submenu repositioning
-    document.querySelectorAll('.has-submenu').forEach(item => {
-        item.addEventListener('mouseenter', function() {
-            const sub = this.querySelector('.ide-cm-submenu');
-            if (!sub) return;
-            sub.style.top    = '0px';
-            sub.style.bottom = 'auto';
-            const rect       = this.getBoundingClientRect();
-            const subHeight  = sub.getBoundingClientRect().height || sub.scrollHeight;
-            if (rect.top + subHeight > window.innerHeight - 10) {
-                sub.style.top    = 'auto';
-                sub.style.bottom = '0px';
-            }
-        });
-    });
-
-    // Global hide
-    document.addEventListener('click',   (e) => { if (e.button !== 2) hideContextMenu(); });
-    document.addEventListener('keydown',  (e) => { if (e.key === 'Escape') hideContextMenu(); });
-
-    // --- ACTIONS ---
-    document.getElementById('cm-new-file').addEventListener('click', async () => {
-        if (!cmTargetData) return;
-        hideContextMenu();
-        const name = await showNewItemModal('file');
-        if (name) executeCreateItem(name, 'file', cmTargetData);
-    });
-
-    document.getElementById('cm-new-folder').addEventListener('click', async () => {
-        if (!cmTargetData) return;
-        hideContextMenu();
-        const name = await showNewItemModal('folder');
-        if (name) executeCreateItem(name, 'folder', cmTargetData);
-    });
-
-    document.getElementById('cm-copy-path').addEventListener('click', () => {
-        if (!cmTargetData) return;
-        navigator.clipboard?.writeText(cmTargetData.filepath)
-            ?? (() => {
-                const ta = document.createElement('textarea');
-                ta.value = cmTargetData.filepath;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-            })();
-        hideContextMenu();
-    });
-
-    document.getElementById('cm-unlock-item').addEventListener('click', async () => {
-        if (!cmTargetData) return;
-        hideContextMenu();
-        const ok = await showConfirmDialog(
-            'Unlock Protection',
-            `The item "${cmTargetData.filename}" is protected with the flag: ${cmTargetData.flag}.\n\nDo you want to remove all protection flags now?`,
-            'warning'
+      if (isFolder) {
+        filepath = link.getAttribute("data-folder-path") ?? "";
+        console.log(
+          " folder filepath:",
+          filepath,
+          "data-folder-path:",
+          link.getAttribute("data-folder-path"),
         );
-        if (ok) executeUnlock(cmTargetData.filepath, cmTargetData.liElement);
+      } else {
+        filepath =
+          new URL(link.href, window.location.origin).searchParams.get(
+            "filepath",
+          ) ?? "";
+      }
+
+      if (!filepath) return;
+
+      const filenameEl = link.querySelector("span:not(.tree-caret)");
+      const filename = filenameEl?.innerText.trim() ?? "Unknown";
+      const currentFlag = liElement.getAttribute("data-flag") || "";
+      const isImmutable = currentFlag.includes("schg");
+
+      const parentUl = liElement.closest("ul.ide-file-list");
+      const parentFlag =
+        parentUl?.closest(".folder-item")?.getAttribute("data-flag") || "";
+      const isParentImmutable = parentFlag.includes("schg");
+
+      const unlockBtn = document.getElementById("cm-unlock-item");
+      const deleteBtn = document.getElementById("cm-delete-file");
+
+      if (isImmutable) {
+        unlockBtn.style.display = "flex";
+        deleteBtn.style.display = "none";
+      } else if (isParentImmutable) {
+        unlockBtn.style.display = "none";
+        deleteBtn.style.display = "none";
+      } else {
+        unlockBtn.style.display = "none";
+        deleteBtn.style.display = "flex";
+      }
+
+      setCmTargetData({
+        filepath,
+        filename,
+        liElement,
+        isFolder,
+        flag: currentFlag,
+      });
+
+      document.getElementById("cm-download-file").style.display = isFolder
+        ? "none"
+        : "flex";
+      document.getElementById("cm-download-zip").style.display = "flex";
+
+      const refreshBtn = document.getElementById("cm-refresh-dir");
+      refreshBtn.querySelector(".ide-cm-item-text").innerText = isFolder
+        ? "Refresh Directory"
+        : "Refresh Parent Dir";
+      refreshBtn.style.display = "flex";
+
+      // Position and display menu
+      contextMenu.style.display = "block";
+
+      let left = e.pageX;
+      let top = e.pageY;
+
+      const menuWidth = contextMenu.offsetWidth;
+      const menuHeight = contextMenu.offsetHeight;
+
+      if (e.clientX + menuWidth > window.innerWidth) {
+        left = e.pageX - menuWidth;
+      }
+
+      if (e.clientY + menuHeight > window.innerHeight) {
+        top = e.pageY - menuHeight;
+      }
+
+      contextMenu.style.left = `${left}px`;
+      contextMenu.style.top = `${top}px`;
     });
 
-    document.getElementById('cm-info-item').addEventListener('click', () => {
-        if (!cmTargetData) return;
-        hideContextMenu();
-        showFileInfo(cmTargetData.filepath);
+  // Submenu repositioning
+  document.querySelectorAll(".has-submenu").forEach((item) => {
+    item.addEventListener("mouseenter", function () {
+      const sub = this.querySelector(".ide-cm-submenu");
+      if (!sub) return;
+      sub.style.top = "0px";
+      sub.style.bottom = "auto";
+      const rect = this.getBoundingClientRect();
+      const subHeight = sub.getBoundingClientRect().height || sub.scrollHeight;
+      if (rect.top + subHeight > window.innerHeight - 10) {
+        sub.style.top = "auto";
+        sub.style.bottom = "0px";
+      }
+    });
+  });
+
+  // Global hide
+  document.addEventListener("click", (e) => {
+    if (e.button !== 2) hideContextMenu();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") hideContextMenu();
+  });
+
+  // --- ACTIONS ---
+  document.getElementById("cm-new-file").addEventListener("click", async () => {
+    if (!cmTargetData) return;
+    hideContextMenu();
+    const name = await showNewItemModal("file");
+    if (name) executeCreateItem(name, "file", cmTargetData);
+  });
+
+  document
+    .getElementById("cm-new-folder")
+    .addEventListener("click", async () => {
+      if (!cmTargetData) return;
+      hideContextMenu();
+      const name = await showNewItemModal("folder");
+      if (name) executeCreateItem(name, "folder", cmTargetData);
     });
 
-    document.getElementById('cm-compare-history').addEventListener('click', () => {
-        if (!cmTargetData) return;
-        hideContextMenu();
-        if (cmTargetData.isFolder) {
-            showConfirmDialog('Error', 'You can only compare the history of a file, not a directory.', 'error');
-            return;
-        }
-        openDiffViewer(cmTargetData.filepath, cmTargetData.filename);
+  document.getElementById("cm-copy-path").addEventListener("click", () => {
+    if (!cmTargetData) return;
+    navigator.clipboard?.writeText(cmTargetData.filepath) ??
+      (() => {
+        const ta = document.createElement("textarea");
+        ta.value = cmTargetData.filepath;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      })();
+    hideContextMenu();
+  });
+
+  document
+    .getElementById("cm-unlock-item")
+    .addEventListener("click", async () => {
+      if (!cmTargetData) return;
+      hideContextMenu();
+      const ok = await showConfirmDialog(
+        "Unlock Protection",
+        `The item "${cmTargetData.filename}" is protected with the flag: ${cmTargetData.flag}.\n\nDo you want to remove all protection flags now?`,
+        "warning",
+      );
+      if (ok) executeUnlock(cmTargetData.filepath, cmTargetData.liElement);
     });
 
-    document.getElementById('cm-download-file').addEventListener('click', () => {
-        if (!cmTargetData || cmTargetData.isFolder) return;
-        executeDownloadRequest(false);
+  document.getElementById("cm-info-item").addEventListener("click", () => {
+    if (!cmTargetData) return;
+    hideContextMenu();
+    showFileInfo(cmTargetData.filepath);
+  });
+
+  document
+    .getElementById("cm-compare-history")
+    .addEventListener("click", () => {
+      if (!cmTargetData) return;
+      hideContextMenu();
+      if (cmTargetData.isFolder) {
+        showConfirmDialog(
+          "Error",
+          "You can only compare the history of a file, not a directory.",
+          "error",
+        );
+        return;
+      }
+      openDiffViewer(cmTargetData.filepath, cmTargetData.filename);
     });
 
-    document.getElementById('cm-download-zip').addEventListener('click',    () => cmTargetData && executeDownloadRequest('zip'));
-    document.getElementById('cm-download-targz').addEventListener('click',  () => cmTargetData && executeDownloadRequest('targz'));
-    document.getElementById('cm-download-tarlz4').addEventListener('click', () => cmTargetData && executeDownloadRequest('tarlz4'));
-    document.getElementById('cm-download-tarzst').addEventListener('click', () => cmTargetData && executeDownloadRequest('tarzst'));
+  document.getElementById("cm-download-file").addEventListener("click", () => {
+    if (!cmTargetData || cmTargetData.isFolder) return;
+    executeDownloadRequest(false);
+  });
 
-    document.getElementById('cm-refresh-dir').addEventListener('click', async () => {
-        if (!cmTargetData) return;
-        hideContextMenu();
-        const targetPath = cmTargetData.isFolder
-            ? cmTargetData.filepath
-            : cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
-        spinner();
-        try {
-            await refreshDir(targetPath);
-            showNotification('Refreshed', 'Directory contents updated from server.');
-        } catch (e) {
-            showConfirmDialog('Error', 'Failed to refresh directory.', 'error');
-        } finally {
-            hideSpinner();
-        }
+  document
+    .getElementById("cm-download-zip")
+    .addEventListener(
+      "click",
+      () => cmTargetData && executeDownloadRequest("zip"),
+    );
+  document
+    .getElementById("cm-download-targz")
+    .addEventListener(
+      "click",
+      () => cmTargetData && executeDownloadRequest("targz"),
+    );
+  document
+    .getElementById("cm-download-tarlz4")
+    .addEventListener(
+      "click",
+      () => cmTargetData && executeDownloadRequest("tarlz4"),
+    );
+  document
+    .getElementById("cm-download-tarzst")
+    .addEventListener(
+      "click",
+      () => cmTargetData && executeDownloadRequest("tarzst"),
+    );
+
+  document
+    .getElementById("cm-refresh-dir")
+    .addEventListener("click", async () => {
+      if (!cmTargetData) return;
+      hideContextMenu();
+      const targetPath = cmTargetData.isFolder
+        ? cmTargetData.filepath
+        : cmTargetData.filepath.substring(
+            0,
+            cmTargetData.filepath.lastIndexOf("/"),
+          );
+      spinner();
+      try {
+        await refreshDir(targetPath);
+        showNotification(
+          "Refreshed",
+          "Directory contents updated from server.",
+        );
+      } catch (e) {
+        showConfirmDialog("Error", "Failed to refresh directory.", "error");
+      } finally {
+        hideSpinner();
+      }
     });
 
-    document.getElementById('cm-delete-file').addEventListener('click', () => {
-        if (!cmTargetData) return;
-        hideContextMenu();
-        executeDelete(cmTargetData.filepath, cmTargetData.filename, cmTargetData.liElement, cmTargetData.isFolder);
+  const renameBtn = document.getElementById("cm-rename");
+  if (renameBtn) {
+    renameBtn.addEventListener("click", async () => {
+      if (window.contextMenu) window.contextMenu.classList.remove("show");
+      if (!cmTargetData) {
+        return;
+      }
+      const newName = await showRenameModal(
+        cmTargetData.isFolder ? "folder" : "file",
+        cmTargetData.name,
+      );
+      if (newName && newName !== cmTargetData.name) {
+        executeRename(
+          cmTargetData.filepath,
+          newName,
+          cmTargetData.liElement,
+          cmTargetData.isFolder,
+        );
+      }
+    });
+  }
+
+  document.getElementById("cm-delete-file").addEventListener("click", () => {
+    if (!cmTargetData) return;
+    hideContextMenu();
+    executeDelete(
+      cmTargetData.filepath,
+      cmTargetData.filename,
+      cmTargetData.liElement,
+      cmTargetData.isFolder,
+    );
+  });
+
+  // --- HEADER + BUTTON ---
+  const plusBtn = document.querySelector(".plus-icon");
+  const plusMenu = document.querySelector(".header-plus-submenu");
+  const headerMain = document.querySelector(".ide-sidebar-header");
+
+  if (plusBtn && plusMenu && headerMain) {
+    plusBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const isOpen = plusMenu.classList.toggle("show");
+      headerMain.classList.toggle("menu-open", isOpen);
     });
 
-    // --- HEADER + BUTTON ---
-    const plusBtn  = document.querySelector('.plus-icon');
-    const plusMenu = document.querySelector('.header-plus-submenu');
-    const headerMain = document.querySelector('.ide-sidebar-header');
+    document.addEventListener("click", (e) => {
+      if (!plusMenu.contains(e.target) && !plusBtn.contains(e.target)) {
+        plusMenu.classList.remove("show");
+        headerMain.classList.remove("menu-open");
+      }
+    });
 
-    if (plusBtn && plusMenu && headerMain) {
-        plusBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isOpen = plusMenu.classList.toggle('show');
-            headerMain.classList.toggle('menu-open', isOpen);
-        });
+    const resetHeader = () => {
+      plusMenu.classList.remove("show");
+      headerMain.classList.remove("menu-open");
+    };
 
-        document.addEventListener('click', (e) => {
-            if (!plusMenu.contains(e.target) && !plusBtn.contains(e.target)) {
-                plusMenu.classList.remove('show');
-                headerMain.classList.remove('menu-open');
-            }
-        });
+    const handleHeaderCreate = async (type) => {
+      const targetPath = cfg.lastSelectedDir || cfg.jailRoot;
+      const name = await showNewItemModal(type);
+      if (name)
+        executeCreateItem(name, type, { filepath: targetPath, isFolder: true });
+    };
 
-        const resetHeader = () => {
-            plusMenu.classList.remove('show');
-            headerMain.classList.remove('menu-open');
-        };
+    document
+      .getElementById("header-new-file")
+      ?.addEventListener("click", () => {
+        resetHeader();
+        handleHeaderCreate("file");
+      });
+    document
+      .getElementById("header-new-folder")
+      ?.addEventListener("click", () => {
+        resetHeader();
+        handleHeaderCreate("folder");
+      });
+  }
 
-        const handleHeaderCreate = async (type) => {
-            const targetPath = cfg.lastSelectedDir || cfg.jailRoot;
-            const name       = await showNewItemModal(type);
-            if (name) executeCreateItem(name, type, { filepath: targetPath, isFolder: true });
-        };
-
-        document.getElementById('header-new-file')?.addEventListener('click',   () => { resetHeader(); handleHeaderCreate('file'); });
-        document.getElementById('header-new-folder')?.addEventListener('click', () => { resetHeader(); handleHeaderCreate('folder'); });
+  document.addEventListener("keydown", async (e) => {
+    const activeTag = document.activeElement
+      ? document.activeElement.tagName.toLowerCase()
+      : "";
+    const isMonaco = document.activeElement?.classList.contains("inputarea");
+    if (activeTag === "input" || activeTag === "textarea" || isMonaco) {
+      return;
     }
 
-    document.addEventListener('keydown', async (e) => {
-      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-      const isMonaco = document.activeElement?.classList.contains('inputarea');
-      if (activeTag === 'input' || activeTag === 'textarea' || isMonaco) {
-          return;
+    // --- KEY SUPRIMIR / DELETE ---
+    if (e.key === "Delete") {
+      const target = getActiveTreeItemData();
+      if (target) {
+        e.preventDefault();
+        if (window.contextMenu) window.contextMenu.classList.remove("show");
+        executeDelete(
+          target.filepath,
+          target.name,
+          target.liElement,
+          target.isFolder,
+        );
       }
+    }
 
-      // --- TECLA SUPRIMIR / DELETE ---
-      if (e.key === 'Delete') {
-          const target = getActiveTreeItemData();
-          if (target) {
-              e.preventDefault();
-              if (window.contextMenu) window.contextMenu.classList.remove('show');
-              // ORDEN CORRECTO: filepath, fileName, liElement, isFolder
-              executeDelete(target.filepath, target.name, target.liElement, target.isFolder);
-          }
+    // --- TECLA F2 (RENAME) ---
+    if (e.key === "F2") {
+      const target = getActiveTreeItemData();
+      if (target) {
+        e.preventDefault();
+        if (window.contextMenu) {
+          window.contextMenu.classList.remove("show");
+        }
+        const newName = await showRenameModal(
+          target.isFolder ? "folder" : "file",
+          target.name,
+        );
+        if (newName && newName !== target.name) {
+          executeRename(
+            target.filepath,
+            newName,
+            target.liElement,
+            target.isFolder,
+          );
+        }
       }
-
-      // --- TECLA F2 (RENOMBRAR) ---
-      if (e.key === 'F2') {
-          const target = getActiveTreeItemData();
-          if (target) {
-              e.preventDefault();
-              if (window.contextMenu) window.contextMenu.classList.remove('show');
-
-              if (typeof window.showNewItemModal === 'function') {
-                  const newName = await window.showNewItemModal(target.isFolder ? 'folder' : 'file', target.name, true);
-                  if (newName && newName !== target.name) {
-                      console.log(`[IDE] F2 Renombrando: ${target.name} a ${newName}`);
-                      // Aquí llamarás a executeRename cuando lo tengas
-                  }
-              }
-          }
-      }
-    });
-
+    }
+  });
 }
 
 function getActiveTreeItemData() {
-    const activeLi = document.querySelector('.tree-item.active');
-    if (!activeLi) {
-        return null;
-    }
-
-    const folderLink = activeLi.querySelector('a[data-folder-path]');
-    if (folderLink) {
-        const path = folderLink.getAttribute('data-folder-path');
-        const spans = folderLink.querySelectorAll('span');
-        let name = path.split('/').pop();
-        if (spans.length > 0) name = spans[spans.length - 1].innerText.trim();
-        return {
-            filepath: path,
-            isFolder: true,
-             name: name, liElement: activeLi };
-    }
-
-    const fileLink = activeLi.querySelector('a');
-    if (fileLink && fileLink.href.includes('filepath=')) {
-        const url = new URL(fileLink.href, window.location.origin);
-        const path = url.searchParams.get('filepath');
-        const spans = fileLink.querySelectorAll('span');
-        let name = path.split('/').pop();
-        if (spans.length > 0) name = spans[spans.length - 1].innerText.trim();
-        return { filepath: path, isFolder: false, name: name, liElement: activeLi };
-    }
-
+  const activeLi = document.querySelector(".tree-item.active");
+  if (!activeLi) {
     return null;
+  }
+
+  const folderLink = activeLi.querySelector("a[data-folder-path]");
+  if (folderLink) {
+    const path = folderLink.getAttribute("data-folder-path");
+    const spans = folderLink.querySelectorAll("span");
+    let name = path.split("/").pop();
+    if (spans.length > 0) name = spans[spans.length - 1].innerText.trim();
+    return {
+      filepath: path,
+      isFolder: true,
+      name: name,
+      liElement: activeLi,
+    };
+  }
+
+  const fileLink = activeLi.querySelector("a");
+  if (fileLink && fileLink.href.includes("filepath=")) {
+    const url = new URL(fileLink.href, window.location.origin);
+    const path = url.searchParams.get("filepath");
+    const spans = fileLink.querySelectorAll("span");
+    let name = path.split("/").pop();
+    if (spans.length > 0) name = spans[spans.length - 1].innerText.trim();
+    return { filepath: path, isFolder: false, name: name, liElement: activeLi };
+  }
+
+  return null;
 }
