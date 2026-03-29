@@ -125,7 +125,6 @@ export async function executeRename(oldFilepath, newName, liElement, isFolder) {
       formData.append('ajax_rename', '1');
       formData.append('filepath', oldFilepath);
       formData.append('newname', newName);
-      formData.append('authtoken', authToken);
 
       const response = await fetch(window.location.pathname, {
           method: 'POST',

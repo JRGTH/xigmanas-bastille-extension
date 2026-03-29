@@ -5,6 +5,7 @@ import {
   cmTargetData,
   currentFileData,
   setCurrentFileData,
+  getBaseFormData,
 } from "./state.js";
 import { spinner, hideSpinner } from "./ui.js";
 import { showConfirmDialog } from "./modal.js";
@@ -12,7 +13,9 @@ import { refreshDir } from "./tree.js";
 
 // --- NOTIFICATION ---
 export function showNotification(title, bodyText) {
-  if (!("Notification" in window)) return;
+  if (!("Notification" in window)) {
+    return;
+  }
 
   const options = {
     body: bodyText,
