@@ -430,47 +430,82 @@ export function initContextMenu() {
 
   // --- CUT LOGIC ---
   document.getElementById('cm-cut')?.addEventListener('click', () => {
-      if (window.contextMenu) {
-        window.contextMenu.classList.remove('show');
-      }
-      if (!cmTargetData) {
-        return;
-      }
+    hideContextMenu();
+    if (!cmTargetData) {
+      return;
+    }
+    // 1. Get current selection
+    const selectedItems = Array.from(document.querySelectorAll(".tree-item.active"));
+    const isTargetInSelection = selectedItems.includes(cmTargetData.liElement);
 
-      setClipboard({
-          filepath: cmTargetData.filepath,
-          name: cmTargetData.fileName,
-          isFolder: cmTargetData.isFolder,
-          liElement: cmTargetData.liElement
-      });
-      console.log("[IDE] Cut:", clipboard.filepath);
+    // 2. Clear ANY previous cut effects from other files
+    document.querySelectorAll(".cut-element").forEach(el => el.classList.remove("cut-element"));
+
+    let itemsToClipboard = [];
+
+    if (selectedItems.length > 1 && isTargetInSelection) {
+        // BULK CUT
+        itemsToClipboard = selectedItems.map(li => {
+            const link = li.querySelector("a");
+            return {
+                filepath: link.getAttribute("data-folder-path") || new URL(link.href, window.location.origin).searchParams.get("filepath"),
+                name: li.textContent.trim(),
+                isFolder: li.classList.contains("folder-item"),
+                liElement: li
+            };
+        });
+    } else {
+        // SINGLE CUT
+        itemsToClipboard = [{
+            filepath: cmTargetData.filepath,
+            name: cmTargetData.filename,
+            isFolder: cmTargetData.isFolder,
+            liElement: cmTargetData.liElement
+        }];
+    }
+
+    // 3. Apply visual "cut" effect to all items in the list
+    itemsToClipboard.forEach(item => {
+        if (item.liElement) item.liElement.classList.add("cut-element");
+    });
+
+    // 4. Save the ARRAY to clipboard
+    setClipboard(itemsToClipboard);
+    console.log(`[IDE] Cut items stored: ${itemsToClipboard.length}`);
   });
 
   // --- PASTING LOGIC ---
   document.getElementById('cm-paste')?.addEventListener('click', async () => {
-      hideContextMenu();
+    hideContextMenu();
+    // Check if clipboard is an array and has items
+    if (!clipboard || !Array.isArray(clipboard) || clipboard.length === 0) {
+        console.warn("[IDE] Paste failed: Clipboard is empty.");
+        return;
+    }
+    // Determine target directory (where we are pasting)
+    let destDirPath = cmTargetData.isFolder ?
+                      cmTargetData.filepath :
+                      cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
+    console.log(`[IDE] Pasting ${clipboard.length} items into: ${destDirPath}`);
+    spinner(); // Show loading while moving multiple files
+    let successCount = 0;
+    for (const item of clipboard) {
+        try {
+            // Execute move for each item
+            const success = await executeMove(item.filepath, destDirPath, item.name);
+            if (success) successCount++;
+        } catch (err) {
+            console.error(`[IDE] Failed to move: ${item.name}`, err);
+        }
+    }
 
-      console.log("[IDE] The Paste button has been clicked. Verifying data...");
-      console.log(" -> cmTargetData:", cmTargetData);
-      console.log(" -> clipboard:", clipboard);
-
-      if (!cmTargetData || !clipboard.filepath) {
-          console.warn("[IDE] Paste failed: Data is missing from cmTargetData or the Clipboard.");
-          return;
-      }
-
-      let destDirPath = cmTargetData.isFolder ?
-                        cmTargetData.filepath :
-                        cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
-
-      console.log(`[IDE] Executing Move: Origin(${clipboard.filepath}) -> Destination(${destDirPath})`);
-
-      const success = await executeMove(clipboard.filepath, destDirPath, clipboard.name);
-
-      if (success) {
-          clearClipboard();
-          console.log("[IDE] Move completed. Clipboard cleared..");
-      }
+    if (successCount > 0) {
+        console.log(`[IDE] Successfully moved ${successCount} items.`);
+        clearClipboard(); // This should also remove .cut-element classes
+        // Refresh the UI of the target folder if needed
+        await refreshDir(destDirPath);
+    }
+    hideSpinner();
   });
 
   document.getElementById("cm-delete-file").addEventListener("click", () => {

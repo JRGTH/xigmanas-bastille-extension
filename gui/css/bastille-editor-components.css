@@ -997,9 +997,22 @@ body.is-dragging .ide-sidebar .tree-item a * {
 }
 /**/
 
+/* --- CUT STATE VISUALS --- */
+.tree-item.cut-element {
+    opacity: 0.4 !important;
+    filter: grayscale(0.8);
+    transition: opacity 0.3s ease;
+}
+
+/* Ensure the link inside also looks cut */
+.tree-item.cut-element > a {
+    cursor: wait;
+}
+
 .cut-element {
     opacity: 0.5;
 }
+/* --- CUT STATE VISUALS --- */
 
 /* --- DIRTY STATE INDICATOR (PING EFFECT) --- */
 .dirty-ping-indicator {
