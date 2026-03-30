@@ -73,63 +73,63 @@ if ($is_ajax) {
     }
     exit;
 }
+
 // DELETE FILES & FOLDERS
 if (isset($_POST['delete_file'])) {
     $is_ajax_delete = isset($_POST['ajax_delete']) && $_POST['ajax_delete'] === '1';
-
     if ($is_ajax_delete) {
         while (ob_get_level() > 0) ob_end_clean();
         header('Content-Type: application/json; charset=utf-8');
     }
 
-    $filepath = $_POST['filepath'] ?? '';
-    $filepath = trim($filepath);
+    // Support both single (legacy) and multiple (new) paths
+    $paths_to_delete = [];
+    if (isset($_POST['filepaths'])) {
+        $paths_to_delete = json_decode($_POST['filepaths'], true);
+    } elseif (isset($_POST['filepath'])) {
+        $paths_to_delete = [$_POST['filepath']];
+    }
 
-    if (!empty($filepath) && file_exists($filepath) && strpos($filepath, '..') === false) {
+    if (empty($paths_to_delete)) {
+        echo json_encode(['success' => false, 'error' => 'No paths provided.']);
+        exit;
+    }
 
-        conf_mount_rw();
+    conf_mount_rw();
+    $total_deleted = 0;
+    $errors = [];
 
-        $delete_success = is_dir($filepath) ? rrmdir($filepath) : @unlink($filepath);
+    foreach ($paths_to_delete as $filepath) {
+        $filepath = trim($filepath);
+        // Security check
+        if (!empty($filepath) && file_exists($filepath) && strpos($filepath, '..') === false) {
 
-        if (!$delete_success) {
-            $cmd = (is_dir($filepath) ? "rm -rf " : "rm -f ") . escapeshellarg($filepath);
+            $delete_success = is_dir($filepath) ? rrmdir($filepath) : @unlink($filepath);
 
-            $executor = new BastilleManagerMwExecParallel([
-                'force_delete' => $cmd
-            ]);
-            $executor->executeWithSelect();
-
-            clearstatcache(true, $filepath);
-            $delete_success = !file_exists($filepath);
-        }
-
-        conf_mount_ro();
-
-        if ($delete_success) {
-            if ($is_ajax_delete) {
-                echo json_encode([
-                    'success' => true
-                ]);
-                exit;
+            // Fallback to system executor if PHP fails
+            if (!$delete_success) {
+                $cmd = (is_dir($filepath) ? "rm -rf " : "rm -f ") . escapeshellarg($filepath);
+                $executor = new BastilleManagerMwExecParallel(['force_delete' => $cmd]);
+                $executor->executeWithSelect();
+                clearstatcache(true, $filepath);
+                $delete_success = !file_exists($filepath);
             }
-        } else {
-            if ($is_ajax_delete) {
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Permission denied. System executor could not remove the item.'
-                ]);
-                exit;
+
+            if ($delete_success) {
+                $total_deleted++;
+            } else {
+                $errors[] = "Failed: " . basename($filepath);
             }
-        }
-    } else {
-        if ($is_ajax_delete) {
-            echo json_encode([
-                'success' => false,
-                'error' => 'Invalid path or item not found.'
-            ]);
-            exit;
         }
     }
+    conf_mount_ro();
+
+    echo json_encode([
+        'success' => $total_deleted > 0,
+        'deleted_count' => $total_deleted,
+        'error' => !empty($errors) ? implode(", ", $errors) : null
+    ]);
+    exit;
 }
 
 // STORAGE AND BACKUPS

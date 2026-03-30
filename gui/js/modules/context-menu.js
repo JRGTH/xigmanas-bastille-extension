@@ -160,8 +160,21 @@ export function initContextMenu() {
       const link = e.target.closest(".tree-item a");
       if (!link) return;
       e.preventDefault();
-
+      // Change the background when an item is selected
       const liElement = link.closest(".tree-item");
+      if (!liElement.classList.contains("active")) {
+        console.log("[CM] Item not selected. Clearing previous selection.");
+        document.querySelectorAll(".is-selected-target").forEach(el => el.classList.remove("is-selected-target"));
+        document.querySelectorAll(".tree-item.active").forEach(el => el.classList.remove("active"));
+        document.querySelectorAll("a.active-link").forEach(el => el.classList.remove("active-link"));
+        liElement.classList.add("is-selected-target");
+        liElement.classList.add("active");
+        link.classList.add("active-link");
+        window.lastSelectedTreeItem = liElement;
+      } else {
+        console.log("[CM] Item already part of selection. Keeping group.");
+      }
+
       const isFolder = liElement.classList.contains("folder-item");
       let filepath = "";
 
@@ -460,16 +473,35 @@ export function initContextMenu() {
       }
   });
 
-
   document.getElementById("cm-delete-file").addEventListener("click", () => {
-    if (!cmTargetData) return;
-    hideContextMenu();
-    executeDelete(
-      cmTargetData.filepath,
-      cmTargetData.filename,
-      cmTargetData.liElement,
-      cmTargetData.isFolder,
-    );
+      if (!cmTargetData) return;
+      hideContextMenu();
+
+      const selectedItems = Array.from(document.querySelectorAll(".tree-item.active"));
+      const isTargetInSelection = selectedItems.includes(cmTargetData.liElement);
+
+      if (selectedItems.length > 1 && isTargetInSelection) {
+          // Prepare data for multiple items
+          const bulkItems = selectedItems.map(li => {
+              const link = li.querySelector("a");
+              const url = new URL(link.href, window.location.origin);
+              return {
+                  filepath: url.searchParams.get("filepath"),
+                  filename: li.textContent.trim(),
+                  liElement: li,
+                  isFolder: li.classList.contains("folder-item")
+              };
+          });
+          executeDelete(bulkItems);
+      } else {
+          // Single item fallback
+          executeDelete([{
+              filepath: cmTargetData.filepath,
+              filename: cmTargetData.filename,
+              liElement: cmTargetData.liElement,
+              isFolder: cmTargetData.isFolder
+          }]);
+      }
   });
 
   // --- HEADER + BUTTON ---

@@ -42,76 +42,79 @@ export async function executeUnlock(filepath, liElement) {
 }
 window.executeUnlock = executeUnlock;
 
-// --- DELETE ---
-export async function executeDelete(
-  filepath,
-  fileName,
-  liElement,
-  isFolder = false,
-) {
-  const shortName =
-    fileName.length > 35
-      ? fileName.substring(0, 18) +
-        "..." +
-        fileName.substring(fileName.length - 12)
-      : fileName;
+// --- BULK DELETE ---
+export async function executeDelete(items) {
+    // 1. MODAL LOGIC: Check if it's one or many
+    const isMultiple = items.length > 1;
+    let modalTitle, modalMessage;
 
-  const modalTitle = isFolder ? "Delete Directory" : `Delete "${shortName}"?`;
-  const modalMessage = isFolder
-    ? `Delete directory "${shortName}"?\nAll files and subdirectories in "${fileName}" will be deleted.\nYou might not be able to fully undo this operation!`
-    : `Are you sure you want to delete "${shortName}"?`;
-
-  const ok = await showConfirmDialog(modalTitle, modalMessage, "delete");
-  if (!ok) return;
-
-  spinner();
-
-  const formData = getBaseFormData();
-  formData.set("ajax_delete", "1");
-  formData.set("delete_file", "1");
-  formData.set("filepath", filepath);
-
-  try {
-    const response = await fetch(window.location.href, {
-      method: "POST",
-      body: formData,
-      credentials: "same-origin",
-    });
-
-    if (!response.ok)
-      throw new Error(`Server returned status ${response.status}`);
-
-    const data = await response.json();
-
-    if (data.success) {
-      liElement.style.transition = "opacity 0.2s, height 0.2s";
-      liElement.style.opacity = "0";
-      setTimeout(() => liElement.remove(), 200);
-
-      const currentOpenFile = document.querySelector(
-        'input[name="filepath"]',
-      )?.value;
-      if (currentOpenFile?.startsWith(filepath)) {
-        window.editor?.setValue(
-          "# Item deleted.\n# Select another file from the sidebar.",
-        );
-        window.editor?.updateOptions({ readOnly: true });
-        clearDirtyState();
-        const container = document.querySelector(".ide-filepath-display");
-        if (container)
-          container.innerHTML = `<span style="color: #d32f2f; font-weight: bold;">Deleted</span>`;
-      }
+    if (isMultiple) {
+        modalTitle = `Delete ${items.length} items?`;
+        modalMessage = `Are you sure you want to delete these ${items.length} selected items?\nThis operation cannot be undone!`;
     } else {
-      throw new Error(data.error || "Failed to delete item.");
+        const item = items[0];
+        const shortName = item.filename.length > 35
+            ? item.filename.substring(0, 18) + "..." + item.filename.substring(item.filename.length - 12)
+            : item.filename;
+        modalTitle = item.isFolder ? "Delete Directory" : `Delete "${shortName}"?`;
+        modalMessage = `Are you sure you want to delete "${shortName}"?`;
     }
-  } catch (error) {
-    console.error("Delete Error:", error);
-    showConfirmDialog("Error", error.message, "error");
-  } finally {
-    hideSpinner();
-  }
+
+    const ok = await showConfirmDialog(modalTitle, modalMessage, "delete");
+    if (!ok) return;
+
+    spinner();
+
+    const formData = getBaseFormData();
+    formData.set("ajax_delete", "1");
+    formData.set("delete_file", "1");
+
+    // 2. DATA LOGIC: We send a JSON array to the PHP
+    const paths = items.map(i => i.filepath);
+    formData.set("filepaths", JSON.stringify(paths));
+
+    // Fallback for single file (backwards compatibility for the PHP)
+    if (!isMultiple) {
+        formData.set("filepath", items[0].filepath);
+    }
+
+    try {
+        const response = await fetch(window.location.href, {
+            method: "POST",
+            body: formData,
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Remove all elements from the sidebar
+            items.forEach(item => {
+                item.liElement.style.transition = "opacity 0.2s, height 0.2s";
+                item.liElement.style.opacity = "0";
+                setTimeout(() => item.liElement.remove(), 200);
+            });
+
+            // If the active file in the editor was deleted, clear it
+            const currentOpenFile = document.querySelector('input[name="filepath"]')?.value;
+            const wasOpenedFileDeleted = items.some(i => currentOpenFile === i.filepath);
+
+            if (wasOpenedFileDeleted) {
+                window.editor?.setValue("# Item deleted.\n# Select another file from the sidebar.");
+                window.editor?.updateOptions({ readOnly: true });
+                if (typeof clearDirtyState === 'function') clearDirtyState();
+                const container = document.querySelector(".ide-filepath-display");
+                if (container) container.innerHTML = `<span style="color: #d32f2f; font-weight: bold;">Deleted</span>`;
+            }
+        } else {
+            throw new Error(data.error || "Failed to delete items.");
+        }
+    } catch (error) {
+        console.error("Delete Error:", error);
+        showConfirmDialog("Error", error.message, "error");
+    } finally {
+        hideSpinner();
+    }
 }
-window.executeDelete = executeDelete;
 
 export async function executeRename(oldFilepath, newName, liElement, isFolder) {
   if (!oldFilepath || !newName || !liElement) {

@@ -15,6 +15,8 @@ import { showConfirmDialog } from "./modal.js";
 import { clearFilter } from "./search.js";
 import { showBinaryWarning, loadFileToEditor, clearDirtyState } from "./editor.js";
 
+let lastSelectedTreeItem = null;
+
 // --- HELPERS ---
 export function renderLockIcon(flag) {
   return flag && flag !== "0"
@@ -467,9 +469,13 @@ function _syncFormInputs(filepath) {
  */
 export function initTreeDelegation() {
   document.addEventListener("click", async (e) => {
-
+    // ==========================================
+    // 1. FILE CLICK MANAGEMENT
+    // ==========================================
     const fileLink = e.target.closest(".ide-file-list a");
-    const isFolder = fileLink?.hasAttribute("data-folder-path") || fileLink?.getAttribute("onclick")?.includes("toggleFolder");
+    const isFolder =
+      fileLink?.hasAttribute("data-folder-path") ||
+      fileLink?.getAttribute("onclick")?.includes("toggleFolder");
 
     if (fileLink && !isFolder) {
       e.preventDefault();
@@ -481,52 +487,117 @@ export function initTreeDelegation() {
         return;
       }
 
-      console.log("[DEBUG] File Click atrapado por Delegation. isDirty:", window.isDirty);
+      const isSearchResult = fileLink.closest(".is-recursive");
+      const currentTreeItem = fileLink.closest(".tree-item");
 
-      if (window.isDirty) {
+      if (typeof window.lastSelectedTreeItem === "undefined") {
+        window.lastSelectedTreeItem = null;
+      }
+
+      if (typeof window.isDirty === "undefined") {
+        window.isDirty = false;
+      }
+
+      // --- A. MULTI-SELECTION (CTRL / CMD / SHIFT) ---
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          if (typeof hideSpinner === "function") hideSpinner();
+
+          if (e.shiftKey && window.lastSelectedTreeItem) {
+              const allItems = Array.from(document.querySelectorAll(".tree-item")).filter(el => el.offsetParent !== null);
+              const start = allItems.indexOf(window.lastSelectedTreeItem);
+              const end = allItems.indexOf(currentTreeItem);
+
+              if (start !== -1 && end !== -1) {
+                  const min = Math.min(start, end);
+                  const max = Math.max(start, end);
+
+                  // Clean all previous selections
+                  document.querySelectorAll(".tree-item").forEach(el => el.classList.remove("active"));
+                  document.querySelectorAll(".active-link").forEach(el => el.classList.remove("active-link"));
+
+                  // Apply logical and visual selection to the entire range
+                  for (let i = min; i <= max; i++) {
+                      allItems[i].classList.add("active"); // Critical for JS logic
+                      const link = allItems[i].querySelector("a");
+                      if (link) link.classList.add("active-link"); // Critical for CSS visuals
+                  }
+              }
+          } else if (e.ctrlKey || e.metaKey) {
+              // Toggle individual selection
+              currentTreeItem?.classList.toggle("active");
+              currentTreeItem?.querySelector("a")?.classList.toggle("active-link");
+              window.lastSelectedTreeItem = currentTreeItem;
+          }
+          return;
+      }
+
+      // --- B. NORMAL CLICK ---
+      console.log(
+        `[IDE] File Click atrapado por Delegation. isDirty: ${window.isDirty}`,
+      );
+
+      if (window.isDirty === true) {
         const ok = await showConfirmDialog(
           "Unsaved changes",
           "You have unsaved changes in the current file. If you switch files now, your changes will be lost. Do you want to discard them?",
-          "warning"
+          "warning",
         );
-        if (!ok) {
-          return;
-        }
+        if (!ok) return;
+
         window.isDirty = false;
-        clearDirtyState();
+        if (typeof clearDirtyState === "function") clearDirtyState();
       }
 
       await loadFileToEditor(filepath, fileLink.href);
 
-      const isSearchResult = fileLink.closest(".is-recursive");
-
       if (isSearchResult) {
-        clearFilter();
-        document.querySelector(".ide-search input")?.dispatchEvent(new Event("input"));
-        document.querySelectorAll(".is-recursive, .no-results").forEach((el) => el.remove());
-        document.querySelectorAll(".ide-file-list > li").forEach((el) => (el.style.display = ""));
-        if (typeof cfg !== 'undefined') {
-            cfg.filepath = filepath;
-        }
+        if (typeof clearFilter === "function") clearFilter();
+        document
+          .querySelector(".ide-search input")
+          ?.dispatchEvent(new Event("input"));
+        document
+          .querySelectorAll(".is-recursive, .no-results")
+          .forEach((el) => el.remove());
+        document
+          .querySelectorAll(".ide-file-list > li")
+          .forEach((el) => (el.style.display = ""));
+
+        if (typeof cfg !== "undefined") cfg.filepath = filepath;
         setTimeout(async () => {
-          await syncSidebarWithFile();
+          if (typeof syncSidebarWithFile === "function")
+            await syncSidebarWithFile();
         }, 50);
       } else {
         document.querySelectorAll(".tree-item").forEach((el) => el.classList.remove("active"));
-        fileLink.closest(".tree-item")?.classList.add("active");
+        document.querySelectorAll(".active-link").forEach((el) => el.classList.remove("active-link"));
+        currentTreeItem?.classList.add("active");
+        const link = currentTreeItem?.querySelector("a");
+        if (link) {
+          link.classList.add("active-link");
+        }
+        window.lastSelectedTreeItem = currentTreeItem;
       }
       return;
     }
 
+    // ==========================================
+    // 2. FOLDER CLICK MANAGEMENT
+    // ==========================================
     const folderLink = e.target.closest("a[data-folder-path]");
     if (folderLink) {
       e.preventDefault();
       e.stopPropagation();
-
-      if (typeof originalSidebarHTML !== 'undefined' && originalSidebarHTML !== "") {
+      // NEW: CLEAR SELECTION ON FOLDER CLICK
+      // If no special keys are pressed, we clear the previous file selection
+      if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        console.log("[IDE] Folder clicked. Clearing multi-selection.");
+        document.querySelectorAll(".tree-item").forEach(el => el.classList.remove("active"));
+        document.querySelectorAll(".active-link").forEach(el => el.classList.remove("active-link"));
+        window.lastSelectedTreeItem = folderLink.closest(".tree-item");
+      }
+      if (typeof originalSidebarHTML !== "undefined" && originalSidebarHTML !== "") {
         clearFilter();
       }
-
       const path = folderLink.getAttribute("data-folder-path");
       await toggleFolder(folderLink, path);
     }

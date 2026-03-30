@@ -395,6 +395,9 @@ export function showBinaryWarning(filepath) {
   setIsDirty(false);
 }
 
+/**
+* Deep link
+*/
 export async function loadFileToEditor(filepath, linkHref) {
   console.log("[DEBUG] Loading:", filepath);
   spinner();

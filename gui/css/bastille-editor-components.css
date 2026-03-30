@@ -19,7 +19,6 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    /*padding: 6px;*/
     border-radius: 4px;
     transition: background-color 0.2s ease;
     text-decoration: none;
@@ -65,6 +64,8 @@
     box-sizing: border-box;
     border: 1px solid #ccc;
     border-radius: 3px;
+    color: var(--text-color-secondary) !important;
+    font-size: 11px !important;
 }
 
 .ide-search-clear {
@@ -125,64 +126,79 @@
     border-top: 1px solid #d7d7d7;
 }
 
-/* --- SIDEBAR RECURSIVE SEARCH RESULTS --- */
-
-/* Remove tree branches (lines) for search results as they are flat lists */
+/* --- SIDEBAR RECURSIVE --- */
 .ide-file-list li.is-recursive::before,
 .ide-file-list li.is-recursive::after {
     display: none !important;
+    content: none !important;
 }
 
-/* Styling the recursive search item block */
 .ide-file-list li.is-recursive {
-    padding-left: 0px;
-    margin: 4px 0;
-    background: var(--bgi-lhe);
-    border-radius: 0 4px 4px 0;
+    padding-left: 0px !important;
+    margin: 4px 0 !important;
+    background-color: #f6f6f6 !important;
+    background-image: none !important;
+    border-radius: 4px !important;
+    border: 1px solid #e8e8e8 !important;
+    overflow: hidden;
+    display: block !important;
+    text-align: left !important;
+    transition: border-color 0.1s ease;
 }
 
 .ide-file-list li.is-recursive:hover {
-    background-color: var(--bgc-topic, #95a7c0);
-    background-image: var(--bgi-topic);
+    background: var(--bgi-lhe) !important;
+    border-color: #bcbcbc !important;
+    cursor: pointer;
 }
 
-/* Hover text color: Force text to white for contrast against the blue background */
-.ide-file-list li.is-recursive:hover .search-result-title,
-.ide-file-list li.is-recursive:hover .search-result-path {
-    color: var(--txc-tnt-active) !important;
-}
-
-.ide-file-list li.is-recursive a {
+.ide-file-list li.is-recursive > a {
     display: flex !important;
-    flex-direction: column;
-    padding: 8px 5px !important;
+    flex-direction: column !important;
+    gap: 0px !important;
+    padding: 6px 10px !important;
+    background: transparent !important;
     align-items: flex-start !important;
-    color: var(--txc-a-link) !important;
+    justify-content: flex-start !important;
     text-decoration: none !important;
-    background: transparent;
-    transition: background 0.1s ease;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-/* File name alignment with icon */
-.ide-file-list li.is-recursive .search-result-title {
-    display: flex;
-    align-items: center;
-    color: #333;
+.ide-file-list li.is-recursive strong {
+    color: var(--txc-a-link) !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 5px !important;
+    width: 100%;
 }
 
-/* Path text styling */
 .ide-file-list li.is-recursive .search-result-path {
-    font-size: 11px;
-    color: #777;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 90%;
+    color: #777 !important;
+    font-size: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 4px !important;
+    margin-top: 0px !important;
+    padding-left: 0px !important;
 }
 
-.ide-file-list li.is-recursive .search-result-path .tree-icon {
-   margin-right: 0px;
+.ide-file-list li.is-recursive strong,
+.ide-file-list li.is-recursive span,
+.ide-file-list li.is-recursive img {
+    pointer-events: none !important;
 }
+
+.ide-file-list li.is-recursive .tree-icon {
+    width: 14px !important;
+    height: 14px !important;
+    flex-shrink: 0;
+}
+/* --- SIDEBAR RECURSIVE SEARCH RESULTS --- */
 
 /* ICONS AND CARET */
 .tree-icon {
@@ -216,7 +232,7 @@
     font-weight: normal !important;
     letter-spacing: normal !important;
     text-decoration: none !important;
-    color: inherit;
+    color: var(--txc-a-link);
     box-sizing: border-box !important;
     border-radius: 4px;
     transition:
@@ -224,19 +240,29 @@
     color 0.2s ease;
 }
 
-/* Hover state using XigmaNAS area data color */
-.tree-item > a:hover {
-    color: var(--txc-a-link);
-    background-color: var(--bgc-area-data, #e2e8f0);
+/* --- FILE TREE HOVER & SELECTION (ATOMIC & DEEPLINK FIX) --- */
+.ide-file-list .tree-item:not(.active) > a:hover {
+    color: var(--txc-a-link) !important;
+    border-radius: 4px;
 }
 
-/* Active/Selected file state (Bonus!) */
-.tree-item.active > a {
-    background-color: var(--bgc-topic, #95a7c0);
-    background-image: var(--bgi-topic);
-    color: #fff; /* White text for contrast */
-    overflow: hidden;
+/* 2. ACTIVE/SELECTED STATE: Soft grey background with blue text */
+/* This handles:
+   - Multi-selection (via .active-link)
+   - Deeplinks & Search results (via .tree-item.active)
+*/
+.ide-file-list a.active-link,
+.ide-file-list a.active-link:hover,
+.ide-file-list .tree-item.active > a,
+.ide-file-list .tree-item.active:hover > a {
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    background-image: none !important;
+    color: var(--txc-a-link) !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+    opacity: 1 !important;
 }
+
 /* --- PREVENT NATIVE CLICK SHIFT --- */
 /* Neutralize XigmaNAS default active styles that move the link */
 .tree-item > a:active,
@@ -829,11 +855,11 @@ body.is-dragging .ide-sidebar .tree-item a * {
 #ide-new-item-input {
     border: none;
     padding: 12px 15px;
-    font-size: 14px;
+    font-size: 11px;
     outline: none;
     width: 100%;
     box-sizing: border-box;
-    color: #333;
+    color: var(--text-color-secondary);
     background: var(--txc-tnt-active);
 }
 
@@ -991,7 +1017,9 @@ body.is-dragging .ide-sidebar .tree-item a * {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background-color: var(--txc-tnt-active);
+    /*background-color: var(--txc-tnt-active);*/
+    background-color: var(--bgc-topic, #95a7c0) !important;
+    background-image: var(--bgi-topic) !important;
     opacity: 0.75;
     animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
@@ -1002,7 +1030,9 @@ body.is-dragging .ide-sidebar .tree-item a * {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background-color: var(--txc-tnt-active);
+    /*background-color: var(--txc-tnt-active);*/
+    background-color: var(--bgc-topic, #95a7c0) !important;
+    background-image: var(--bgi-topic) !important;
 }
 
 @keyframes ping {
