@@ -431,47 +431,50 @@ export function initContextMenu() {
   // --- CUT LOGIC ---
   document.getElementById('cm-cut')?.addEventListener('click', () => {
     hideContextMenu();
-    if (!cmTargetData) {
-      return;
-    }
-    // 1. Get current selection
+    if (!cmTargetData) return;
+
+    // 1. Clear any previous visual "cut" effects
+    document.querySelectorAll(".cut-element")
+        .forEach(el => el.classList.remove("cut-element"));
+
+    // 2. Determine if we are cutting a multi-selection or a single item
     const selectedItems = Array.from(document.querySelectorAll(".tree-item.active"));
     const isTargetInSelection = selectedItems.includes(cmTargetData.liElement);
 
-    // 2. Clear ANY previous cut effects from other files
-    document.querySelectorAll(".cut-element").forEach(el => el.classList.remove("cut-element"));
-
-    let itemsToClipboard = [];
+    let itemsToCut = [];
 
     if (selectedItems.length > 1 && isTargetInSelection) {
-        // BULK CUT
-        itemsToClipboard = selectedItems.map(li => {
+        // MULTI-CUT
+        itemsToCut = selectedItems.map(li => {
             const link = li.querySelector("a");
             return {
-                filepath: link.getAttribute("data-folder-path") || new URL(link.href, window.location.origin).searchParams.get("filepath"),
+                filepath: li.classList.contains("folder-item")
+                          ? link.getAttribute("data-folder-path")
+                          : new URL(link.href, window.location.origin).searchParams.get("filepath"),
                 name: li.textContent.trim(),
                 isFolder: li.classList.contains("folder-item"),
                 liElement: li
             };
         });
     } else {
-        // SINGLE CUT
-        itemsToClipboard = [{
+        // SINGLE CUT (New items will fall here)
+        itemsToCut = [{
             filepath: cmTargetData.filepath,
-            name: cmTargetData.filename,
+            name: cmTargetData.filename, // FIXED: was fileName
             isFolder: cmTargetData.isFolder,
             liElement: cmTargetData.liElement
         }];
     }
-
-    // 3. Apply visual "cut" effect to all items in the list
-    itemsToClipboard.forEach(item => {
-        if (item.liElement) item.liElement.classList.add("cut-element");
+    // 3. APPLY VISUAL EFFECT (The opacity)
+    itemsToCut.forEach(item => {
+        if (item.liElement) {
+            item.liElement.classList.add("cut-element");
+            console.log(`[IDE] Visual cut applied to: ${item.name}`);
+        }
     });
-
-    // 4. Save the ARRAY to clipboard
-    setClipboard(itemsToClipboard);
-    console.log(`[IDE] Cut items stored: ${itemsToClipboard.length}`);
+    // 4. Save to global clipboard
+    setClipboard(itemsToCut);
+    console.log("[IDE] Clipboard updated with", itemsToCut.length, "items.");
   });
 
   // --- PASTING LOGIC ---

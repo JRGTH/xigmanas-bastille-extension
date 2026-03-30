@@ -74,20 +74,30 @@ export let clipboard = {
 };
 
 export function setClipboard(data) {
-    if (clipboard.liElement) clipboard.liElement.classList.remove('cut-element');
-
-    clipboard = { ...clipboard, ...data };
-
-    if (clipboard.liElement) {
-        clipboard.liElement.classList.add('cut-element');
-    }
+    // 1. Clean up: Remove the visual effect from ANY currently cut items
+    document.querySelectorAll('.cut-element').forEach(el => {
+        el.classList.remove('cut-element');
+    });
+    // 2. Normalize data: Ensure 'clipboard' is always an Array
+    // If 'data' is a single object, we wrap it in []. If it's already an array, we keep it.
+    window.clipboard = Array.isArray(data) ? data : [data];
+    // 3. Apply the visual effect to all items now in the clipboard
+    window.clipboard.forEach(item => {
+        if (item.liElement) {
+            item.liElement.classList.add('cut-element');
+        }
+    });
+    console.log(`[STATE] Clipboard updated with ${window.clipboard.length} items.`);
 }
 
 export function clearClipboard() {
-    if (clipboard.liElement) {
-        clipboard.liElement.classList.remove('cut-element');
-    }
-    clipboard = { filepath: null, name: null, isFolder: false, liElement: null };
+    // Reset the array
+    window.clipboard = [];
+    // Remove all visual "cut" styles from the UI
+    document.querySelectorAll(".cut-element").forEach(el => {
+        el.classList.remove("cut-element");
+    });
+    console.log("[STATE] Clipboard cleared.");
 }
 
 export function getBaseFormData() {
