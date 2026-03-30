@@ -480,34 +480,53 @@ export function initContextMenu() {
   // --- PASTING LOGIC ---
   document.getElementById('cm-paste')?.addEventListener('click', async () => {
     hideContextMenu();
-    // Check if clipboard is an array and has items
-    if (!clipboard || !Array.isArray(clipboard) || clipboard.length === 0) {
+    // 1. Check if we have items in the clipboard array
+    const itemsToMove = Array.isArray(window.clipboard) ? window.clipboard : [];
+
+    if (itemsToMove.length === 0) {
         console.warn("[IDE] Paste failed: Clipboard is empty.");
         return;
     }
-    // Determine target directory (where we are pasting)
+
+    if (!cmTargetData) {
+        console.warn("[IDE] Paste failed: Destination target not found.");
+        return;
+    }
+
+    // 2. Determine target directory
     let destDirPath = cmTargetData.isFolder ?
                       cmTargetData.filepath :
                       cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
-    console.log(`[IDE] Pasting ${clipboard.length} items into: ${destDirPath}`);
-    spinner(); // Show loading while moving multiple files
-    let successCount = 0;
-    for (const item of clipboard) {
+
+    console.log(`[IDE] Pasting ${itemsToMove.length} items into: ${destDirPath}`);
+
+    spinner(); // Global loading
+
+    let movedCount = 0;
+
+    // 3. Loop through all "Cut" items and move them
+    for (const item of itemsToMove) {
         try {
-            // Execute move for each item
+            // We await each move to prevent race conditions on the server
             const success = await executeMove(item.filepath, destDirPath, item.name);
-            if (success) successCount++;
+            if (success) {
+                movedCount++;
+                // If the move is successful, we can remove the old element immediately
+                if (item.liElement) item.liElement.remove();
+            }
         } catch (err) {
-            console.error(`[IDE] Failed to move: ${item.name}`, err);
+            console.error(`[IDE] Failed to move ${item.name}:`, err);
         }
     }
 
-    if (successCount > 0) {
-        console.log(`[IDE] Successfully moved ${successCount} items.`);
-        clearClipboard(); // This should also remove .cut-element classes
-        // Refresh the UI of the target folder if needed
+    // 4. Final UI Cleanup
+    if (movedCount > 0) {
+        console.log(`[IDE] Successfully moved ${movedCount} items.`);
+        // Refresh the target directory to show the newly pasted items
         await refreshDir(destDirPath);
     }
+
+    clearClipboard(); // This will empty the array and remove '.cut-element' classes
     hideSpinner();
   });
 
@@ -664,12 +683,22 @@ export function initContextMenu() {
     }
     if (e.key === "Escape") {
         hideContextMenu();
-        if (clipboard && clipboard.filepath) {
+        // 1. Clear "Cut" state and remove opacity (.cut-element)
+        if (typeof clearClipboard === 'function') {
             clearClipboard();
-            console.log("[IDE] Canceled Cut/Paste");
+            console.log("[IDE] Cut/Paste canceled via Escape.");
         }
+        // 2. Clear visual selections (the blue/grey backgrounds)
+        document.querySelectorAll(".is-selected-target, .tree-item.active, .active-link").forEach(el => {
+            el.classList.remove("is-selected-target", "active", "active-link");
+        });
+        // 3. Hide any open menus
         if (window.contextMenu) {
             window.contextMenu.classList.remove('show');
+        }
+        const plusMenu = document.querySelector(".header-plus-submenu");
+        if (plusMenu) {
+            plusMenu.classList.remove("show");
         }
     }
   });
