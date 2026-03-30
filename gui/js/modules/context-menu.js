@@ -163,7 +163,11 @@ export function initContextMenu() {
       // Change the background when an item is selected
       const liElement = link.closest(".tree-item");
       // LA CLAVE: Verificamos si tiene CUALQUIERA de las dos clases de selección
-      const isAlreadySelected = liElement.classList.contains("active") || liElement.classList.contains("is-selected-target");
+      const isAlreadySelected =
+          liElement.classList.contains("active") ||
+          liElement.classList.contains("is-selected-target") ||
+          link.classList.contains("active-link") ||
+          link.classList.contains("active");
       if (!isAlreadySelected) {
           console.log("[CM] Target not selected. Clearing ALL previous highlights.");
           document.querySelectorAll(".is-selected-target, .tree-item.active, .active-link").forEach(el => {
