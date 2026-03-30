@@ -592,7 +592,7 @@ export function initContextMenu() {
     // --- CUT (CTRL + X) ---
     if (e.ctrlKey && e.key.toLowerCase() === "x") {
       if (items.length > 0) {
-        .preventDefault();
+        e.preventDefault();
         setClipboard(items);
         console.log(`[IDE] Multi-Cut: ${items.length} items`);
       }
