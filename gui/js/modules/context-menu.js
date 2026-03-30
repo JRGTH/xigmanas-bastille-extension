@@ -429,48 +429,55 @@ export function initContextMenu() {
   }
 
   // --- CUT LOGIC ---
-  document.getElementById('cm-cut')?.addEventListener('click', () => {
+  document.getElementById("cm-cut")?.addEventListener("click", () => {
     hideContextMenu();
     if (!cmTargetData) return;
 
     // 1. Clear any previous visual "cut" effects
-    document.querySelectorAll(".cut-element")
-        .forEach(el => el.classList.remove("cut-element"));
+    document
+      .querySelectorAll(".cut-element")
+      .forEach((el) => el.classList.remove("cut-element"));
 
     // 2. Determine if we are cutting a multi-selection or a single item
-    const selectedItems = Array.from(document.querySelectorAll(".tree-item.active"));
+    const selectedItems = Array.from(
+      document.querySelectorAll(".tree-item.active"),
+    );
     const isTargetInSelection = selectedItems.includes(cmTargetData.liElement);
 
     let itemsToCut = [];
 
     if (selectedItems.length > 1 && isTargetInSelection) {
-        // MULTI-CUT
-        itemsToCut = selectedItems.map(li => {
-            const link = li.querySelector("a");
-            return {
-                filepath: li.classList.contains("folder-item")
-                          ? link.getAttribute("data-folder-path")
-                          : new URL(link.href, window.location.origin).searchParams.get("filepath"),
-                name: li.textContent.trim(),
-                isFolder: li.classList.contains("folder-item"),
-                liElement: li
-            };
-        });
+      // MULTI-CUT
+      itemsToCut = selectedItems.map((li) => {
+        const link = li.querySelector("a");
+        return {
+          filepath: li.classList.contains("folder-item")
+            ? link.getAttribute("data-folder-path")
+            : new URL(link.href, window.location.origin).searchParams.get(
+                "filepath",
+              ),
+          name: li.textContent.trim(),
+          isFolder: li.classList.contains("folder-item"),
+          liElement: li,
+        };
+      });
     } else {
-        // SINGLE CUT (New items will fall here)
-        itemsToCut = [{
-            filepath: cmTargetData.filepath,
-            name: cmTargetData.filename, // FIXED: was fileName
-            isFolder: cmTargetData.isFolder,
-            liElement: cmTargetData.liElement
-        }];
+      // SINGLE CUT (New items will fall here)
+      itemsToCut = [
+        {
+          filepath: cmTargetData.filepath,
+          name: cmTargetData.filename, // FIXED: was fileName
+          isFolder: cmTargetData.isFolder,
+          liElement: cmTargetData.liElement,
+        },
+      ];
     }
     // 3. APPLY VISUAL EFFECT (The opacity)
-    itemsToCut.forEach(item => {
-        if (item.liElement) {
-            item.liElement.classList.add("cut-element");
-            console.log(`[IDE] Visual cut applied to: ${item.name}`);
-        }
+    itemsToCut.forEach((item) => {
+      if (item.liElement) {
+        item.liElement.classList.add("cut-element");
+        console.log(`[IDE] Visual cut applied to: ${item.name}`);
+      }
     });
     // 4. Save to global clipboard
     setClipboard(itemsToCut);
@@ -478,55 +485,40 @@ export function initContextMenu() {
   });
 
   // --- PASTING LOGIC ---
-  document.getElementById('cm-paste')?.addEventListener('click', async () => {
+  document.getElementById("cm-paste")?.addEventListener("click", async () => {
     hideContextMenu();
-    // 1. Check if we have items in the clipboard array
     const itemsToMove = Array.isArray(window.clipboard) ? window.clipboard : [];
-
     if (itemsToMove.length === 0) {
-        console.warn("[IDE] Paste failed: Clipboard is empty.");
-        return;
+      return;
     }
 
     if (!cmTargetData) {
-        console.warn("[IDE] Paste failed: Destination target not found.");
-        return;
+      return;
     }
+    let destDirPath = cmTargetData.isFolder
+      ? cmTargetData.filepath
+      : cmTargetData.filepath.substring(
+          0,
+          cmTargetData.filepath.lastIndexOf("/"),
+        );
 
-    // 2. Determine target directory
-    let destDirPath = cmTargetData.isFolder ?
-                      cmTargetData.filepath :
-                      cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
-
-    console.log(`[IDE] Pasting ${itemsToMove.length} items into: ${destDirPath}`);
-
-    spinner(); // Global loading
-
+    console.log(`[IDE] Starting Bulk Paste: ${itemsToMove.length} items.`);
+    spinner();
     let movedCount = 0;
-
-    // 3. Loop through all "Cut" items and move them
     for (const item of itemsToMove) {
-        try {
-            // We await each move to prevent race conditions on the server
-            const success = await executeMove(item.filepath, destDirPath, item.name);
-            if (success) {
-                movedCount++;
-                // If the move is successful, we can remove the old element immediately
-                if (item.liElement) item.liElement.remove();
-            }
-        } catch (err) {
-            console.error(`[IDE] Failed to move ${item.name}:`, err);
-        }
+      //itemName en tu executeMove es item.name en nuestro clipboard
+      const success = await executeMove(item.filepath, destDirPath, item.name);
+      if (success) {
+        movedCount++;
+        // Eliminamos el elemento visualmente si sigue ahí
+        if (item.liElement) item.liElement.remove();
+      }
     }
-
-    // 4. Final UI Cleanup
     if (movedCount > 0) {
-        console.log(`[IDE] Successfully moved ${movedCount} items.`);
-        // Refresh the target directory to show the newly pasted items
-        await refreshDir(destDirPath);
+      showNotification("Success", `Moved ${movedCount} items successfully.`);
     }
-
-    clearClipboard(); // This will empty the array and remove '.cut-element' classes
+    // Limpieza final
+    clearClipboard();
     hideSpinner();
   });
 
