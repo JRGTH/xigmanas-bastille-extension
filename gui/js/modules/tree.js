@@ -503,23 +503,25 @@ export function initTreeDelegation() {
           if (typeof hideSpinner === "function") hideSpinner();
 
           if (e.shiftKey && window.lastSelectedTreeItem) {
-              const allItems = Array.from(document.querySelectorAll(".tree-item")).filter(el => el.offsetParent !== null);
+              const allItems = Array.from(document.querySelectorAll(".tree-item"))
+                                    .filter(el => el.offsetParent !== null);
               const start = allItems.indexOf(window.lastSelectedTreeItem);
               const end = allItems.indexOf(currentTreeItem);
 
               if (start !== -1 && end !== -1) {
                   const min = Math.min(start, end);
                   const max = Math.max(start, end);
-
                   // Clean all previous selections
-                  document.querySelectorAll(".tree-item").forEach(el => el.classList.remove("active"));
-                  document.querySelectorAll(".active-link").forEach(el => el.classList.remove("active-link"));
-
+                  document.querySelectorAll(".tree-item").forEach(el => {
+                    el.classList.remove("active", "is-selected-target");
+                    el.querySelector("a")?.classList.remove("active-link");
+                  });
                   // Apply logical and visual selection to the entire range
                   for (let i = min; i <= max; i++) {
-                      allItems[i].classList.add("active"); // Critical for JS logic
-                      const link = allItems[i].querySelector("a");
-                      if (link) link.classList.add("active-link"); // Critical for CSS visuals
+                    const li = allItems[i];
+                    li.classList.add("active");
+                    li.classList.add("is-selected-target");
+                    li.querySelector("a")?.classList.add("active-link");
                   }
               }
           } else if (e.ctrlKey || e.metaKey) {

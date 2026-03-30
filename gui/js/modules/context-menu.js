@@ -427,57 +427,46 @@ export function initContextMenu() {
   // --- CUT LOGIC ---
   document.getElementById("cm-cut")?.addEventListener("click", () => {
     hideContextMenu();
-    if (!cmTargetData) return;
+   if (!cmTargetData) return;
 
-    // 1. Clear any previous visual "cut" effects
-    document
-      .querySelectorAll(".cut-element")
-      .forEach((el) => el.classList.remove("cut-element"));
+   // BUSCAMOS POR AMBAS CLASES PARA ESTAR SEGUROS
+   const selectedItems = Array.from(document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target"));
 
-    // 2. Determine if we are cutting a multi-selection or a single item
-    const selectedItems = Array.from(
-      document.querySelectorAll(".tree-item.active"),
-    );
-    const isTargetInSelection = selectedItems.includes(cmTargetData.liElement);
+   // Filtramos duplicados por si acaso
+   const uniqueItems = [...new Set(selectedItems)];
 
-    let itemsToCut = [];
+   const isTargetInSelection = uniqueItems.includes(cmTargetData.liElement);
 
-    if (selectedItems.length > 1 && isTargetInSelection) {
-      // MULTI-CUT
-      itemsToCut = selectedItems.map((li) => {
-        const link = li.querySelector("a");
-        return {
-          filepath: li.classList.contains("folder-item")
-            ? link.getAttribute("data-folder-path")
-            : new URL(link.href, window.location.origin).searchParams.get(
-                "filepath",
-              ),
-          name: li.textContent.trim(),
-          isFolder: li.classList.contains("folder-item"),
-          liElement: li,
-        };
-      });
-    } else {
-      // SINGLE CUT (New items will fall here)
-      itemsToCut = [
-        {
-          filepath: cmTargetData.filepath,
-          name: cmTargetData.filename, // FIXED: was fileName
-          isFolder: cmTargetData.isFolder,
-          liElement: cmTargetData.liElement,
-        },
-      ];
-    }
-    // 3. APPLY VISUAL EFFECT (The opacity)
-    itemsToCut.forEach((item) => {
-      if (item.liElement) {
-        item.liElement.classList.add("cut-element");
-        console.log(`[IDE] Visual cut applied to: ${item.name}`);
-      }
-    });
-    // 4. Save to global clipboard
-    setClipboard(itemsToCut);
-    console.log("[IDE] Clipboard updated with", itemsToCut.length, "items.");
+   let itemsToCut = [];
+
+   if (uniqueItems.length > 1 && isTargetInSelection) {
+       // MULTI-CUT
+       itemsToCut = uniqueItems.map(li => {
+           const link = li.querySelector("a");
+           return {
+               filepath: li.classList.contains("folder-item")
+                         ? link.getAttribute("data-folder-path")
+                         : new URL(link.href, window.location.origin).searchParams.get("filepath"),
+               name: li.textContent.trim(),
+               isFolder: li.classList.contains("folder-item"),
+               liElement: li
+           };
+       });
+   } else {
+       // SINGLE CUT
+       itemsToCut = [{
+           filepath: cmTargetData.filepath,
+           name: cmTargetData.filename,
+           isFolder: cmTargetData.isFolder,
+           liElement: cmTargetData.liElement
+       }];
+   }
+
+   // MANDAMOS AL STATE (state.js se encarga de poner la opacidad)
+   setClipboard(itemsToCut);
+
+   // Log para confirmar que ahora sí ve los que toca
+   console.log(`[IDE] Multi-Cut Executed. Detected in DOM: ${uniqueItems.length} items.`);
   });
 
   // --- PASTING LOGIC ---
@@ -580,42 +569,31 @@ export function initContextMenu() {
     if (activeTag === "input" || activeTag === "textarea" || isMonaco) return;
 
     // 1. CAPTURAR TODA LA SELECCIÓN ACTUAL
-    const selectedLIs = Array.from(
-      document.querySelectorAll(".tree-item.active"),
-    );
-
-    // Función auxiliar para formatear los datos de los items seleccionados
-    const getSelectedData = () => {
-      return selectedLIs.map((li) => {
-        const link = li.querySelector("a");
-        return {
-          filepath: li.classList.contains("folder-item")
-            ? link.getAttribute("data-folder-path")
-            : new URL(link.href, window.location.origin).searchParams.get(
-                "filepath",
-              ),
-          filename: li.textContent.trim(),
-          liElement: li,
-          isFolder: li.classList.contains("folder-item"),
-        };
-      });
-    };
+    const selectedLIs = Array.from(document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target"));
+        const items = selectedLIs.map(li => {
+            const link = li.querySelector("a");
+            return {
+                filepath: li.classList.contains("folder-item") ? link.getAttribute("data-folder-path") : new URL(link.href, window.location.origin).searchParams.get("filepath"),
+                filename: li.textContent.trim(),
+                liElement: li,
+                isFolder: li.classList.contains("folder-item")
+            };
+        });
 
     // --- DELETE (TECLA SUPRIMIR) ---
     if (e.key === "Delete") {
-      const items = getSelectedData();
       if (items.length > 0) {
         e.preventDefault();
-        executeDelete(items); // Ahora le pasamos el ARRAY
+        executeDelete(items);
+        console.log(`[IDE] Deleted item: ${items.length} items`);
       }
     }
 
     // --- CUT (CTRL + X) ---
     if (e.ctrlKey && e.key.toLowerCase() === "x") {
-      const items = getSelectedData();
       if (items.length > 0) {
-        e.preventDefault();
-        setClipboard(items); // Guarda el ARRAY en el clipboard
+        .preventDefault();
+        setClipboard(items);
         console.log(`[IDE] Multi-Cut: ${items.length} items`);
       }
     }
