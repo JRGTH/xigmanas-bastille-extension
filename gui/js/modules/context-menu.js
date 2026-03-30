@@ -280,10 +280,6 @@ export function initContextMenu() {
     if (e.button !== 2) hideContextMenu();
   });
 
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") hideContextMenu();
-  });
-
   // --- ACTIONS ---
   document.getElementById("cm-new-file").addEventListener("click", async () => {
     if (!cmTargetData) return;
@@ -487,39 +483,20 @@ export function initContextMenu() {
   // --- PASTING LOGIC ---
   document.getElementById("cm-paste")?.addEventListener("click", async () => {
     hideContextMenu();
-    const itemsToMove = Array.isArray(window.clipboard) ? window.clipboard : [];
-    if (itemsToMove.length === 0) {
-      return;
-    }
+        if (!window.clipboard || window.clipboard.length === 0) return;
 
-    if (!cmTargetData) {
-      return;
-    }
-    let destDirPath = cmTargetData.isFolder
-      ? cmTargetData.filepath
-      : cmTargetData.filepath.substring(
-          0,
-          cmTargetData.filepath.lastIndexOf("/"),
-        );
+        let destDirPath = cmTargetData.isFolder ?
+                          cmTargetData.filepath :
+                          cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
 
-    console.log(`[IDE] Starting Bulk Paste: ${itemsToMove.length} items.`);
-    spinner();
-    let movedCount = 0;
-    for (const item of itemsToMove) {
-      //itemName en tu executeMove es item.name en nuestro clipboard
-      const success = await executeMove(item.filepath, destDirPath, item.name);
-      if (success) {
-        movedCount++;
-        // Eliminamos el elemento visualmente si sigue ahí
-        if (item.liElement) item.liElement.remove();
-      }
-    }
-    if (movedCount > 0) {
-      showNotification("Success", `Moved ${movedCount} items successfully.`);
-    }
-    // Limpieza final
-    clearClipboard();
-    hideSpinner();
+        spinner();
+        for (const item of window.clipboard) {
+            const success = await executeMove(item.filepath, destDirPath, item.name, true);
+            if (success && item.liElement) item.liElement.remove();
+        }
+        clearClipboard();
+        await refreshDir(destDirPath);
+        hideSpinner();
   });
 
   document.getElementById("cm-delete-file").addEventListener("click", () => {
@@ -527,23 +504,19 @@ export function initContextMenu() {
       hideContextMenu();
 
       const selectedItems = Array.from(document.querySelectorAll(".tree-item.active"));
-      const isTargetInSelection = selectedItems.includes(cmTargetData.liElement);
 
-      if (selectedItems.length > 1 && isTargetInSelection) {
-          // Prepare data for multiple items
-          const bulkItems = selectedItems.map(li => {
+      if (selectedItems.length > 1 && selectedItems.includes(cmTargetData.liElement)) {
+          const itemsToDelete = selectedItems.map(li => {
               const link = li.querySelector("a");
-              const url = new URL(link.href, window.location.origin);
               return {
-                  filepath: url.searchParams.get("filepath"),
+                  filepath: li.classList.contains("folder-item") ? link.getAttribute("data-folder-path") : new URL(link.href, window.location.origin).searchParams.get("filepath"),
                   filename: li.textContent.trim(),
                   liElement: li,
                   isFolder: li.classList.contains("folder-item")
               };
           });
-          executeDelete(bulkItems);
+          executeDelete(itemsToDelete);
       } else {
-          // Single item fallback
           executeDelete([{
               filepath: cmTargetData.filepath,
               filename: cmTargetData.filename,
@@ -604,23 +577,81 @@ export function initContextMenu() {
       ? document.activeElement.tagName.toLowerCase()
       : "";
     const isMonaco = document.activeElement?.classList.contains("inputarea");
-    if (activeTag === "input" || activeTag === "textarea" || isMonaco) {
-      return;
+    if (activeTag === "input" || activeTag === "textarea" || isMonaco) return;
+
+    // 1. CAPTURAR TODA LA SELECCIÓN ACTUAL
+    const selectedLIs = Array.from(
+      document.querySelectorAll(".tree-item.active"),
+    );
+
+    // Función auxiliar para formatear los datos de los items seleccionados
+    const getSelectedData = () => {
+      return selectedLIs.map((li) => {
+        const link = li.querySelector("a");
+        return {
+          filepath: li.classList.contains("folder-item")
+            ? link.getAttribute("data-folder-path")
+            : new URL(link.href, window.location.origin).searchParams.get(
+                "filepath",
+              ),
+          filename: li.textContent.trim(),
+          liElement: li,
+          isFolder: li.classList.contains("folder-item"),
+        };
+      });
+    };
+
+    // --- DELETE (TECLA SUPRIMIR) ---
+    if (e.key === "Delete") {
+      const items = getSelectedData();
+      if (items.length > 0) {
+        e.preventDefault();
+        executeDelete(items); // Ahora le pasamos el ARRAY
+      }
     }
 
-    // --- KEY SUPRIMIR / DELETE ---
-    if (e.key === "Delete") {
-      const target = getActiveTreeItemData();
-      if (target) {
+    // --- CUT (CTRL + X) ---
+    if (e.ctrlKey && e.key.toLowerCase() === "x") {
+      const items = getSelectedData();
+      if (items.length > 0) {
         e.preventDefault();
-        if (window.contextMenu) window.contextMenu.classList.remove("show");
-        executeDelete(
-          target.filepath,
-          target.name,
-          target.liElement,
-          target.isFolder,
-        );
+        setClipboard(items); // Guarda el ARRAY en el clipboard
+        console.log(`[IDE] Multi-Cut: ${items.length} items`);
       }
+    }
+
+    // --- PASTE (CTRL + V) ---
+    if (e.ctrlKey && e.key.toLowerCase() === "v") {
+      if (window.clipboard && window.clipboard.length > 0) {
+        e.preventDefault();
+        // Determinamos destino: si no hay nada seleccionado, usamos el root o el último dir
+        const target = getActiveTreeItemData(); // Para saber DÓNDE pegar
+        let destDirPath = target?.isFolder
+          ? target.filepath
+          : target?.filepath.substring(0, target.filepath.lastIndexOf("/")) ||
+            cfg.jailRoot;
+
+        // Ejecutamos el pegado masivo
+        for (const item of window.clipboard) {
+          await executeMove(item.filepath, destDirPath, item.name, true);
+          if (item.liElement) item.liElement.remove();
+        }
+        clearClipboard();
+        await refreshDir(destDirPath);
+      }
+    }
+
+    // --- ESCAPE ---
+    if (e.key === "Escape") {
+      hideContextMenu();
+      clearClipboard();
+      document
+        .querySelectorAll(
+          ".tree-item.active, .active-link, .is-selected-target",
+        )
+        .forEach((el) => {
+          el.classList.remove("active", "active-link", "is-selected-target");
+        });
     }
 
     // --- TECLA F2 (RENAME) ---
@@ -645,56 +676,9 @@ export function initContextMenu() {
         }
       }
     }
-
-    // --- Keyboard shortcuts: CTRL+X (Cut) and CTRL+V (Paste) ---
-    if (e.ctrlKey && e.key.toLowerCase() === 'x') {
-        const target = getActiveTreeItemData();
-        if (target) {
-            e.preventDefault();
-            setClipboard({
-                filepath: target.filepath,
-                name: target.name,
-                isFolder: target.isFolder,
-                liElement: target.liElement
-            });
-            console.log("[IDE] Ctrl+X Cut:", clipboard.filepath);
-        }
-    }
-
-    if (e.ctrlKey && e.key.toLowerCase() === 'v') {
-        const target = getActiveTreeItemData();
-        if (target && clipboard.filepath) {
-            e.preventDefault();
-            let destDirPath = target.isFolder ?
-                              target.filepath :
-                              target.filepath.substring(0, target.filepath.lastIndexOf('/'));
-
-            const success = await executeMove(clipboard.filepath, destDirPath, clipboard.name);
-            if (success) clearClipboard();
-        }
-    }
-    if (e.key === "Escape") {
-        hideContextMenu();
-        // 1. Clear "Cut" state and remove opacity (.cut-element)
-        if (typeof clearClipboard === 'function') {
-            clearClipboard();
-            console.log("[IDE] Cut/Paste canceled via Escape.");
-        }
-        // 2. Clear visual selections (the blue/grey backgrounds)
-        document.querySelectorAll(".is-selected-target, .tree-item.active, .active-link").forEach(el => {
-            el.classList.remove("is-selected-target", "active", "active-link");
-        });
-        // 3. Hide any open menus
-        if (window.contextMenu) {
-            window.contextMenu.classList.remove('show');
-        }
-        const plusMenu = document.querySelector(".header-plus-submenu");
-        if (plusMenu) {
-            plusMenu.classList.remove("show");
-        }
-    }
   });
 }
+
 
 function getActiveTreeItemData() {
   const activeLi = document.querySelector(".tree-item.active");
