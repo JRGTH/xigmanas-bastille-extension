@@ -498,90 +498,109 @@ export function initTreeDelegation() {
         window.isDirty = false;
       }
 
-      // --- A. MULTI-SELECTION (CTRL / CMD / SHIFT) ---
-// --- A. MULTI-SELECTION (CTRL / CMD / SHIFT) ---
-if (e.shiftKey || e.ctrlKey || e.metaKey) {
-    if (typeof hideSpinner === "function") hideSpinner();
+  // --- A. MULTI-SELECTION (CTRL / CMD / SHIFT) ---
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+            if (typeof hideSpinner === "function") hideSpinner();
 
-    if (e.shiftKey && window.lastSelectedTreeItem) {
-        const allItems = Array.from(document.querySelectorAll(".tree-item")).filter(el => el.offsetParent !== null);
-        const start = allItems.indexOf(window.lastSelectedTreeItem);
-        const end = allItems.indexOf(currentTreeItem);
+            if (e.shiftKey) {
+                const allItems = Array.from(document.querySelectorAll(".tree-item")).filter(el => el.offsetParent !== null);
 
-        if (start !== -1 && end !== -1) {
-            const min = Math.min(start, end);
-            const max = Math.max(start, end);
+                // 1. Find start index (using DOM node OR filepath to be safe against DOM re-renders)
+                let start = -1;
+                if (window.lastSelectedTreeItem) {
+                    start = allItems.indexOf(window.lastSelectedTreeItem);
+                }
+                // BACKUP: If DOM was refreshed, find by filepath
+                if (start === -1 && window.lastSelectedTreeItemPath) {
+                    const startNode = allItems.find(li => {
+                        const a = li.querySelector("a");
+                        return a && a.href.includes(`filepath=${encodeURIComponent(window.lastSelectedTreeItemPath)}`);
+                    });
+                    start = allItems.indexOf(startNode);
+                }
 
-            // Clean all previous selections
-            document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target, .active-link").forEach(el => {
-              el.classList.remove("active", "is-selected-target", "active-link");
-            });
+                const end = allItems.indexOf(currentTreeItem);
 
-            // Apply logical and visual selection to the entire range
-            for (let i = min; i <= max; i++) {
-              const li = allItems[i];
-              li.classList.add("active", "is-selected-target"); // PONEMOS AMBAS
-              li.querySelector("a")?.classList.add("active-link");
+                if (start !== -1 && end !== -1) {
+                    const min = Math.min(start, end);
+                    const max = Math.max(start, end);
+
+                    // Clean all previous selections
+                    document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target, .active-link").forEach(el => {
+                      el.classList.remove("active", "is-selected-target", "active-link");
+                    });
+
+                    // Apply logical and visual selection to the entire range
+                    for (let i = min; i <= max; i++) {
+                      const li = allItems[i];
+                      li.classList.add("active", "is-selected-target"); // PONEMOS AMBAS
+                      li.querySelector("a")?.classList.add("active-link");
+                    }
+                } else {
+                    // Fallback: Si perdemos el ancla, seleccionamos solo el actual
+                    currentTreeItem?.classList.add("active", "is-selected-target");
+                    currentTreeItem?.querySelector("a")?.classList.add("active-link");
+                }
+            } else if (e.ctrlKey || e.metaKey) {
+                // Toggle individual selection (PONEMOS AMBAS)
+                currentTreeItem?.classList.toggle("active");
+                currentTreeItem?.classList.toggle("is-selected-target");
+                currentTreeItem?.querySelector("a")?.classList.toggle("active-link");
             }
+
+            // ALWAYS update the anchor for the next Shift+Click
+            window.lastSelectedTreeItem = currentTreeItem;
+            window.lastSelectedTreeItemPath = filepath; // GUARDA EL STRING COMO ANCLA SEGURA
+
+            console.log(`[IDE] Multi-Selection Processed. Active Items: ${document.querySelectorAll('.tree-item.active').length}`);
+            return; // CRÍTICO: Sale aquí y no carga el archivo en Monaco
         }
-    } else if (e.ctrlKey || e.metaKey) {
-        // Toggle individual selection (PONEMOS AMBAS)
-        currentTreeItem?.classList.toggle("active");
-        currentTreeItem?.classList.toggle("is-selected-target");
-        currentTreeItem?.querySelector("a")?.classList.toggle("active-link");
-        window.lastSelectedTreeItem = currentTreeItem;
-    }
-    return;
-}
 
-      // --- B. NORMAL CLICK ---
-      console.log(
-        `[IDE] File Click atrapado por Delegation. isDirty: ${window.isDirty}`,
-      );
+        // --- B. NORMAL CLICK ---
+        console.log(`[IDE] File Click atrapado por Delegation. isDirty: ${window.isDirty}`);
 
-      if (window.isDirty === true) {
-        const ok = await showConfirmDialog(
-          "Unsaved changes",
-          "You have unsaved changes in the current file. If you switch files now, your changes will be lost. Do you want to discard them?",
-          "warning",
-        );
-        if (!ok) return;
+        if (window.isDirty === true) {
+          const ok = await showConfirmDialog(
+            "Unsaved changes",
+            "You have unsaved changes in the current file. If you switch files now, your changes will be lost. Do you want to discard them?",
+            "warning",
+          );
+          if (!ok) return;
 
-        window.isDirty = false;
-        if (typeof clearDirtyState === "function") clearDirtyState();
-      }
-
-      await loadFileToEditor(filepath, fileLink.href);
-
-      if (isSearchResult) {
-        if (typeof clearFilter === "function") clearFilter();
-        document
-          .querySelector(".ide-search input")
-          ?.dispatchEvent(new Event("input"));
-        document
-          .querySelectorAll(".is-recursive, .no-results")
-          .forEach((el) => el.remove());
-        document
-          .querySelectorAll(".ide-file-list > li")
-          .forEach((el) => (el.style.display = ""));
-
-        if (typeof cfg !== "undefined") cfg.filepath = filepath;
-        setTimeout(async () => {
-          if (typeof syncSidebarWithFile === "function")
-            await syncSidebarWithFile();
-        }, 50);
-      } else {
-        document.querySelectorAll(".tree-item").forEach((el) => el.classList.remove("active"));
-        document.querySelectorAll(".active-link").forEach((el) => el.classList.remove("active-link"));
-        currentTreeItem?.classList.add("active");
-        const link = currentTreeItem?.querySelector("a");
-        if (link) {
-          link.classList.add("active-link");
+          window.isDirty = false;
+          if (typeof clearDirtyState === "function") clearDirtyState();
         }
+
+        await loadFileToEditor(filepath, fileLink.href);
+
+        if (isSearchResult) {
+          if (typeof clearFilter === "function") clearFilter();
+          document.querySelector(".ide-search input")?.dispatchEvent(new Event("input"));
+          document.querySelectorAll(".is-recursive, .no-results").forEach((el) => el.remove());
+          document.querySelectorAll(".ide-file-list > li").forEach((el) => (el.style.display = ""));
+
+          if (typeof cfg !== "undefined") cfg.filepath = filepath;
+          setTimeout(async () => {
+            if (typeof syncSidebarWithFile === "function") await syncSidebarWithFile();
+          }, 50);
+        } else {
+          // AQUÍ FALTABA AÑADIR LA CLASE is-selected-target
+          document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target, .active-link").forEach((el) => {
+              el.classList.remove("active", "is-selected-target", "active-link");
+          });
+
+          currentTreeItem?.classList.add("active", "is-selected-target"); // AHORA PONE AMBAS
+          const link = currentTreeItem?.querySelector("a");
+          if (link) {
+            link.classList.add("active-link");
+          }
+        }
+
+        // Update anchors for normal clicks too
         window.lastSelectedTreeItem = currentTreeItem;
+        window.lastSelectedTreeItemPath = filepath;
+        return;
       }
-      return;
-    }
 
     // ==========================================
     // 2. FOLDER CLICK MANAGEMENT

@@ -573,7 +573,7 @@ export function initContextMenu() {
     const isMonaco = document.activeElement?.classList.contains("inputarea");
     if (activeTag === "input" || activeTag === "textarea" || isMonaco) return;
 
-    // 1. CAPTURAR TODA LA SELECCIÓN ACTUAL
+    // 1. CAPTURE THE ENTIRE CURRENT SELECTION
     const selectedLIs = Array.from(document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target"));
         const items = selectedLIs.map(li => {
             const link = li.querySelector("a");
