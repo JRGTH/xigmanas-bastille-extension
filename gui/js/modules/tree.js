@@ -499,39 +499,40 @@ export function initTreeDelegation() {
       }
 
       // --- A. MULTI-SELECTION (CTRL / CMD / SHIFT) ---
-      if (e.shiftKey || e.ctrlKey || e.metaKey) {
-          if (typeof hideSpinner === "function") hideSpinner();
+// --- A. MULTI-SELECTION (CTRL / CMD / SHIFT) ---
+if (e.shiftKey || e.ctrlKey || e.metaKey) {
+    if (typeof hideSpinner === "function") hideSpinner();
 
-          if (e.shiftKey && window.lastSelectedTreeItem) {
-              const allItems = Array.from(document.querySelectorAll(".tree-item"))
-                                    .filter(el => el.offsetParent !== null);
-              const start = allItems.indexOf(window.lastSelectedTreeItem);
-              const end = allItems.indexOf(currentTreeItem);
+    if (e.shiftKey && window.lastSelectedTreeItem) {
+        const allItems = Array.from(document.querySelectorAll(".tree-item")).filter(el => el.offsetParent !== null);
+        const start = allItems.indexOf(window.lastSelectedTreeItem);
+        const end = allItems.indexOf(currentTreeItem);
 
-              if (start !== -1 && end !== -1) {
-                  const min = Math.min(start, end);
-                  const max = Math.max(start, end);
-                  // Clean all previous selections
-                  document.querySelectorAll(".tree-item").forEach(el => {
-                    el.classList.remove("active", "is-selected-target");
-                    el.querySelector("a")?.classList.remove("active-link");
-                  });
-                  // Apply logical and visual selection to the entire range
-                  for (let i = min; i <= max; i++) {
-                    const li = allItems[i];
-                    li.classList.add("active");
-                    li.classList.add("is-selected-target");
-                    li.querySelector("a")?.classList.add("active-link");
-                  }
-              }
-          } else if (e.ctrlKey || e.metaKey) {
-              // Toggle individual selection
-              currentTreeItem?.classList.toggle("active");
-              currentTreeItem?.querySelector("a")?.classList.toggle("active-link");
-              window.lastSelectedTreeItem = currentTreeItem;
-          }
-          return;
-      }
+        if (start !== -1 && end !== -1) {
+            const min = Math.min(start, end);
+            const max = Math.max(start, end);
+
+            // Clean all previous selections
+            document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target, .active-link").forEach(el => {
+              el.classList.remove("active", "is-selected-target", "active-link");
+            });
+
+            // Apply logical and visual selection to the entire range
+            for (let i = min; i <= max; i++) {
+              const li = allItems[i];
+              li.classList.add("active", "is-selected-target"); // PONEMOS AMBAS
+              li.querySelector("a")?.classList.add("active-link");
+            }
+        }
+    } else if (e.ctrlKey || e.metaKey) {
+        // Toggle individual selection (PONEMOS AMBAS)
+        currentTreeItem?.classList.toggle("active");
+        currentTreeItem?.classList.toggle("is-selected-target");
+        currentTreeItem?.querySelector("a")?.classList.toggle("active-link");
+        window.lastSelectedTreeItem = currentTreeItem;
+    }
+    return;
+}
 
       // --- B. NORMAL CLICK ---
       console.log(

@@ -162,17 +162,18 @@ export function initContextMenu() {
       e.preventDefault();
       // Change the background when an item is selected
       const liElement = link.closest(".tree-item");
-      if (!liElement.classList.contains("active")) {
-        console.log("[CM] Item not selected. Clearing previous selection.");
-        document.querySelectorAll(".is-selected-target").forEach(el => el.classList.remove("is-selected-target"));
-        document.querySelectorAll(".tree-item.active").forEach(el => el.classList.remove("active"));
-        document.querySelectorAll("a.active-link").forEach(el => el.classList.remove("active-link"));
-        liElement.classList.add("is-selected-target");
-        liElement.classList.add("active");
-        link.classList.add("active-link");
-        window.lastSelectedTreeItem = liElement;
+      // LA CLAVE: Verificamos si tiene CUALQUIERA de las dos clases de selección
+      const isAlreadySelected = liElement.classList.contains("active") || liElement.classList.contains("is-selected-target");
+      if (!isAlreadySelected) {
+          console.log("[CM] Target not selected. Clearing ALL previous highlights.");
+          document.querySelectorAll(".is-selected-target, .tree-item.active, .active-link").forEach(el => {
+              el.classList.remove("is-selected-target", "active", "active-link");
+          });
+          liElement.classList.add("is-selected-target", "active");
+          link.classList.add("active-link");
+          window.lastSelectedTreeItem = liElement;
       } else {
-        console.log("[CM] Item already part of selection. Keeping group.");
+          console.log("[CM] Target already selected. Keeping current selection group.");
       }
 
       const isFolder = liElement.classList.contains("folder-item");
