@@ -1,13 +1,13 @@
 // modules/context-menu.js
 
 import {
-    cfg,
-    clearClipboard,
-    cmTargetData,
-    contextMenu,
-    setClipboard,
-    setCmTargetData,
-    setContextMenu,
+  cfg,
+  clearClipboard,
+  cmTargetData,
+  contextMenu,
+  setClipboard,
+  setCmTargetData,
+  setContextMenu,
 } from "./state.js";
 import {hideSpinner, spinner} from "./ui.js";
 import {showConfirmDialog, showNewItemModal, showRenameModal,} from "./modal.js";
@@ -118,7 +118,7 @@ const CONTEXT_MENU_HTML = `
 function hideContextMenu() {
   const cm = document.getElementById("ide-context-menu");
   if (cm) {
-      cm.style.display = "none";
+    cm.style.display = "none";
   }
 }
 
@@ -154,20 +154,20 @@ export function initContextMenu() {
       const liElement = link.closest(".tree-item");
       // LA CLAVE: Verificamos si tiene CUALQUIERA de las dos clases de selección
       const isAlreadySelected =
-          liElement.classList.contains("active") ||
-          liElement.classList.contains("is-selected-target") ||
-          link.classList.contains("active-link") ||
-          link.classList.contains("active");
+        liElement.classList.contains("active") ||
+        liElement.classList.contains("is-selected-target") ||
+        link.classList.contains("active-link") ||
+        link.classList.contains("active");
       if (!isAlreadySelected) {
-          console.log("[CM] Target not selected. Clearing ALL previous highlights.");
-          document.querySelectorAll(".is-selected-target, .tree-item.active, .active-link").forEach(el => {
-              el.classList.remove("is-selected-target", "active", "active-link");
-          });
-          liElement.classList.add("is-selected-target", "active");
-          link.classList.add("active-link");
-          window.lastSelectedTreeItem = liElement;
+        console.log("[CM] Target not selected. Clearing ALL previous highlights.");
+        document.querySelectorAll(".is-selected-target, .tree-item.active, .active-link").forEach(el => {
+          el.classList.remove("is-selected-target", "active", "active-link");
+        });
+        liElement.classList.add("is-selected-target", "active");
+        link.classList.add("active-link");
+        window.lastSelectedTreeItem = liElement;
       } else {
-          console.log("[CM] Target already selected. Keeping current selection group.");
+        console.log("[CM] Target already selected. Keeping current selection group.");
       }
 
       const isFolder = liElement.classList.contains("folder-item");
@@ -295,14 +295,14 @@ export function initContextMenu() {
   document.getElementById("cm-copy-path").addEventListener("click", () => {
     if (!cmTargetData) return;
     navigator.clipboard?.writeText(cmTargetData.filepath) ??
-      (() => {
-        const ta = document.createElement("textarea");
-        ta.value = cmTargetData.filepath;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      })();
+    (() => {
+      const ta = document.createElement("textarea");
+      ta.value = cmTargetData.filepath;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    })();
     hideContextMenu();
   });
 
@@ -379,9 +379,9 @@ export function initContextMenu() {
       const targetPath = cmTargetData.isFolder
         ? cmTargetData.filepath
         : cmTargetData.filepath.substring(
-            0,
-            cmTargetData.filepath.lastIndexOf("/"),
-          );
+          0,
+          cmTargetData.filepath.lastIndexOf("/"),
+        );
       spinner();
       try {
         await refreshDir(targetPath);
@@ -421,100 +421,102 @@ export function initContextMenu() {
 
   // --- CUT LOGIC ---
   document.getElementById('cm-cut')?.addEventListener('click', (e) => {
-      // 1. EL ESCUDO: Evita que el click llegue al document y te borre la selección
-      e.stopPropagation();
+    e.stopPropagation();
+    hideContextMenu();
+    if (!cmTargetData) return;
 
-      // 2. Ocultamos el menú visualmente
-      hideContextMenu();
-      if (!cmTargetData) return;
+    // LA MISMA CLAVE: Buscar los enlaces sobrevivientes
+    const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
+    const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item")).filter(Boolean))];
 
-      // 3. Leemos el DOM inmediatamente
-      const selectedItems = Array.from(document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target"));
-      const uniqueItems = [...new Set(selectedItems)];
+    const isTargetInSelection = cmTargetData.liElement.querySelector("a")?.classList.contains("active-link") ||
+      cmTargetData.liElement.classList.contains("active") ||
+      cmTargetData.liElement.classList.contains("is-selected-target");
 
-      // 4. Comparamos por ruta exacta (filepath) para evitar errores de memoria del DOM
-      const isTargetInSelection = uniqueItems.some(li => {
-          const link = li.querySelector("a");
-          if (!link) return false;
-          const path = li.classList.contains("folder-item")
-              ? link.getAttribute("data-folder-path")
-              : new URL(link.href, window.location.origin).searchParams.get("filepath");
-          return path === cmTargetData.filepath;
+    let itemsToCut = [];
+    if (uniqueItems.length > 1 && isTargetInSelection) {
+      console.log(`[IDE] BULK CUT MODE: Cortando ${uniqueItems.length} elementos.`);
+      itemsToCut = uniqueItems.map(li => {
+        const link = li.querySelector("a");
+        return {
+          filepath: li.classList.contains("folder-item")
+            ? link.getAttribute("data-folder-path")
+            : new URL(link.href, window.location.origin).searchParams.get("filepath"),
+          name: li.textContent.trim(),
+          isFolder: li.classList.contains("folder-item"),
+          liElement: li
+        };
       });
-
-      let itemsToCut = [];
-
-      if (uniqueItems.length > 1 && isTargetInSelection) {
-          // BULK CUT
-          itemsToCut = uniqueItems.map(li => {
-              const link = li.querySelector("a");
-              return {
-                  filepath: li.classList.contains("folder-item")
-                      ? link.getAttribute("data-folder-path")
-                      : new URL(link.href, window.location.origin).searchParams.get("filepath"),
-                  name: li.textContent.trim(),
-                  isFolder: li.classList.contains("folder-item"),
-                  liElement: li
-              };
-          });
-      } else {
-          // SINGLE CUT
-          itemsToCut = [{
-              filepath: cmTargetData.filepath,
-              name: cmTargetData.filename,
-              isFolder: cmTargetData.isFolder,
-              liElement: cmTargetData.liElement
-          }];
-      }
-
-      setClipboard(itemsToCut);
-      console.log(`[IDE] BULK CUT MODE: Procesando ${itemsToCut.length} elementos.`);
+    } else {
+      console.log(`[IDE] SINGLE CUT MODE.`);
+      itemsToCut = [{
+        filepath: cmTargetData.filepath,
+        name: cmTargetData.filename,
+        isFolder: cmTargetData.isFolder,
+        liElement: cmTargetData.liElement
+      }];
+    }
+    setClipboard(itemsToCut);
   });
 
   // --- PASTING LOGIC ---
   document.getElementById("cm-paste")?.addEventListener("click", async () => {
     hideContextMenu();
-        if (!window.clipboard || window.clipboard.length === 0) return;
+    if (!window.clipboard || window.clipboard.length === 0) return;
 
-        let destDirPath = cmTargetData.isFolder ?
-                          cmTargetData.filepath :
-                          cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
+    let destDirPath = cmTargetData.isFolder ?
+      cmTargetData.filepath :
+      cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
 
-        spinner();
-        for (const item of window.clipboard) {
-            const success = await executeMove(item.filepath, destDirPath, item.name, true);
-            if (success && item.liElement) item.liElement.remove();
-        }
-        clearClipboard();
-        await refreshDir(destDirPath);
-        hideSpinner();
+    spinner();
+    for (const item of window.clipboard) {
+      const success = await executeMove(item.filepath, destDirPath, item.name, true);
+      if (success && item.liElement) item.liElement.remove();
+    }
+    clearClipboard();
+    await refreshDir(destDirPath);
+    hideSpinner();
   });
 
-  document.getElementById("cm-delete-file").addEventListener("click", () => {
-      if (!cmTargetData) return;
-      hideContextMenu();
+  document.getElementById("cm-delete-file").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    hideContextMenu();
+    if (!cmTargetData) return;
 
-      const selectedItems = Array.from(document.querySelectorAll(".tree-item.active"));
+    // 1. LA CLAVE: Buscamos por los enlaces (a.active-link) que SÍ sobrevivieron
+    const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
 
-      if (selectedItems.length > 1 && selectedItems.includes(cmTargetData.liElement)) {
-          const itemsToDelete = selectedItems.map(li => {
-              const link = li.querySelector("a");
-              return {
-                  filepath: li.classList.contains("folder-item") ? link.getAttribute("data-folder-path") : new URL(link.href, window.location.origin).searchParams.get("filepath"),
-                  filename: li.textContent.trim(),
-                  liElement: li,
-                  isFolder: li.classList.contains("folder-item")
-              };
-          });
-          executeDelete(itemsToDelete);
-      } else {
-          executeDelete([{
-              filepath: cmTargetData.filepath,
-              filename: cmTargetData.filename,
-              liElement: cmTargetData.liElement,
-              isFolder: cmTargetData.isFolder
-          }]);
-      }
+    // 2. Sacamos los <li> padres de esos enlaces
+    const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item")).filter(Boolean))];
+
+    // 3. Comprobamos si el target es parte del grupo
+    const isTargetInSelection = cmTargetData.liElement.querySelector("a")?.classList.contains("active-link") ||
+      cmTargetData.liElement.classList.contains("active") ||
+      cmTargetData.liElement.classList.contains("is-selected-target");
+
+    if (uniqueItems.length > 1 && isTargetInSelection) {
+      console.log(`[IDE] BULK DELETE MODE: Preparando ${uniqueItems.length} archivos.`);
+      const itemsToDelete = uniqueItems.map(li => {
+        const link = li.querySelector("a");
+        return {
+          filepath: li.classList.contains("folder-item")
+            ? link.getAttribute("data-folder-path")
+            : new URL(link.href, window.location.origin).searchParams.get("filepath"),
+          filename: li.textContent.trim(),
+          liElement: li,
+          isFolder: li.classList.contains("folder-item")
+        };
+      });
+      await executeDelete(itemsToDelete);
+    } else {
+      console.log(`[IDE] SINGLE DELETE MODE.`);
+      await executeDelete([{
+        filepath: cmTargetData.filepath,
+        filename: cmTargetData.filename,
+        liElement: cmTargetData.liElement,
+        isFolder: cmTargetData.isFolder
+      }]);
+    }
   });
 
   // --- HEADER + BUTTON ---
@@ -546,7 +548,7 @@ export function initContextMenu() {
       const targetPath = cfg.lastSelectedDir || cfg.jailRoot;
       const name = await showNewItemModal(type);
       if (name)
-        executeCreateItem(name, type, { filepath: targetPath, isFolder: true });
+        executeCreateItem(name, type, {filepath: targetPath, isFolder: true});
     };
 
     document
@@ -568,19 +570,23 @@ export function initContextMenu() {
       ? document.activeElement.tagName.toLowerCase()
       : "";
     const isMonaco = document.activeElement?.classList.contains("inputarea");
-    if (activeTag === "input" || activeTag === "textarea" || isMonaco) return;
+    if (activeTag === "input" || activeTag === "textarea" || isMonaco) {
+      return;
+    }
 
     // 1. CAPTURE THE ENTIRE CURRENT SELECTION
-    const selectedLIs = Array.from(document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target"));
-        const items = selectedLIs.map(li => {
-            const link = li.querySelector("a");
-            return {
-                filepath: li.classList.contains("folder-item") ? link.getAttribute("data-folder-path") : new URL(link.href, window.location.origin).searchParams.get("filepath"),
-                filename: li.textContent.trim(),
-                liElement: li,
-                isFolder: li.classList.contains("folder-item")
-            };
-        });
+    const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
+    const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item")).filter(Boolean))];
+
+    const items = uniqueItems.map(li => {
+      const link = li.querySelector("a");
+      return {
+        filepath: li.classList.contains("folder-item") ? link.getAttribute("data-folder-path") : new URL(link.href, window.location.origin).searchParams.get("filepath"),
+        filename: li.textContent.trim(),
+        liElement: li,
+        isFolder: li.classList.contains("folder-item")
+      };
+    });
 
     // --- DELETE (TECLA SUPRIMIR) ---
     if (e.key === "Delete") {
@@ -609,7 +615,7 @@ export function initContextMenu() {
         let destDirPath = target?.isFolder
           ? target.filepath
           : target?.filepath.substring(0, target.filepath.lastIndexOf("/")) ||
-            cfg.jailRoot;
+          cfg.jailRoot;
 
         // Ejecutamos el pegado masivo
         for (const item of window.clipboard) {
@@ -687,7 +693,7 @@ function getActiveTreeItemData() {
     const spans = fileLink.querySelectorAll("span");
     let name = path.split("/").pop();
     if (spans.length > 0) name = spans[spans.length - 1].innerText.trim();
-    return { filepath: path, isFolder: false, name: name, liElement: activeLi };
+    return {filepath: path, isFolder: false, name: name, liElement: activeLi};
   }
 
   return null;

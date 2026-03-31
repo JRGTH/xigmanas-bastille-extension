@@ -547,6 +547,7 @@ export function initTreeDelegation() {
           // En Ctrl+Click SÍ actualizamos el ancla al último que has tocado
           window.lastSelectedTreeItem = currentTreeItem;
           window.lastSelectedTreeItemPath = filepath;
+          return;
         }
 
         console.log(`[IDE] Multi-Selection Processed. Active Items: ${document.querySelectorAll('.tree-item.active').length}`);
