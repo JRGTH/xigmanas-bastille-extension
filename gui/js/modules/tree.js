@@ -498,63 +498,60 @@ export function initTreeDelegation() {
         window.isDirty = false;
       }
 
-  // --- A. MULTI-SELECTION (CTRL / CMD / SHIFT) ---
-        if (e.shiftKey || e.ctrlKey || e.metaKey) {
-            if (typeof hideSpinner === "function") hideSpinner();
+      // --- A. MULTI-SELECTION (CTRL / CMD / SHIFT) ---
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        hideSpinner();
 
-            if (e.shiftKey) {
-                const allItems = Array.from(document.querySelectorAll(".tree-item")).filter(el => el.offsetParent !== null);
+        if (e.shiftKey) {
+          const allItems = Array.from(document.querySelectorAll(".tree-item"))
+                                        .filter(el => el.offsetParent !== null);
 
-                // 1. Find start index (using DOM node OR filepath to be safe against DOM re-renders)
-                let start = -1;
-                if (window.lastSelectedTreeItem) {
-                    start = allItems.indexOf(window.lastSelectedTreeItem);
-                }
-                // BACKUP: If DOM was refreshed, find by filepath
-                if (start === -1 && window.lastSelectedTreeItemPath) {
-                    const startNode = allItems.find(li => {
-                        const a = li.querySelector("a");
-                        return a && a.href.includes(`filepath=${encodeURIComponent(window.lastSelectedTreeItemPath)}`);
-                    });
-                    start = allItems.indexOf(startNode);
-                }
+          let start = -1;
+          if (window.lastSelectedTreeItem) start = allItems.indexOf(window.lastSelectedTreeItem);
 
-                const end = allItems.indexOf(currentTreeItem);
+          if (start === -1 && window.lastSelectedTreeItemPath) {
+            const startNode = allItems.find(li => {
+              const a = li.querySelector("a");
+              return a && a.href.includes(`filepath=${encodeURIComponent(window.lastSelectedTreeItemPath)}`);
+            });
+            start = allItems.indexOf(startNode);
+          }
 
-                if (start !== -1 && end !== -1) {
-                    const min = Math.min(start, end);
-                    const max = Math.max(start, end);
+          const end = allItems.indexOf(currentTreeItem);
 
-                    // Clean all previous selections
-                    document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target, .active-link").forEach(el => {
-                      el.classList.remove("active", "is-selected-target", "active-link");
-                    });
+          if (start !== -1 && end !== -1) {
+            const min = Math.min(start, end);
+            const max = Math.max(start, end);
 
-                    // Apply logical and visual selection to the entire range
-                    for (let i = min; i <= max; i++) {
-                      const li = allItems[i];
-                      li.classList.add("active", "is-selected-target"); // PONEMOS AMBAS
-                      li.querySelector("a")?.classList.add("active-link");
-                    }
-                } else {
-                    // Fallback: Si perdemos el ancla, seleccionamos solo el actual
-                    currentTreeItem?.classList.add("active", "is-selected-target");
-                    currentTreeItem?.querySelector("a")?.classList.add("active-link");
-                }
-            } else if (e.ctrlKey || e.metaKey) {
-                // Toggle individual selection (PONEMOS AMBAS)
-                currentTreeItem?.classList.toggle("active");
-                currentTreeItem?.classList.toggle("is-selected-target");
-                currentTreeItem?.querySelector("a")?.classList.toggle("active-link");
+            document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target, .active-link")
+                .forEach(el => {
+                  el.classList.remove("active", "is-selected-target", "active-link");
+                });
+
+            for (let i = min; i <= max; i++) {
+              const li = allItems[i];
+              li.classList.add("active", "is-selected-target");
+              li.querySelector("a")?.classList.add("active-link");
             }
+          } else {
+            currentTreeItem?.classList.add("active", "is-selected-target");
+            currentTreeItem?.querySelector("a")?.classList.add("active-link");
+          }
+          // ¡OJO! NO actualizamos el ancla aquí. El Shift respeta el ancla original.
 
-            // ALWAYS update the anchor for the next Shift+Click
-            window.lastSelectedTreeItem = currentTreeItem;
-            window.lastSelectedTreeItemPath = filepath; // GUARDA EL STRING COMO ANCLA SEGURA
+        } else if (e.ctrlKey || e.metaKey) {
+          currentTreeItem?.classList.toggle("active");
+          currentTreeItem?.classList.toggle("is-selected-target");
+          currentTreeItem?.querySelector("a")?.classList.toggle("active-link");
 
-            console.log(`[IDE] Multi-Selection Processed. Active Items: ${document.querySelectorAll('.tree-item.active').length}`);
-            return; // CRÍTICO: Sale aquí y no carga el archivo en Monaco
+          // En Ctrl+Click SÍ actualizamos el ancla al último que has tocado
+          window.lastSelectedTreeItem = currentTreeItem;
+          window.lastSelectedTreeItemPath = filepath;
         }
+
+        console.log(`[IDE] Multi-Selection Processed. Active Items: ${document.querySelectorAll('.tree-item.active').length}`);
+        return;
+      }
 
         // --- B. NORMAL CLICK ---
         console.log(`[IDE] File Click atrapado por Delegation. isDirty: ${window.isDirty}`);
