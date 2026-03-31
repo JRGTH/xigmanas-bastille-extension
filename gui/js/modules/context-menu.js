@@ -1,33 +1,21 @@
 // modules/context-menu.js
 
 import {
-  cfg,
-  cmTargetData,
-  setCmTargetData,
-  contextMenu,
-  setContextMenu,
-  clipboard,
-  setClipboard,
-  clearClipboard,
+    cfg,
+    clearClipboard,
+    cmTargetData,
+    contextMenu,
+    setClipboard,
+    setCmTargetData,
+    setContextMenu,
 } from "./state.js";
-import { spinner, hideSpinner } from "./ui.js";
-import {
-  showConfirmDialog,
-  showNewItemModal,
-  showRenameModal,
-} from "./modal.js";
-import { refreshDir } from "./tree.js";
-import {
-  executeUnlock,
-  executeDelete,
-  executeCreateItem,
-  executeRename,
-  executeMove,
-} from "./filesystem.js";
-import { executeDownloadRequest } from "./download.js";
-import { showFileInfo } from "./sidebar-info.js";
-import { openDiffViewer } from "./editor.js";
-import { showNotification } from "./download.js";
+import {hideSpinner, spinner} from "./ui.js";
+import {showConfirmDialog, showNewItemModal, showRenameModal,} from "./modal.js";
+import {refreshDir} from "./tree.js";
+import {executeCreateItem, executeDelete, executeMove, executeRename, executeUnlock,} from "./filesystem.js";
+import {executeDownloadRequest, showNotification} from "./download.js";
+import {showFileInfo} from "./sidebar-info.js";
+import {openDiffViewer} from "./editor.js";
 
 // --- CONTEXT MENU HTML ---
 const CONTEXT_MENU_HTML = `
@@ -129,7 +117,9 @@ const CONTEXT_MENU_HTML = `
 // --- HIDE CONTEXT MENU ---
 function hideContextMenu() {
   const cm = document.getElementById("ide-context-menu");
-  if (cm) cm.style.display = "none";
+  if (cm) {
+      cm.style.display = "none";
+  }
 }
 
 // --- INIT ---
@@ -430,48 +420,55 @@ export function initContextMenu() {
   }
 
   // --- CUT LOGIC ---
-  document.getElementById("cm-cut")?.addEventListener("click", () => {
-    hideContextMenu();
-   if (!cmTargetData) return;
+  document.getElementById('cm-cut')?.addEventListener('click', (e) => {
+      // 1. EL ESCUDO: Evita que el click llegue al document y te borre la selección
+      e.stopPropagation();
 
-   // BUSCAMOS POR AMBAS CLASES PARA ESTAR SEGUROS
-   const selectedItems = Array.from(document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target"));
+      // 2. Ocultamos el menú visualmente
+      hideContextMenu();
+      if (!cmTargetData) return;
 
-   // Filtramos duplicados por si acaso
-   const uniqueItems = [...new Set(selectedItems)];
+      // 3. Leemos el DOM inmediatamente
+      const selectedItems = Array.from(document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target"));
+      const uniqueItems = [...new Set(selectedItems)];
 
-   const isTargetInSelection = uniqueItems.includes(cmTargetData.liElement);
+      // 4. Comparamos por ruta exacta (filepath) para evitar errores de memoria del DOM
+      const isTargetInSelection = uniqueItems.some(li => {
+          const link = li.querySelector("a");
+          if (!link) return false;
+          const path = li.classList.contains("folder-item")
+              ? link.getAttribute("data-folder-path")
+              : new URL(link.href, window.location.origin).searchParams.get("filepath");
+          return path === cmTargetData.filepath;
+      });
 
-   let itemsToCut = [];
+      let itemsToCut = [];
 
-   if (uniqueItems.length > 1 && isTargetInSelection) {
-       // MULTI-CUT
-       itemsToCut = uniqueItems.map(li => {
-           const link = li.querySelector("a");
-           return {
-               filepath: li.classList.contains("folder-item")
-                         ? link.getAttribute("data-folder-path")
-                         : new URL(link.href, window.location.origin).searchParams.get("filepath"),
-               name: li.textContent.trim(),
-               isFolder: li.classList.contains("folder-item"),
-               liElement: li
-           };
-       });
-   } else {
-       // SINGLE CUT
-       itemsToCut = [{
-           filepath: cmTargetData.filepath,
-           name: cmTargetData.filename,
-           isFolder: cmTargetData.isFolder,
-           liElement: cmTargetData.liElement
-       }];
-   }
+      if (uniqueItems.length > 1 && isTargetInSelection) {
+          // BULK CUT
+          itemsToCut = uniqueItems.map(li => {
+              const link = li.querySelector("a");
+              return {
+                  filepath: li.classList.contains("folder-item")
+                      ? link.getAttribute("data-folder-path")
+                      : new URL(link.href, window.location.origin).searchParams.get("filepath"),
+                  name: li.textContent.trim(),
+                  isFolder: li.classList.contains("folder-item"),
+                  liElement: li
+              };
+          });
+      } else {
+          // SINGLE CUT
+          itemsToCut = [{
+              filepath: cmTargetData.filepath,
+              name: cmTargetData.filename,
+              isFolder: cmTargetData.isFolder,
+              liElement: cmTargetData.liElement
+          }];
+      }
 
-   // MANDAMOS AL STATE (state.js se encarga de poner la opacidad)
-   setClipboard(itemsToCut);
-
-   // Log para confirmar que ahora sí ve los que toca
-   console.log(`[IDE] Multi-Cut Executed. Detected in DOM: ${uniqueItems.length} items.`);
+      setClipboard(itemsToCut);
+      console.log(`[IDE] BULK CUT MODE: Procesando ${itemsToCut.length} elementos.`);
   });
 
   // --- PASTING LOGIC ---
