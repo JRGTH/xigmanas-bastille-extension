@@ -146,7 +146,7 @@ export function initContextMenu() {
   // Right-click listener
   document
     .querySelector(".ide-file-list")
-    .addEventListener("contextmenu", (e) => {
+    .addEventListener("contextmenu", async (e) => {
       const link = e.target.closest(".tree-item a");
       if (!link) return;
       e.preventDefault();
@@ -214,7 +214,7 @@ export function initContextMenu() {
         deleteBtn.style.display = "flex";
       }
 
-      setCmTargetData({
+      await setCmTargetData({
         filepath,
         filename,
         liElement,
@@ -232,6 +232,9 @@ export function initContextMenu() {
         ? "Refresh Directory"
         : "Refresh Parent Dir";
       refreshBtn.style.display = "flex";
+
+      // This is necessary for the rename function to recalculate the selected items
+      await updateRenameButtonState();
 
       // Position and display menu
       contextMenu.style.display = "block";
@@ -398,60 +401,42 @@ export function initContextMenu() {
 
   const renameBtn = document.getElementById("cm-rename");
   if (renameBtn) {
-    renameBtn.addEventListener("click", async () => {
-      if (window.contextMenu) window.contextMenu.classList.remove("show");
+    renameBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      hideContextMenu();
       if (!cmTargetData) {
         return;
       }
-      const currentName = cmTargetData.filename
-      const newName = await showRenameModal(
-        cmTargetData.isFolder ? "folder" : "file",
-        currentName
-      );
-      if (newName && newName !== currentName) {
-        executeRename(
-          cmTargetData.filepath,
-          newName,
-          cmTargetData.liElement,
-          cmTargetData.isFolder,
-        );
-      }
+      await executeRenameAction(cmTargetData);
     });
   }
 
   // --- CUT LOGIC ---
-  document.getElementById('cm-cut')?.addEventListener('click', (e) => {
+  document.getElementById('cm-cut')?.addEventListener('click', async (e) => {
     e.stopPropagation();
     hideContextMenu();
     if (!cmTargetData) {
       return;
     }
-    executeCutAction(cmTargetData);
+    await executeCutAction(cmTargetData);
   });
 
   // --- PASTING LOGIC ---
-  document.getElementById("cm-paste")?.addEventListener("click", async () => {
+  document.getElementById("cm-paste")?.addEventListener("click", async (e) => {
+    e.stopPropagation();
     hideContextMenu();
-    if (!window.clipboard || window.clipboard.length === 0) return;
-
-    let destDirPath = cmTargetData.isFolder ?
-      cmTargetData.filepath :
-      cmTargetData.filepath.substring(0, cmTargetData.filepath.lastIndexOf('/'));
-
-    spinner();
-    for (const item of window.clipboard) {
-      const success = await executeMove(item.filepath, destDirPath, item.name, true);
-      if (success && item.liElement) item.liElement.remove();
+    if (!cmTargetData) {
+      return;
     }
-    clearClipboard();
-    await refreshDir(destDirPath);
-    hideSpinner();
+    await executePasteAction(cmTargetData);
   });
 
   document.getElementById("cm-delete-file").addEventListener("click", async (e) => {
     e.stopPropagation();
     hideContextMenu();
-    if (!cmTargetData) return;
+    if (!cmTargetData) {
+      return;
+    }
     await executeDeleteAction(cmTargetData);
   });
 
@@ -533,28 +518,13 @@ export function initContextMenu() {
     // --- CUT (CTRL + X) ---
     if (e.ctrlKey && e.key.toLowerCase() === "x") {
       e.preventDefault();
-      executeCutAction();
+      await executeCutAction();
     }
 
     // --- PASTE (CTRL + V) ---
     if (e.ctrlKey && e.key.toLowerCase() === "v") {
-      if (window.clipboard && window.clipboard.length > 0) {
-        e.preventDefault();
-        // Determinamos destino: si no hay nada seleccionado, usamos el root o el último dir
-        const target = getActiveTreeItemData(); // Para saber DÓNDE pegar
-        let destDirPath = target?.isFolder
-          ? target.filepath
-          : target?.filepath.substring(0, target.filepath.lastIndexOf("/")) ||
-          cfg.jailRoot;
-
-        // Ejecutamos el pegado masivo
-        for (const item of window.clipboard) {
-          await executeMove(item.filepath, destDirPath, item.name, true);
-          if (item.liElement) item.liElement.remove();
-        }
-        clearClipboard();
-        await refreshDir(destDirPath);
-      }
+      e.preventDefault();
+      await executePasteAction();
     }
 
     // --- ESCAPE ---
@@ -572,30 +542,13 @@ export function initContextMenu() {
 
     // --- TECLA F2 (RENAME) ---
     if (e.key === "F2") {
-      const target = getActiveTreeItemData();
-      if (target) {
-        e.preventDefault();
-        if (window.contextMenu) {
-          window.contextMenu.classList.remove("show");
-        }
-        const newName = await showRenameModal(
-          target.isFolder ? "folder" : "file",
-          target.name,
-        );
-        if (newName && newName !== target.name) {
-          executeRename(
-            target.filepath,
-            newName,
-            target.liElement,
-            target.isFolder,
-          );
-        }
-      }
+      e.preventDefault();
+      await executeRenameAction();
     }
   });
 }
 
-function executeCutAction(targetData = null) {
+async function executeCutAction(targetData = null) {
   const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
   const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item")).filter(Boolean))];
 
@@ -646,6 +599,48 @@ function executeCutAction(targetData = null) {
   setClipboard(clipboardData);
 }
 
+async function executePasteAction(targetData = null) {
+  if (!window.clipboard || window.clipboard.length === 0) {
+    console.warn("[IDE] Paste abortado: Portapapeles vacío.");
+    return;
+  }
+
+  let destDirPath = "";
+
+  if (targetData) {
+    destDirPath = targetData.isFolder ?
+      targetData.filepath :
+      targetData.filepath.substring(0, targetData.filepath.lastIndexOf('/'));
+  } else {
+    const activeItem = getActiveTreeItemData();
+    destDirPath = activeItem?.isFolder ?
+      activeItem.filepath :
+      (activeItem?.filepath.substring(0, activeItem.filepath.lastIndexOf('/')) || cfg.jailRoot);
+  }
+
+  if (!destDirPath) {
+    return;
+  }
+
+  console.log(`[IDE] PASTE: Moviendo ${window.clipboard.length} elementos a ${destDirPath}`);
+
+  spinner();
+
+  let movedCount = 0;
+  for (const item of window.clipboard) {
+    const success = await executeMove(item.filepath, destDirPath, item.name || item.filename, true);
+    if (success) {
+      movedCount++;
+      if (item.liElement) item.liElement.remove();
+    }
+  }
+  if (movedCount > 0) {
+    await refreshDir(destDirPath);
+  }
+  clearClipboard();
+  hideSpinner();
+}
+
 async function executeDeleteAction(targetData = null) {
 
   const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
@@ -694,6 +689,60 @@ async function executeDeleteAction(targetData = null) {
   });
 
   await executeDelete(formattedItems);
+}
+
+async function executeRenameAction(targetData = null) {
+
+  const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
+  const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item")).filter(Boolean))];
+
+  if (uniqueItems.length > 1) {
+    console.warn("[IDE] Rename not allowed for multiple items.");
+    return;
+  }
+
+  let finalTarget = targetData;
+  if (!finalTarget && uniqueItems.length === 1) {
+    const li = uniqueItems[0];
+    const link = li.querySelector("a");
+    finalTarget = {
+      filepath: li.classList.contains("folder-item")
+        ? link.getAttribute("data-folder-path")
+        : new URL(link.href, window.location.origin).searchParams.get("filepath"),
+      filename: li.textContent.trim(),
+      isFolder: li.classList.contains("folder-item"),
+      liElement: li
+    };
+  }
+
+  if (!finalTarget) {
+    return;
+  }
+
+  const currentName = finalTarget.filename;
+  const newName = await showRenameModal(
+    finalTarget.isFolder ? "folder" : "file",
+    currentName
+  );
+
+  if (newName && newName !== currentName) {
+    await executeRename(
+      finalTarget.filepath,
+      newName,
+      finalTarget.liElement,
+      finalTarget.isFolder
+    );
+  }
+}
+
+async function updateRenameButtonState() {
+  const renameBtn = document.getElementById("cm-rename");
+  if (!renameBtn) {
+    return;
+  }
+  const selectedCount = document.querySelectorAll("a.active-link").length;
+  renameBtn.classList.toggle("cm-item-disabled", selectedCount > 1);
+  console.log(`[CM] Rename state updated. Selected: ${selectedCount}. Disabled: ${selectedCount > 1}`);
 }
 
 function getActiveTreeItemData() {

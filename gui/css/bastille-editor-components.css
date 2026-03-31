@@ -673,6 +673,13 @@
     height: 25px;
 }
 
+.cm-item-disabled {
+    filter: grayscale(1) opacity(0.4) !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+    display: flex;
+}
+
 .cm-refresh-dir {
     width: var(--icon-file-item-width);
     height: var(--icon-file-item-height);
@@ -754,7 +761,7 @@
 }
 
 /* =========================================
-   DRAG & DROP Y SELECCIÓN DE CARPETAS
+   DRAG & DROP AND FOLDER SELECTION
 ========================================= */
 .folder-item.drag-target > a {
     background-color: rgba(0, 120, 215, 0.25) !important;
@@ -780,7 +787,7 @@ body.is-dragging .ide-sidebar .tree-item a * {
     transition: background-color 0.2s, box-shadow 0.2s;
 }
 /* =========================================
-   DRAG & DROP Y SELECCIÓN DE CARPETAS
+   DRAG & DROP AND FOLDER SELECTION
 ========================================= */
 
 /* --- SUBMENU --- */
@@ -893,7 +900,7 @@ body.is-dragging .ide-sidebar .tree-item a * {
     color: inherit;
 }
 
-/* Estilo para el "+" */
+/* Style for the "+" */
 .header-plus-container {
     position: relative !important;
     display: flex;
@@ -984,7 +991,11 @@ body.is-dragging .ide-sidebar .tree-item a * {
 #ide-context-menu > *:nth-child(9) { animation-delay: 0.18s; }
 #ide-context-menu > *:nth-child(10) { animation-delay: 0.20s; }
 #ide-context-menu > *:nth-child(11) { animation-delay: 0.22s; }
-
+#ide-context-menu > *:nth-child(12) { animation-delay: 0.24s; }
+#ide-context-menu > *:nth-child(13) { animation-delay: 0.26s; }
+#ide-context-menu > *:nth-child(14) { animation-delay: 0.28s; }
+#ide-context-menu > *:nth-child(15) { animation-delay: 0.30s; }
+#ide-context-menu > *:nth-child(16) { animation-delay: 0.32s; }
 
 .ide-cm-submenu {
     transform-origin: top left;

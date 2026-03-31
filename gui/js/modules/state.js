@@ -44,7 +44,7 @@ export function setCurrentDiffFilepath(v) {
 export function setContextMenu(v) {
   contextMenu = v;
 }
-export function setCmTargetData(v) {
+export async function setCmTargetData(v) {
   cmTargetData = v;
 }
 export function setDiskWatcherInterval(v) {
