@@ -10,6 +10,7 @@ import {
   currentDiffFilepath,
   setDiffEditorInstance,
   setCurrentDiffFilepath,
+  getBaseFormData,
 } from "./state.js";
 import { spinner, hideSpinner } from "./ui.js";
 import { showConfirmDialog } from "./modal.js";
@@ -78,10 +79,8 @@ export function initMonaco() {
       },
     );
 
-    window.editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-      () => {
-        window.executeSaved?.();
+    window.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
+        await executeSaved();
       },
     );
 
@@ -89,7 +88,7 @@ export function initMonaco() {
       if (isInjectingCode) {
         return;
       }
-      if (!window.isDirty) {
+      if (!isDirty) {
         setIsDirty(true);
         const saveBtn = document.getElementById("btn_save");
         if (saveBtn) {
@@ -121,11 +120,11 @@ export function initMonaco() {
 export async function executeSaved() {
   if (!window.editor || !isDirty) return;
 
-  const filepath = document.querySelector('input[name="filepath"]')?.value;
-  const form = document.getElementById("iform");
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentFilepath = urlParams.get("filepath") || document.querySelector('input[name="filepath"]')?.value;
 
-  if (!filepath || filepath === "Select a file" || !form) {
-    showConfirmDialog(
+  if (!currentFilepath || currentFilepath === "Select a file") {
+    await showConfirmDialog(
       "Error",
       "No file selected to save or form missing.",
       "error",
@@ -133,18 +132,16 @@ export async function executeSaved() {
     return;
   }
 
-  spinner();
   const saveBtn = document.getElementById("btn_save");
   if (saveBtn) {
     saveBtn.disabled = true;
     saveBtn.value = "Saving...";
   }
 
-  const formData = new FormData(form);
+  const formData = getBaseFormData();
   formData.set("ajax_save", "1");
   formData.set("file_content", window.editor.getValue());
-  formData.set("filepath", filepath);
-  formData.set("jailname", cfg.jailname);
+  formData.set("filepath", currentFilepath);
   formData.set("save", "1");
 
   try {
@@ -165,19 +162,16 @@ export async function executeSaved() {
 
     if (data.success) {
       clearDirtyState();
-      showConfirmDialog("Saved", "Saved file to " + filepath, "success");
+      await showConfirmDialog("Saved", "Saved file to " + currentFilepath, "success");
     } else {
       throw new Error(data.error || "Server rejected the save request.");
     }
   } catch (error) {
     console.error("Save Error:", error);
-    showConfirmDialog(
-      error.message.includes("Unexpected token")
-        ? "Session Error"
-        : "Save Error",
-      error.message.includes("Unexpected token")
-        ? "Your session might have expired. Try reloading the page."
-        : error.message,
+    const isSessionErr = error.message.includes("Unexpected token");
+    await showConfirmDialog(
+      isSessionErr ? "Session Error" : "Save Error",
+      isSessionErr ? "Your session might have expired. Please reload." : error.message,
       "error",
     );
   } finally {
@@ -188,7 +182,6 @@ export async function executeSaved() {
     hideSpinner();
   }
 }
-window.executeSaved = executeSaved;
 
 export function clearDirtyState() {
   setIsDirty(false);
@@ -264,7 +257,7 @@ export async function openDiffViewer(filepath, filename) {
     );
   }
 
-  const formData = new FormData(document.getElementById("iform"));
+  const formData = getBaseFormData();
   formData.append("ajax_get_backups", "1");
   formData.append("filepath", filepath);
 
@@ -311,7 +304,7 @@ window.openDiffViewer = openDiffViewer;
 
 export async function loadBackupDiff(backupPath) {
   spinner();
-  const formData = new FormData(document.getElementById("iform"));
+  const formData = getBaseFormData();
   formData.append("ajax_read_backup", "1");
   formData.append("bak_path", backupPath);
 
@@ -467,7 +460,7 @@ export async function loadFileToEditor(filepath, linkHref) {
         window.editor.setValue(content);
         window.editor.updateOptions({ readOnly: false });
         setIsInjectingCode(false);
-        setIsDirty(false);
+        clearDirtyState();
       }
     }
 
@@ -488,7 +481,7 @@ export async function loadFileToEditor(filepath, linkHref) {
 // --- PREVENT DATA LOSS ON F5 ---
 export function initBeforeUnload() {
   window.addEventListener("beforeunload", (e) => {
-    if (window.isDirty) {
+    if (isDirty) {
       e.preventDefault();
       return "";
     }

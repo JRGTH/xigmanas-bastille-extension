@@ -64,8 +64,6 @@ import { initDragAndDrop } from './modules/dragdrop.js';
 window.toggleSidebar = toggleSidebar;
 window.toggleFolder = toggleFolder;
 window.syncSidebarWithFolder = syncSidebarWithFolder;
-window.showConfirmDialog = showConfirmDialog;
-window.executeSaved = executeSaved;
 window.executeUnlock = executeUnlock;
 window.executeDelete = executeDelete;
 window.executeCreateItem = executeCreateItem;

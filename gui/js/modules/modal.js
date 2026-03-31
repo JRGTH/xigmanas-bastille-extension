@@ -90,7 +90,6 @@ export function showConfirmDialog(title, message, type = "warning") {
     }
   });
 }
-window.showConfirmDialog = showConfirmDialog;
 
 // --- NEW ITEM MODAL ---
 export function showNewItemModal(type) {

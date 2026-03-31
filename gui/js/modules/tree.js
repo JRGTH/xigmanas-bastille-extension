@@ -9,11 +9,11 @@ import {
   originalSidebarHTML,
 } from "./state.js";
 
-import { spinner, hideSpinner, updateBreadcrumbs } from "./ui.js";
+import {spinner, hideSpinner, updateBreadcrumbs} from "./ui.js";
 
-import { showConfirmDialog } from "./modal.js";
-import { clearFilter } from "./search.js";
-import { showBinaryWarning, loadFileToEditor, clearDirtyState } from "./editor.js";
+import {showConfirmDialog} from "./modal.js";
+import {clearFilter} from "./search.js";
+import {showBinaryWarning, loadFileToEditor, clearDirtyState} from "./editor.js";
 
 let lastSelectedTreeItem = null;
 
@@ -42,7 +42,7 @@ function buildFileLi(name, fullPath, dirPath, flag) {
   li.className = "tree-item file-item";
   li.dataset.flag = flag || "";
   li.innerHTML = `
-        <a href="${editUrl}" onclick="if(typeof spinner === 'function') spinner();">
+        <a href="${editUrl}">
             ${cfg.icons.file} <span>${name}</span> ${renderLockIcon(flag)}
         </a>`;
   return li;
@@ -93,7 +93,10 @@ export function toggleFolder(element, path) {
       }
     })
     .then((data) => {
-      if (data.error) throw new Error(data.error);
+
+      if (data.error) {
+        handleError(data);
+      }
 
       subList = document.createElement("ul");
       subList.className = "ide-file-list";
@@ -122,6 +125,7 @@ export function toggleFolder(element, path) {
     })
     .finally(() => hideSpinner());
 }
+
 window.toggleFolder = toggleFolder;
 
 /**
@@ -191,6 +195,9 @@ export async function syncSidebarWithFile(specificPath = null) {
     });
 
     if (targetLink) {
+      document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target, .active-link")
+        .forEach(el => el.classList.remove("active", "is-selected-target", "active-link"));
+
       const li = targetLink.closest(".tree-item");
 
       let parent = li.parentElement;
@@ -200,12 +207,10 @@ export async function syncSidebarWithFile(specificPath = null) {
         parent = parent.parentElement;
       }
 
-      document
-        .querySelectorAll(".tree-item")
-        .forEach((el) => el.classList.remove("active"));
-      li.classList.add("active");
+      li.classList.add("active", "is-selected-target");
+      targetLink.classList.add("active-link");
 
-      li.scrollIntoView({ behavior: "smooth", block: "center" });
+      li.scrollIntoView({behavior: "smooth", block: "center"});
     }
   }, 150);
 }
@@ -276,6 +281,7 @@ export async function syncSidebarWithFolder(targetPath) {
     }, 150);
   }
 }
+
 window.syncSidebarWithFolder = syncSidebarWithFolder;
 
 // --- REFRESH DIR (smart diff) ---
@@ -287,8 +293,8 @@ export async function refreshDir(dirPath) {
     cleanDest === cleanRoot
       ? document.querySelector("#fileList > li.folder-item")
       : (Array.from(document.querySelectorAll(".folder-item > a"))
-          .find((a) => a.getAttribute("data-folder-path") === cleanDest)
-          ?.closest("li") ?? null);
+        .find((a) => a.getAttribute("data-folder-path") === cleanDest)
+        ?.closest("li") ?? null);
 
   if (!targetLi) return;
   const ul = targetLi.querySelector("ul");
@@ -302,7 +308,9 @@ export async function refreshDir(dirPath) {
   try {
     const res = await fetch(`${window.location.pathname}?${params.toString()}`);
     const data = await res.json();
-    if (data.error) throw new Error(data.error);
+    if (data.error) {
+      handleError(data);
+    }
 
     const serverFolders = data.folders.map((f) => f.name);
     const serverFiles = data.files.map((f) => f.name);
@@ -373,7 +381,7 @@ export function initHomeButton() {
     e.preventDefault();
 
     document.querySelector(".ide-search input")?.value !== undefined &&
-      (document.querySelector(".ide-search input").value = "");
+    (document.querySelector(".ide-search input").value = "");
     document
       .querySelectorAll(".is-recursive, .no-results")
       .forEach((el) => el.remove());
@@ -490,13 +498,7 @@ export function initTreeDelegation() {
       const isSearchResult = fileLink.closest(".is-recursive");
       const currentTreeItem = fileLink.closest(".tree-item");
 
-      if (typeof window.lastSelectedTreeItem === "undefined") {
-        window.lastSelectedTreeItem = null;
-      }
-
-      if (typeof window.isDirty === "undefined") {
-        window.isDirty = false;
-      }
+      window.lastSelectedTreeItem = null;
 
       // --- A. MULTI-SELECTION (CTRL / CMD / SHIFT) ---
       if (e.shiftKey || e.ctrlKey || e.metaKey) {
@@ -504,10 +506,12 @@ export function initTreeDelegation() {
 
         if (e.shiftKey) {
           const allItems = Array.from(document.querySelectorAll(".tree-item"))
-                                        .filter(el => el.offsetParent !== null);
+            .filter(el => el.offsetParent !== null);
 
           let start = -1;
-          if (window.lastSelectedTreeItem) start = allItems.indexOf(window.lastSelectedTreeItem);
+          if (window.lastSelectedTreeItem) {
+            start = allItems.indexOf(window.lastSelectedTreeItem);
+          }
 
           if (start === -1 && window.lastSelectedTreeItemPath) {
             const startNode = allItems.find(li => {
@@ -524,9 +528,9 @@ export function initTreeDelegation() {
             const max = Math.max(start, end);
 
             document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target, .active-link")
-                .forEach(el => {
-                  el.classList.remove("active", "is-selected-target", "active-link");
-                });
+              .forEach(el => {
+                el.classList.remove("active", "is-selected-target", "active-link");
+              });
 
             for (let i = min; i <= max; i++) {
               const li = allItems[i];
@@ -537,14 +541,12 @@ export function initTreeDelegation() {
             currentTreeItem?.classList.add("active", "is-selected-target");
             currentTreeItem?.querySelector("a")?.classList.add("active-link");
           }
-          // ¡OJO! NO actualizamos el ancla aquí. El Shift respeta el ancla original.
 
         } else if (e.ctrlKey || e.metaKey) {
           currentTreeItem?.classList.toggle("active");
           currentTreeItem?.classList.toggle("is-selected-target");
           currentTreeItem?.querySelector("a")?.classList.toggle("active-link");
 
-          // En Ctrl+Click SÍ actualizamos el ancla al último que has tocado
           window.lastSelectedTreeItem = currentTreeItem;
           window.lastSelectedTreeItemPath = filepath;
           return;
@@ -554,51 +556,51 @@ export function initTreeDelegation() {
         return;
       }
 
-        // --- B. NORMAL CLICK ---
-        console.log(`[IDE] File Click atrapado por Delegation. isDirty: ${window.isDirty}`);
+      // --- B. NORMAL CLICK ---
+      console.log(`[IDE] File Click atrapado por Delegation. isDirty: ${isDirty}`);
+      e.preventDefault();
+      e.stopPropagation();
 
-        if (window.isDirty === true) {
-          const ok = await showConfirmDialog(
-            "Unsaved changes",
-            "You have unsaved changes in the current file. If you switch files now, your changes will be lost. Do you want to discard them?",
-            "warning",
-          );
-          if (!ok) return;
-
-          window.isDirty = false;
-          if (typeof clearDirtyState === "function") clearDirtyState();
+      if (isDirty) {
+        const ok = await showConfirmDialog(
+          "Unsaved changes",
+          "You have unsaved changes in the current file. If you switch files now, your changes will be lost. Do you want to discard them?",
+          "warning",
+        );
+        if (!ok) {
+          clearPhantomSelection(e.target);
+          return;
         }
-
-        await loadFileToEditor(filepath, fileLink.href);
-
-        if (isSearchResult) {
-          if (typeof clearFilter === "function") clearFilter();
-          document.querySelector(".ide-search input")?.dispatchEvent(new Event("input"));
-          document.querySelectorAll(".is-recursive, .no-results").forEach((el) => el.remove());
-          document.querySelectorAll(".ide-file-list > li").forEach((el) => (el.style.display = ""));
-
-          if (typeof cfg !== "undefined") cfg.filepath = filepath;
-          setTimeout(async () => {
-            if (typeof syncSidebarWithFile === "function") await syncSidebarWithFile();
-          }, 50);
-        } else {
-          // AQUÍ FALTABA AÑADIR LA CLASE is-selected-target
-          document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target, .active-link").forEach((el) => {
-              el.classList.remove("active", "is-selected-target", "active-link");
-          });
-
-          currentTreeItem?.classList.add("active", "is-selected-target"); // AHORA PONE AMBAS
-          const link = currentTreeItem?.querySelector("a");
-          if (link) {
-            link.classList.add("active-link");
-          }
-        }
-
-        // Update anchors for normal clicks too
-        window.lastSelectedTreeItem = currentTreeItem;
-        window.lastSelectedTreeItemPath = filepath;
-        return;
+        clearDirtyState();
       }
+
+      cfg.filepath = filepath;
+
+      // Update anchors for normal clicks too
+      window.lastSelectedTreeItem = currentTreeItem;
+      window.lastSelectedTreeItemPath = filepath;
+
+      document.querySelectorAll(".tree-item.active, .tree-item.is-selected-target, .active-link")
+        .forEach(el => el.classList.remove("active", "is-selected-target", "active-link"));
+
+      currentTreeItem?.classList.add("active", "is-selected-target");
+      currentTreeItem?.querySelector("a")?.classList.add("active-link");
+
+      await loadFileToEditor(filepath, fileLink.href);
+
+      if (isSearchResult) {
+        clearFilter();
+        document.querySelector(".ide-search input")?.dispatchEvent(new Event("input"));
+        document.querySelectorAll(".is-recursive, .no-results").forEach((el) => el.remove());
+        document.querySelectorAll(".ide-file-list > li").forEach((el) => (el.style.display = ""));
+
+        setTimeout(async () => {
+          await syncSidebarWithFile();
+        }, 50);
+      }
+
+      return;
+    }
 
     // ==========================================
     // 2. FOLDER CLICK MANAGEMENT
@@ -615,11 +617,31 @@ export function initTreeDelegation() {
         document.querySelectorAll(".active-link").forEach(el => el.classList.remove("active-link"));
         window.lastSelectedTreeItem = folderLink.closest(".tree-item");
       }
-      if (typeof originalSidebarHTML !== "undefined" && originalSidebarHTML !== "") {
+      if (originalSidebarHTML !== "") {
         clearFilter();
       }
       const path = folderLink.getAttribute("data-folder-path");
       await toggleFolder(folderLink, path);
     }
   });
+}
+
+// --- HELPERS ---
+function clearPhantomSelection(targetElement) {
+  const clickedItem = targetElement.closest(".tree-item");
+  if (clickedItem) {
+    clickedItem.classList.remove("active", "is-selected-target");
+    clickedItem.querySelector("a")?.classList.remove("active-link");
+  }
+
+  const clickedLink = targetElement.closest("a");
+  if (clickedLink) {
+    clickedLink.blur();
+  }
+}
+
+function handleError(data) {
+  if (!data) {
+    throw Error(data.error);
+  }
 }

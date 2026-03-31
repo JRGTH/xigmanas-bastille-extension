@@ -13,7 +13,7 @@ import {
   sidebarTimer,
   originalSidebarHTML,
 } from "./state.js";
-import { loadFileToEditor } from "./editor.js";
+import { loadFileToEditor, executeSaved } from "./editor.js";
 
 // --- QUICK SEARCH ---
 const qsModal = document.getElementById("quick-search-modal");
@@ -288,7 +288,7 @@ export function initSearch() {
 export function initKeybinds() {
   document.addEventListener(
     "keydown",
-    (e) => {
+    async (e) => {
       const isCtrl = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
 
@@ -301,7 +301,7 @@ export function initKeybinds() {
       if (isCtrl && key === "s") {
         e.preventDefault();
         e.stopPropagation();
-        window.executeSaved?.();
+        await executeSaved();
         return;
       }
       if (isCtrl && key === "k") {

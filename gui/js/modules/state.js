@@ -22,7 +22,6 @@ export const diskHealthHistory = { avg: [], hot: [] };
 
 export function setIsDirty(v) {
   isDirty = v;
-  window.isDirty = v;
   const saveBtn = document.getElementById("btn_save");
   if (saveBtn) {
     saveBtn.disabled = !v;
