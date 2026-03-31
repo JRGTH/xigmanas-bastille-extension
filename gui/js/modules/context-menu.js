@@ -452,41 +452,7 @@ export function initContextMenu() {
     e.stopPropagation();
     hideContextMenu();
     if (!cmTargetData) return;
-
-    // 1. LA CLAVE: Buscamos por los enlaces (a.active-link) que SÍ sobrevivieron
-    const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
-
-    // 2. Sacamos los <li> padres de esos enlaces
-    const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item")).filter(Boolean))];
-
-    // 3. Comprobamos si el target es parte del grupo
-    const isTargetInSelection = cmTargetData.liElement.querySelector("a")?.classList.contains("active-link") ||
-      cmTargetData.liElement.classList.contains("active") ||
-      cmTargetData.liElement.classList.contains("is-selected-target");
-
-    if (uniqueItems.length > 1 && isTargetInSelection) {
-      console.log(`[IDE] BULK DELETE MODE: Preparando ${uniqueItems.length} archivos.`);
-      const itemsToDelete = uniqueItems.map(li => {
-        const link = li.querySelector("a");
-        return {
-          filepath: li.classList.contains("folder-item")
-            ? link.getAttribute("data-folder-path")
-            : new URL(link.href, window.location.origin).searchParams.get("filepath"),
-          filename: li.textContent.trim(),
-          liElement: li,
-          isFolder: li.classList.contains("folder-item")
-        };
-      });
-      await executeDelete(itemsToDelete);
-    } else {
-      console.log(`[IDE] SINGLE DELETE MODE.`);
-      await executeDelete([{
-        filepath: cmTargetData.filepath,
-        filename: cmTargetData.filename,
-        liElement: cmTargetData.liElement,
-        isFolder: cmTargetData.isFolder
-      }]);
-    }
+    await executeDeleteAction(cmTargetData);
   });
 
   // --- HEADER + BUTTON ---
@@ -558,13 +524,10 @@ export function initContextMenu() {
       };
     });
 
-    // --- DELETE (TECLA SUPRIMIR) ---
+    // --- (Supr - del)---
     if (e.key === "Delete") {
-      if (items.length > 0) {
-        e.preventDefault();
-        executeDelete(items);
-        console.log(`[IDE] Deleted item: ${items.length} items`);
-      }
+      e.preventDefault();
+      await executeDeleteAction();
     }
 
     // --- CUT (CTRL + X) ---
@@ -681,6 +644,56 @@ function executeCutAction(targetData = null) {
   });
 
   setClipboard(clipboardData);
+}
+
+async function executeDeleteAction(targetData = null) {
+
+  const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
+  const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item")).filter(Boolean))];
+
+  let itemsToDelete = [];
+
+  if (targetData) {
+    const isTargetInSelection = targetData.liElement.querySelector("a")?.classList.contains("active-link") ||
+      targetData.liElement.classList.contains("active") ||
+      targetData.liElement.classList.contains("is-selected-target");
+
+    if (uniqueItems.length > 1 && isTargetInSelection) {
+      console.log(`[IDE] BULK DELETE (Menu): Preparando ${uniqueItems.length} archivos.`);
+      itemsToDelete = uniqueItems;
+    } else {
+      console.log(`[IDE] SINGLE DELETE (Menu).`);
+      await executeDelete([{
+        filepath: targetData.filepath,
+        filename: targetData.filename,
+        liElement: targetData.liElement,
+        isFolder: targetData.isFolder
+      }]);
+      return;
+    }
+  } else {
+    if (uniqueItems.length > 0) {
+      console.log(`[IDE] DELETE (Teclado): Preparando ${uniqueItems.length} archivos.`);
+      itemsToDelete = uniqueItems;
+    } else {
+      console.log(`[IDE] DELETE abortado: No hay nada seleccionado.`);
+      return;
+    }
+  }
+
+  const formattedItems = itemsToDelete.map(li => {
+    const link = li.querySelector("a");
+    return {
+      filepath: li.classList.contains("folder-item")
+        ? link.getAttribute("data-folder-path")
+        : new URL(link.href, window.location.origin).searchParams.get("filepath"),
+      filename: li.textContent.trim(),
+      liElement: li,
+      isFolder: li.classList.contains("folder-item")
+    };
+  });
+
+  await executeDelete(formattedItems);
 }
 
 function getActiveTreeItemData() {
