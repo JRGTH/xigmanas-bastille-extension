@@ -423,40 +423,10 @@ export function initContextMenu() {
   document.getElementById('cm-cut')?.addEventListener('click', (e) => {
     e.stopPropagation();
     hideContextMenu();
-    if (!cmTargetData) return;
-
-    // LA MISMA CLAVE: Buscar los enlaces sobrevivientes
-    const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
-    const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item")).filter(Boolean))];
-
-    const isTargetInSelection = cmTargetData.liElement.querySelector("a")?.classList.contains("active-link") ||
-      cmTargetData.liElement.classList.contains("active") ||
-      cmTargetData.liElement.classList.contains("is-selected-target");
-
-    let itemsToCut = [];
-    if (uniqueItems.length > 1 && isTargetInSelection) {
-      console.log(`[IDE] BULK CUT MODE: Cortando ${uniqueItems.length} elementos.`);
-      itemsToCut = uniqueItems.map(li => {
-        const link = li.querySelector("a");
-        return {
-          filepath: li.classList.contains("folder-item")
-            ? link.getAttribute("data-folder-path")
-            : new URL(link.href, window.location.origin).searchParams.get("filepath"),
-          name: li.textContent.trim(),
-          isFolder: li.classList.contains("folder-item"),
-          liElement: li
-        };
-      });
-    } else {
-      console.log(`[IDE] SINGLE CUT MODE.`);
-      itemsToCut = [{
-        filepath: cmTargetData.filepath,
-        name: cmTargetData.filename,
-        isFolder: cmTargetData.isFolder,
-        liElement: cmTargetData.liElement
-      }];
+    if (!cmTargetData) {
+      return;
     }
-    setClipboard(itemsToCut);
+    executeCutAction(cmTargetData);
   });
 
   // --- PASTING LOGIC ---
@@ -599,11 +569,8 @@ export function initContextMenu() {
 
     // --- CUT (CTRL + X) ---
     if (e.ctrlKey && e.key.toLowerCase() === "x") {
-      if (items.length > 0) {
-        e.preventDefault();
-        setClipboard(items);
-        console.log(`[IDE] Multi-Cut: ${items.length} items`);
-      }
+      e.preventDefault();
+      executeCutAction();
     }
 
     // --- PASTE (CTRL + V) ---
@@ -665,6 +632,56 @@ export function initContextMenu() {
   });
 }
 
+function executeCutAction(targetData = null) {
+  const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
+  const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item")).filter(Boolean))];
+
+  let itemsToCut = [];
+
+  // 2. This makes sense if we're coming from the right-click (context menu)
+  if (targetData) {
+    const isTargetInSelection = targetData.liElement.querySelector("a")?.classList.contains("active-link") ||
+      targetData.liElement.classList.contains("active") ||
+      targetData.liElement.classList.contains("is-selected-target");
+
+    if (uniqueItems.length > 1 && isTargetInSelection) {
+      console.log(`[IDE] BULK CUT (Menu): Cutting ${uniqueItems.length} elements.`);
+      itemsToCut = uniqueItems; // We will process the list
+    } else {
+      console.log(`[IDE] SINGLE CUT (Menu).`);
+      // Fallback: We cut only where we right-clicked
+      setClipboard([{
+        filepath: targetData.filepath,
+        name: targetData.filename,
+        isFolder: targetData.isFolder,
+        liElement: targetData.liElement
+      }]);
+      return;
+    }
+  } else {
+    if (uniqueItems.length > 0) {
+      console.log(`[IDE] CUT (Keyboard): Cut ${uniqueItems.length} elements.`);
+      itemsToCut = uniqueItems;
+    } else {
+      console.log(`[IDE] CUT canceled: Nothing is selected.`);
+      return;
+    }
+  }
+
+  const clipboardData = itemsToCut.map(li => {
+    const link = li.querySelector("a");
+    return {
+      filepath: li.classList.contains("folder-item")
+        ? link.getAttribute("data-folder-path")
+        : new URL(link.href, window.location.origin).searchParams.get("filepath"),
+      name: li.textContent.trim(),
+      isFolder: li.classList.contains("folder-item"),
+      liElement: li
+    };
+  });
+
+  setClipboard(clipboardData);
+}
 
 function getActiveTreeItemData() {
   const activeLi = document.querySelector(".tree-item.active");
