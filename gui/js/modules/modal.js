@@ -65,6 +65,7 @@ export function showConfirmDialog(title, message, type = "warning") {
       overlay.classList.remove("show");
       btnCancel.removeEventListener("click", onCancel);
       btnConfirm.removeEventListener("click", onConfirm);
+      window.removeEventListener("keydown", handleEsc);
     };
 
     const onCancel = () => {
@@ -75,14 +76,20 @@ export function showConfirmDialog(title, message, type = "warning") {
       cleanup();
       resolve(true);
     };
+    const handleEsc = (e) => {
+      if (e.key === "Escape") {
+        onCancel();
+      }
+    };
 
     btnCancel.addEventListener("click", onCancel);
     btnConfirm.addEventListener("click", onConfirm);
-
-    if (!conf.showCancel) setTimeout(() => btnConfirm.focus(), 100);
+    window.addEventListener("keydown", handleEsc);
+    if (!conf.showCancel) {
+      setTimeout(() => btnConfirm.focus(), 100);
+    }
   });
 }
-
 window.showConfirmDialog = showConfirmDialog;
 
 // --- NEW ITEM MODAL ---
