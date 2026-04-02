@@ -12,6 +12,12 @@ window.IDE_CONFIG = {
         caret: '<span class="tree-caret"><img src="ext/bastille/images/right-arrow.svg" style="width: 20px;"></span>'
     }
 };
+$(document).ready(function() {
+    $('#btn_save').on('click', function(e) {
+        e.preventDefault();
+        executeSaved();
+    });
+});
 </script>
 
 <table width="100%" border="0" cellpadding="0" cellspacing="0">
@@ -111,7 +117,7 @@ window.IDE_CONFIG = {
                                            ?>
                                            <li class="tree-item file-item <?= $is_active ?>" data-flag="<?= $f_flag ?>">
                                                <a href="?jailname=<?=$jailname?>&filepath=<?=urlencode($full_file_path)?>"
-                                                    onclick="if(typeof spinner === 'function') spinner();">
+                                                    onclick="spinner();">
                                                     <?= $icon_file ?> <span><?= htmlspecialchars($file) ?></span> <?= $lock_img ?>
                                                </a>
                                            </li>
@@ -167,7 +173,7 @@ window.IDE_CONFIG = {
                             <div class="layout-btn" id="toggle-sidebar-btn" title="Toggle Sidebar (Ctrl + B)">
                                 <?= $icon_toggle ?>
                             </div>
-                            <input name="save" id="btn_save" type="button" class="formbtn" title= "Save File (Ctrl + S)" value="<?=gtext("Save File");?>" onclick="executeSaved();" <?=empty($filepath) ? 'disabled' : ''?> />
+                            <input name="save" id="btn_save" type="button" class="formbtn" title= "Save File (Ctrl + S)" value="<?=gtext("Save File");?>" <?=empty($filepath) ? 'disabled' : ''?> />
                         </div>
                     </div>
                     <div id="editor-content-area">
@@ -314,7 +320,7 @@ window.IDE_CONFIG = {
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             showConfirmDialog("Saved", "<?= addslashes($savemsg) ?>", "success");
-            if (typeof isDirty !== 'undefined') isDirty = false;
+            isDirty = false;
         });
     </script>
 <?php endif; ?>
