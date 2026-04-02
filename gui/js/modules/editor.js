@@ -84,6 +84,14 @@ export function initMonaco() {
       },
     );
 
+    const btnSave = document.getElementById('btn_save');
+    if (btnSave) {
+      btnSave.addEventListener('click', (e) => {
+        e.preventDefault();
+        executeSaved();
+      });
+    }
+
     window.editor.onDidChangeModelContent(() => {
       if (isInjectingCode) {
         return;
@@ -421,7 +429,9 @@ export async function loadFileToEditor(filepath, linkHref) {
     // 3. Branching Logic: Media vs Text
     if (isImage || isVideo) {
       // --- MEDIA VIEW ---
-      if (monacoContainer) monacoContainer.style.display = 'none';
+      if (monacoContainer) {
+        monacoContainer.style.display = 'none';
+      }
       if (mediaContainer) {
         mediaContainer.style.display = 'flex';
 
@@ -445,7 +455,9 @@ export async function loadFileToEditor(filepath, linkHref) {
         mediaContainer.style.display = 'none';
         mediaContainer.innerHTML = '';
       }
-      if (monacoContainer) monacoContainer.style.display = 'block';
+      if (monacoContainer) {
+        monacoContainer.style.display = 'block';
+      }
 
       url.searchParams.set("ajax", "1");
 

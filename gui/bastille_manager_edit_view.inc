@@ -12,12 +12,6 @@ window.IDE_CONFIG = {
         caret: '<span class="tree-caret"><img src="ext/bastille/images/right-arrow.svg" style="width: 20px;"></span>'
     }
 };
-$(document).ready(function() {
-    $('#btn_save').on('click', function(e) {
-        e.preventDefault();
-        executeSaved();
-    });
-});
 </script>
 
 <table width="100%" border="0" cellpadding="0" cellspacing="0">
