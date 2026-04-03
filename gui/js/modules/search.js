@@ -1,19 +1,20 @@
 // modules/search.js
 
-import { cfg } from "./state.js";
-import { spinner, hideSpinner } from "./ui.js";
-import { syncSidebarWithFolder, syncSidebarWithFile } from "./tree.js";
 import {
-  setSelectedIndex,
-  setSearchTimer,
-  setSidebarTimer,
-  setOriginalSidebarHTML,
-  selectedIndex,
-  searchTimer,
-  sidebarTimer,
+  cfg,
   originalSidebarHTML,
+  searchTimer,
+  selectedIndex,
+  setOriginalSidebarHTML,
+  setSearchTimer,
+  setSelectedIndex,
+  setSidebarTimer,
+  sidebarTimer,
+  isDirty,
 } from "./state.js";
-import { loadFileToEditor, executeSaved } from "./editor.js";
+import {hideSpinner, spinner} from "./ui.js";
+import {syncSidebarWithFile, syncSidebarWithFolder} from "./tree.js";
+import {executeSaved, loadFileToEditor} from "./editor.js";
 
 // --- QUICK SEARCH ---
 const qsModal = document.getElementById("quick-search-modal");
@@ -51,6 +52,7 @@ export function removeHistoryItem(term) {
   localStorage.setItem("bastilleSearchHistory", JSON.stringify(searchHistory));
   renderHistory();
 }
+
 window.removeHistoryItem = removeHistoryItem;
 
 function saveHistory(term) {
@@ -87,7 +89,7 @@ function updateSelection(items) {
   Array.from(items).forEach((li) => li.classList.remove("selected"));
   if (items[selectedIndex]) {
     items[selectedIndex].classList.add("selected");
-    items[selectedIndex].scrollIntoView({ block: "nearest" });
+    items[selectedIndex].scrollIntoView({block: "nearest"});
   }
 }
 
@@ -215,7 +217,12 @@ export function clearFilter() {
     ul.innerHTML = originalSidebarHTML;
     setOriginalSidebarHTML("");
   }
+  if (!isDirty) {
+    document.querySelectorAll('.dirty-dot').forEach(el => el.remove());
+    document.querySelectorAll('.is-dirty').forEach(el => el.classList.remove('is-dirty'));
+  }
 }
+
 window.clearFilter = clearFilter;
 
 function fetchSearchRecursive(term) {
