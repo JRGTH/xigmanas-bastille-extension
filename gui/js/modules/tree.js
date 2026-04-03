@@ -341,8 +341,10 @@ export async function refreshDir(dirPath) {
     data.folders.forEach((f) => {
       if (existingFolders.has(f.name)) return;
       const li = buildFolderLi(f.name, cleanDest + "/" + f.name, f.flag);
-      const firstFile = ul.querySelector(".file-item");
-      firstFile ? ul.insertBefore(li, firstFile) : ul.appendChild(li);
+      const firstFile = ul.querySelector(":scope .file-item");
+      (firstFile && firstFile.parentNode === ul)
+        ? ul.insertBefore(li, firstFile)
+        : ul.appendChild(li);
       flashNew(li);
     });
 
