@@ -11,9 +11,21 @@ import { spinner, hideSpinner } from "./ui.js";
 import { showConfirmDialog } from "./modal.js";
 import { refreshDir } from "./tree.js";
 
+
+export async function initNotifications() {
+  if (!("Notification" in window)) {
+    return;
+  }
+  if (Notification.permission === "default") {
+    const permission = await Notification.requestPermission();
+    console.log("[IDE] Notification Permission:", permission);
+  }
+}
+
 // --- NOTIFICATION ---
 export function showNotification(title, bodyText) {
-  if (!("Notification" in window)) {
+  if (!("Notification" in window) || Notification.permission !== "granted") {
+    console.warn("[IDE] Blocked or unsupported notifications");
     return;
   }
 
@@ -21,14 +33,7 @@ export function showNotification(title, bodyText) {
     body: bodyText,
     icon: "/ext/bastille/images/logo-xigmanas.png",
   };
-
-  if (Notification.permission === "granted") {
-    new Notification(title, options);
-  } else if (Notification.permission !== "denied") {
-    Notification.requestPermission().then((permission) => {
-      if (permission === "granted") new Notification(title, options);
-    });
-  }
+  new Notification(title, options);
 }
 
 // --- TRIGGER DOWNLOAD ---

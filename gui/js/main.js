@@ -53,6 +53,7 @@ import {
 } from "./modules/editor.js";
 import {
   closeInfoSidebar,
+  initNotifications,
   showFileInfo,
   switchTab,
 } from "./modules/sidebar-info.js";
@@ -104,6 +105,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (initialFile) {
     loadFileToEditor(initialFile);
   }
+  document.addEventListener('click', () => {
+    initNotifications();
+  }, { once: true });
 });
 
 // Recover filepath from history.state on F5
