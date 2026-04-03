@@ -268,8 +268,18 @@ if (isset($_GET['ajax_search'])) {
         return strlen($a['name']) - strlen($b['name']);
     });
 
+    $sliced_items = array_slice($final_items, 0, 40);
+
+    foreach ($sliced_items as &$item) {
+        $dir = $item['directory'];
+        $name = $item['name'];
+        $dir_flags = freeBsdFileFlags($dir);
+        $item['flag'] = isset($dir_flags[$name]) ? $dir_flags[$name] : null;
+    }
+    unset($item);
+
     echo json_encode([
-        'items' => array_slice($final_items, 0, 40),
+        'items' => $sliced_items,
         'perf'  => $searcher->getMs()
     ]);
     exit;

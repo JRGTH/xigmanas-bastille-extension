@@ -13,7 +13,7 @@ import {
   isDirty,
 } from "./state.js";
 import {hideSpinner, spinner} from "./ui.js";
-import {syncSidebarWithFile, syncSidebarWithFolder} from "./tree.js";
+import {syncSidebarWithFile, syncSidebarWithFolder, renderLockIcon} from "./tree.js";
 import {executeSaved, loadFileToEditor, clearDirtyState} from "./editor.js";
 import {showConfirmDialog} from "./modal.js";
 
@@ -121,6 +121,9 @@ function runQuickSearch() {
           const perfInfo = document.getElementById("qs-perf-info");
           if (perfInfo) perfInfo.innerText = data.perf || "";
 
+          // LOG DE DEPURACIÓN
+          console.log("[DEBUG QuickSearch] Datos recibidos:", data.items);
+
           qsResultsList.innerHTML = "";
           if (!data.items || data.items.length === 0) {
             qsResultsList.innerHTML = `<li class="no-results" style="padding: 20px; text-align: center; color: #999;">No files found!</li>`;
@@ -136,8 +139,10 @@ function runQuickSearch() {
                 ? '<img src="ext/bastille/images/folder.svg" style="width:16px; margin-right:8px; vertical-align:middle;">'
                 : '<img src="ext/bastille/images/file.svg" style="width:16px; margin-right:8px; vertical-align:middle;">';
 
+            let lockIcon = renderLockIcon(file.flag);
+
             a.innerHTML = `
-                        <span class="qs-item-title">${iconSVG}${file.name}</span>
+                        <span class="qs-item-title">${iconSVG}${file.name} ${lockIcon}</span>
                         <span class="qs-item-path">${file.relative || file.path}</span>
                     `;
 
@@ -246,6 +251,9 @@ function fetchSearchRecursive(term) {
   fetch(url)
     .then((res) => res.json())
     .then((data) => {
+
+      console.log("[DEBUG Sidebar Search] Datos recibidos:", data.items);
+
       ul.querySelectorAll(".is-recursive, .no-results").forEach((el) =>
         el.remove(),
       );
@@ -274,14 +282,16 @@ function fetchSearchRecursive(term) {
         const safePath = file.full.replace(/'/g, "\\'");
         const editUrl = `?jailname=${encodeURIComponent(cfg.jailname)}&dir=${encodeURIComponent(file.directory)}&filepath=${encodeURIComponent(file.full)}`;
 
+        let lockIcon = renderLockIcon(file.flag);
+
         li.innerHTML =
           file.type === "folder"
             ? `<a href="javascript:void(0)" onclick="syncSidebarWithFolder('${safePath}')" title="${file.full}">
-                           <strong>${cfg.icons.folder} ${file.name}</strong>
+                           <strong>${cfg.icons.folder} ${file.name} ${lockIcon}</strong>
                            <span class="search-result-path">${file.relative}</span>
                        </a>`
             : `<a href="${editUrl}" title="${file.full}">
-                           <strong>${cfg.icons.file} ${file.name}</strong>
+                           <strong>${cfg.icons.file} ${file.name} ${lockIcon}</strong>
                            <span class="search-result-path">${file.relative}</span>
                        </a>`;
 
