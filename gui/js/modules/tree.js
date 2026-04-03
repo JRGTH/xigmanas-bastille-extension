@@ -24,6 +24,39 @@ export function renderLockIcon(flag) {
     : "";
 }
 
+const FILE_ICONS_MAP = {
+  // Comprimidos
+  ".zip": "ext/bastille/images/zip-file-icon.svg",
+  ".tar.gz": "ext/bastille/images/gzip.svg",
+  ".tgz": "ext/bastille/images/gzip.svg",
+  ".gz": "ext/bastille/images/gzip.svg",
+  ".tar.lz4": "ext/bastille/images/lz4.svg",
+  ".lz4": "ext/bastille/images/lz4.svg",
+  ".tar.zst": "ext/bastille/images/zstd85.png",
+  ".zst": "ext/bastille/images/zstd85.png",
+
+  // Future
+  /*
+  ".php": "ext/bastille/images/php.svg",
+  ".js": "ext/bastille/images/js.svg",
+  ".css": "ext/bastille/images/css.svg",
+  ".html": "ext/bastille/images/html.svg",
+  */
+};
+
+function getFileIcon(filename) {
+  const name = filename.toLowerCase();
+  const extMatch = Object.keys(FILE_ICONS_MAP)
+    .sort((a, b) => b.length - a.length)
+    .find(ext => name.endsWith(ext));
+
+  if (extMatch) {
+    const iconSrc = FILE_ICONS_MAP[extMatch];
+    return `<img src="${iconSrc}" class="tree-type-icon" style="width:16px; height:16px; vertical-align: middle; margin-right:4px;">`;
+  }
+  return cfg.icons.file;
+}
+
 function buildFolderLi(name, fullPath, flag) {
   const li = document.createElement("li");
   li.setAttribute('draggable', 'true');
@@ -43,7 +76,7 @@ function buildFileLi(name, fullPath, dirPath, flag) {
   li.dataset.flag = flag || "";
   li.innerHTML = `
         <a href="${editUrl}">
-            ${cfg.icons.file} <span>${name}</span> ${renderLockIcon(flag)}
+            ${getFileIcon(name)} <span>${name}</span> ${renderLockIcon(flag)}
         </a>`;
   return li;
 }
@@ -350,8 +383,8 @@ export async function refreshDir(dirPath) {
 
     // Phase 3 — inject new files
     const existingFiles = new Set(
-      Array.from(ul.querySelectorAll(".file-item a span:not(.tree-caret)")).map(
-        (s) => s.innerText.trim(),
+      Array.from(ul.querySelectorAll(":scope .file-item a span:not(.tree-caret)"))
+        .map((s) => s.innerText.trim(),
       ),
     );
     data.files.forEach((f) => {
