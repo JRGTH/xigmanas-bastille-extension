@@ -14,7 +14,8 @@ import {
 } from "./state.js";
 import {hideSpinner, spinner} from "./ui.js";
 import {syncSidebarWithFile, syncSidebarWithFolder} from "./tree.js";
-import {executeSaved, loadFileToEditor} from "./editor.js";
+import {executeSaved, loadFileToEditor, clearDirtyState} from "./editor.js";
+import {showConfirmDialog} from "./modal.js";
 
 // --- QUICK SEARCH ---
 const qsModal = document.getElementById("quick-search-modal");
@@ -25,8 +26,7 @@ const qsResultsList = document.getElementById("qs-results-list");
 const qsHistoryContainer = document.getElementById("qs-history-container");
 const qsBadges = document.getElementById("qs-badges");
 
-let searchHistory =
-  JSON.parse(localStorage.getItem("bastilleSearchHistory")) || [];
+let searchHistory = JSON.parse(localStorage.getItem("bastilleSearchHistory")) || [];
 
 function renderHistory() {
   if (searchHistory.length === 0) {
@@ -146,6 +146,18 @@ function runQuickSearch() {
             a.addEventListener("click", async (e) => {
               e.preventDefault();
               e.stopPropagation();
+
+              if (isDirty) {
+                const confirm = await showConfirmDialog(
+                  "Unsaved Changes",
+                  "You have unsaved changes in the current file. If you switch files now, your changes will be lost. Do you want to discard them?",
+                  "warning"
+                );
+                if (!confirm) {
+                  return;
+                }
+                clearDirtyState();
+              }
 
               const fullPath = file.full || file.path;
               const linkHref = a.href;
