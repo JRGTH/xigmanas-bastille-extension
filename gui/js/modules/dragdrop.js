@@ -1,6 +1,9 @@
 // modules/dragdrop.js
 
-import {executeMove} from "./filesystem.js";
+import {
+  executeMove,
+  checkFileExists} from "./filesystem.js";
+import { showOverwriteDialog } from './modal.js';
 
 export function initDragAndDrop() {
   const fileTreeContainer =
@@ -38,7 +41,7 @@ export function initDragAndDrop() {
     let itemsToDrag = [];
 
     if (isPartOfSelection && selectedLinks.length > 1) {
-      console.log(`[IDE] Multi-Drag: Arrastrando ${selectedLinks.length} elementos.`);
+      console.log(`[IDE] Multi-Drag: Dragging ${selectedLinks.length} elements.`);
       itemsToDrag = selectedLinks.map(a => {
         const itemLi = a.closest(".tree-item");
         itemLi.classList.add("dragging");
@@ -107,17 +110,33 @@ export function initDragAndDrop() {
         return;
       }
       const itemsToMove = JSON.parse(dragDataString);
-      console.log(`[IDE] Drop masivo: Moviendo ${itemsToMove.length} elementos a ${destDirPath}`);
+      console.log(`[IDE] Mass drop: Moving ${itemsToMove.length} elements to ${destDirPath}`);
       spinner();
       for (const item of itemsToMove) {
-        if (item.filepath === destDirPath) continue;
+        if (item.filepath === destDirPath) {
+          continue;
+        }
+        const fileName = item.name || item.filename;
+        const destPath = `${destDirPath}/${fileName}`.replace(/\/+/g, '/');
+        let shouldOverwrite = false;
+        const exists = await checkFileExists(destPath);
+        if (exists) {
+          hideSpinner();
+          const confirm = await showOverwriteDialog(fileName);
+          if (!confirm) {
+            spinner();
+            continue;
+          }
+          shouldOverwrite = true;
+          spinner();
+        }
         console.log(`[IDE] Moving: ${item.filepath} -> ${destDirPath}`);
-        await executeMove(item.filepath, destDirPath, item.name);
+        await executeMove(item.filepath, destDirPath, fileName, true, shouldOverwrite);
       }
     } catch (error) {
       console.error("[IDE] Internal Drag & Drop Error:", error);
     } finally {
-      if (typeof hideSpinner === "function") hideSpinner();
+      hideSpinner();
     }
   });
 }

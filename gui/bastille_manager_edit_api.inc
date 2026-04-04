@@ -522,6 +522,24 @@ if (isset($_POST['ajax_create_item'])) {
     exit;
 }
 
+// --- CHECK IF ITEM EXISTS ---
+if (isset($_POST['ajax_check_exists'])) {
+    while (ob_get_level() > 0) {
+      ob_end_clean();
+    }
+    header('Content-Type: application/json');
+    $path = $_POST['filepath'] ?? '';
+    $exists = false;
+    if (!empty($path) && strpos(realpath(dirname($path)), realpath($jail_root)) === 0) {
+        $exists = file_exists($path);
+    }
+    echo json_encode([
+        'success' => true,
+        'exists'  => $exists
+    ]);
+    exit;
+}
+
 // --- CHUNKED UPLOAD HANDLER (The Tank Engine) ---
 if (isset($_POST['ajax_upload_chunk'])) {
     while (ob_get_level() > 0) {
@@ -1067,7 +1085,6 @@ if (isset($_POST['rename_file'])) {
     $filepath = trim($filepath);
     $newname  = trim($newname);
 
-    // Validamos que exista, que no haya hacks de ruta y que el nuevo nombre no contenga barras
     if (!empty($filepath) && !empty($newname) && file_exists($filepath) && strpos($filepath, '..') === false && strpos($newname, '/') === false) {
 
         $base_dir = dirname($filepath);
@@ -1145,17 +1162,13 @@ if (isset($_POST['move_item'])) {
     $source   = $_POST['source'] ?? '';
     $dest_dir = $_POST['dest_dir'] ?? '';
     $name     = $_POST['name'] ?? '';
-
-    $source   = trim($source);
-    $dest_dir = trim($dest_dir);
-    $name     = trim($name);
+    $overwrite = isset($_POST['overwrite']) && $_POST['overwrite'] === '1';
 
     if (!empty($source) && !empty($dest_dir) && file_exists($source) && strpos($source, '..') === false && strpos($dest_dir, '..') === false) {
 
         $newpath = $dest_dir . '/' . $name;
 
-        // Evitar sobreescribir
-        if (file_exists($newpath)) {
+        if (file_exists($newpath) && !$overwrite) {
             if ($is_ajax_move) {
                 echo json_encode([
                     'success' => false,
@@ -1167,13 +1180,11 @@ if (isset($_POST['move_item'])) {
 
         conf_mount_rw();
 
-        // Intentamos mover nativamente (rename en PHP sirve para mover también)
         $move_success = @rename($source, $newpath);
 
         if (!$move_success) {
-            // Si falla, sacamos la artillería pesada del sistema
-            $cmd = "mv " . escapeshellarg($source) . " " . escapeshellarg($newpath);
-
+            $force_flag = $overwrite ? "-f " : "";
+            $cmd = "mv " . $force_flag . escapeshellarg($source) . " " . escapeshellarg($newpath);
             $executor = new BastilleManagerMwExecParallel([
                 'force_move' => $cmd
             ]);

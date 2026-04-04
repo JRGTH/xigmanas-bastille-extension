@@ -29,6 +29,14 @@ const MODAL_CONFIG = {
     showCancel: false,
     svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
   },
+  overwrite: {
+    iconClass: "icon-error",
+    btnClass: "ide-btn-primary",
+    btnText: "Overwrite",
+    cancelText: "Skip",
+    showCancel: true,
+    svg: `<img src="ext/bastille/images/warning.svg" alt="Overwrite" style="width: 25px; height: 25px; display: block; margin: auto;">`,
+  },
 };
 
 export function showConfirmDialog(title, message, type = "warning") {
@@ -167,4 +175,63 @@ export function showRenameModal(type, currentName) {
         input.addEventListener('keydown', handleKey);
         modal.addEventListener('click', handleClickOutside);
     });
+}
+
+export function showOverwriteDialog(filename) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("ide-confirm-modal");
+    const titleEl = document.getElementById("ide-modal-title");
+    const msgEl = document.getElementById("ide-modal-message");
+    const iconWrapper = document.getElementById("ide-modal-icon-wrapper");
+    const btnConfirm = document.getElementById("ide-modal-btn-confirm");
+    const btnCancel = document.getElementById("ide-modal-btn-cancel");
+
+    const conf = MODAL_CONFIG.overwrite;
+
+    titleEl.innerText = "File Already Exists";
+    msgEl.innerText = `The file "${filename}" already exists in this destination. Do you want to overwrite it?`;
+
+    iconWrapper.className = `ide-modal-icon-wrapper ${conf.iconClass}`;
+    iconWrapper.innerHTML = conf.svg;
+
+    btnConfirm.className = `ide-btn ${conf.btnClass}`;
+    btnConfirm.innerText = conf.btnText;
+
+    //btnCancel.className = "ide-btn ide-btn-secondary";
+    btnCancel.innerText = conf.cancelText;
+    //btnCancel.style.display = "inline-block";
+    btnCancel.style.display = conf.showCancel ? "inline-block" : "none";
+
+    overlay.classList.add("show");
+
+    setTimeout(() => btnConfirm.focus(), 50);
+
+    const cleanup = () => {
+      overlay.classList.remove("show");
+      btnCancel.removeEventListener("click", onSkip);
+      btnConfirm.removeEventListener("click", onOverwrite);
+      window.removeEventListener("keydown", handleEsc);
+      btnCancel.innerText = "Cancel";
+    };
+
+    const onSkip = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    const onOverwrite = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    const handleEsc = (e) => {
+      if (e.key === "Escape") {
+        onSkip();
+      }
+    };
+
+    btnCancel.addEventListener("click", onSkip);
+    btnConfirm.addEventListener("click", onOverwrite);
+    window.addEventListener("keydown", handleEsc);
+  });
 }

@@ -1,19 +1,12 @@
 // modules/tree.js
 
-import {
-  cfg,
-  isDirty,
-  isInjectingCode,
-  setIsDirty,
-  setIsInjectingCode,
-  originalSidebarHTML,
-} from "./state.js";
+import {cfg, isDirty, originalSidebarHTML,} from "./state.js";
 
-import {spinner, hideSpinner, updateBreadcrumbs} from "./ui.js";
+import {hideSpinner, spinner} from "./ui.js";
 
 import {showConfirmDialog} from "./modal.js";
 import {clearFilter} from "./search.js";
-import {showBinaryWarning, loadFileToEditor, clearDirtyState} from "./editor.js";
+import {clearDirtyState, loadFileToEditor} from "./editor.js";
 
 let lastSelectedTreeItem = null;
 
@@ -349,58 +342,84 @@ export async function refreshDir(dirPath) {
     const serverFiles = data.files.map((f) => f.name);
 
     // Phase 1 — remove stale items
-    Array.from(ul.children).forEach((li) => {
-      if (
-        li.classList.contains("is-recursive") ||
-        li.classList.contains("no-results")
-      )
-        return;
-      const nameSpan = li.querySelector("a span:not(.tree-caret)");
-      if (!nameSpan) return;
-      const name = nameSpan.innerText.trim();
-      const isFolder = li.classList.contains("folder-item");
-      if (
-        isFolder ? !serverFolders.includes(name) : !serverFiles.includes(name)
-      )
-        li.remove();
-    });
+    Array.from(ul.children)
+      .forEach((li) => {
+        if (li.classList.contains("is-recursive") || li.classList.contains("no-results")) {
+          return;
+        }
+        const nameSpan = li.querySelector("a span:not(.tree-caret)");
+        if (!nameSpan) {
+          return;
+        }
+        const name = nameSpan.innerText.trim();
+        const isFolder = li.classList.contains("folder-item");
+        if (isFolder ? !serverFolders.includes(name) : !serverFiles.includes(name)) {
+          li.remove();
+        }
+      });
 
     // Phase 2 — inject new folders
     const existingFolders = new Set(
-      Array.from(
-        ul.querySelectorAll(".folder-item a span:not(.tree-caret)"),
-      ).map((s) => s.innerText.trim()),
+      Array.from(ul.querySelectorAll(":scope > .folder-item > a > span:not(.tree-caret)"))
+        .map((s) => s.innerText.trim()),
     );
     data.folders.forEach((f) => {
-      if (existingFolders.has(f.name)) return;
+      if (existingFolders.has(f.name)) {
+        return;
+      }
       const li = buildFolderLi(f.name, cleanDest + "/" + f.name, f.flag);
-      const firstFile = ul.querySelector(":scope .file-item");
-      (firstFile && firstFile.parentNode === ul)
-        ? ul.insertBefore(li, firstFile)
-        : ul.appendChild(li);
+
+      // Find alphabetical position among existing folders
+      const currentFolders = Array.from(ul.querySelectorAll(":scope > .folder-item"));
+      const insertBeforeFolder = currentFolders.find(node => {
+        const nodeSpan = node.querySelector("a > span:not(.tree-caret)");
+        const nodeName = nodeSpan ? nodeSpan.innerText.trim() : "";
+        return nodeName.localeCompare(f.name) > 0; // true if nodeName comes AFTER f.name
+      });
+
+      if (insertBeforeFolder) {
+        ul.insertBefore(li, insertBeforeFolder);
+      } else {
+        const firstFile = ul.querySelector(":scope > .file-item");
+        if (firstFile) {
+          ul.insertBefore(li, firstFile);
+        } else {
+          ul.appendChild(li);
+        }
+      }
       flashNew(li);
     });
 
     // Phase 3 — inject new files
     const existingFiles = new Set(
-      Array.from(ul.querySelectorAll(":scope .file-item a span:not(.tree-caret)"))
-        .map((s) => s.innerText.trim(),
-      ),
+      Array.from(ul.querySelectorAll(":scope > .file-item > a > span:not(.tree-caret)"))
+        .map((s) => s.innerText.trim())
     );
+
     data.files.forEach((f) => {
-      if (existingFiles.has(f.name)) return;
-      const li = buildFileLi(
-        f.name,
-        cleanDest + "/" + f.name,
-        cleanDest,
-        f.flag,
-      );
-      ul.appendChild(li);
+      if (existingFiles.has(f.name)) {
+        return;
+      }
+
+      const li = buildFileLi(f.name, cleanDest + "/" + f.name, cleanDest, f.flag);
+      const currentFiles = Array.from(ul.querySelectorAll(":scope > .file-item"));
+      const insertBeforeFile = currentFiles.find(node => {
+        const nodeSpan = node.querySelector("a > span:not(.tree-caret)");
+        const nodeName = nodeSpan ? nodeSpan.innerText.trim() : "";
+        return nodeName.localeCompare(f.name) > 0;
+      });
+
+      if (insertBeforeFile) {
+        ul.insertBefore(li, insertBeforeFile);
+      } else {
+        ul.appendChild(li);
+      }
       flashNew(li);
     });
+
   } catch (err) {
     console.error("Smart Refresh Error:", err.message);
-    showConfirmDialog("Refresh error", err.message, "error");
+    await showConfirmDialog("Refresh error", err.message, "error");
   }
 }
 

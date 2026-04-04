@@ -10,9 +10,18 @@ import {
   setContextMenu,
 } from "./state.js";
 import {hideSpinner, spinner} from "./ui.js";
-import {showConfirmDialog, showNewItemModal, showRenameModal,} from "./modal.js";
+import {showConfirmDialog,
+  showNewItemModal,
+  showRenameModal,
+  showOverwriteDialog} from "./modal.js";
 import {refreshDir} from "./tree.js";
-import {executeCreateItem, executeDelete, executeMove, executeRename, executeUnlock,} from "./filesystem.js";
+import {
+  executeCreateItem,
+  executeDelete,
+  executeMove,
+  executeRename,
+  executeUnlock,
+  checkFileExists} from "./filesystem.js";
 import {executeDownloadRequest, showNotification} from "./download.js";
 import {showFileInfo} from "./sidebar-info.js";
 import {openDiffViewer} from "./editor.js";
@@ -98,12 +107,12 @@ const CONTEXT_MENU_HTML = `
     </div>
     <div class="ide-cm-separator"></div>
         <div class="ide-cm-item" id="cm-cut">
-            <div class="icon-wrapper"><img src="ext/bastille/images/cut.svg" class="ide-cm-item-svg" onerror="this.style.display='none'"></div>
+            <div class="icon-wrapper"><img src="ext/bastille/images/cut.svg" class="ide-cm-item-svg" alt="cut"></div>
             <span class="ide-cm-item-text">Cut</span>
             <span class="ide-cm-item-text-secondary">Ctrl+X</span>
         </div>
         <div class="ide-cm-item" id="cm-paste">
-            <div class="icon-wrapper"><img src="ext/bastille/images/paste.svg" class="ide-cm-item-svg" onerror="this.style.display='none'"></div>
+            <div class="icon-wrapper"><img src="images/fm_img/__paste.gif" class="cm-paste" alt="paste"></div>
             <span class="ide-cm-item-text">Paste</span>
             <span class="ide-cm-item-text-secondary">Ctrl+V</span>
         </div>
@@ -601,7 +610,7 @@ async function executeCutAction(targetData = null) {
 
 async function executePasteAction(targetData = null) {
   if (!window.clipboard || window.clipboard.length === 0) {
-    console.warn("[IDE] Paste abortado: Portapapeles vacío.");
+    console.warn("[IDE] Paste failed: Clipboard is empty.");
     return;
   }
 
@@ -622,16 +631,35 @@ async function executePasteAction(targetData = null) {
     return;
   }
 
-  console.log(`[IDE] PASTE: Moviendo ${window.clipboard.length} elementos a ${destDirPath}`);
+  console.log(`[IDE] PASTE: Moving ${window.clipboard.length} elements to ${destDirPath}`);
 
   spinner();
 
   let movedCount = 0;
   for (const item of window.clipboard) {
-    const success = await executeMove(item.filepath, destDirPath, item.name || item.filename, true);
+    const fileName = item.name || item.filename;
+    const fullDestPath = `${destDirPath}/${fileName}`.replace(/\/+/g, '/');
+
+    let shouldOverwrite = false;
+    const exists = await checkFileExists(fullDestPath);
+    if (exists) {
+      hideSpinner();
+      const confirm = await showOverwriteDialog(fileName);
+      if (!confirm) {
+        console.log(`[IDE] PASTE: (SKIP) File ${fileName}`);
+        spinner();
+        continue;
+      }
+      shouldOverwrite = true;
+      spinner();
+    }
+
+    const success = await executeMove(item.filepath, destDirPath, item.name || item.filename, true, shouldOverwrite);
     if (success) {
       movedCount++;
-      if (item.liElement) item.liElement.remove();
+      if (item.liElement) {
+        item.liElement.remove();
+      }
     }
   }
   if (movedCount > 0) {

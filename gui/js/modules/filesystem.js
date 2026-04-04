@@ -227,6 +227,7 @@ export async function executeMove(
   destDirPath,
   itemName,
   isBulk = false,
+  overwrite = false,
 ) {
   if (!sourcePath || !destDirPath || !itemName) {
     return;
@@ -239,7 +240,7 @@ export async function executeMove(
   }
 
   if (destDirPath.startsWith(sourcePath + "/")) {
-    showConfirmDialog(
+    await showConfirmDialog(
       "Move Error",
       "Cannot move a directory into its own subdirectory.",
       "error",
@@ -258,6 +259,7 @@ export async function executeMove(
     formData.append("source", sourcePath);
     formData.append("dest_dir", destDirPath);
     formData.append("name", itemName);
+    if (overwrite) formData.append("overwrite", "1");
 
     const response = await fetch(window.location.pathname, {
       method: "POST",
@@ -286,7 +288,7 @@ export async function executeMove(
       }
       return true;
     } else {
-      showConfirmDialog(
+      await showConfirmDialog(
         "Move Error",
         result.error || "Could not move item.",
         "error",
@@ -295,11 +297,29 @@ export async function executeMove(
     }
   } catch (error) {
     console.error("AJAX Move Error:", error);
-    showConfirmDialog("Move Error", "Server connection failed.", "error");
+    await showConfirmDialog("Move Error", "Server connection failed.", "error");
     return false;
   } finally {
     if (!isBulk) {
       hideSpinner();
     }
+  }
+}
+
+export async function checkFileExists(fullPath) {
+  const formData = getBaseFormData();
+  formData.append('ajax_check_exists', '1');
+  formData.append('filepath', fullPath);
+  try {
+    const response = await fetch(window.location.pathname, {
+      method: 'POST',
+      body: formData,
+      credentials: 'same-origin'
+    });
+    const result = await response.json();
+    return result.exists === true;
+  } catch (e) {
+    console.error("[FS] Error checking existence:", e);
+    return false;
   }
 }
