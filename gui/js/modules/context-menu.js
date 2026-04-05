@@ -672,7 +672,8 @@ async function executePasteAction(targetData = null) {
 async function executeDeleteAction(targetData = null) {
 
   const selectedLinks = Array.from(document.querySelectorAll("a.active-link"));
-  const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item")).filter(Boolean))];
+  const uniqueItems = [...new Set(selectedLinks.map(a => a.closest(".tree-item"))
+    .filter(Boolean))];
 
   let itemsToDelete = [];
 
