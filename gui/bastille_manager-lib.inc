@@ -340,6 +340,38 @@ function get_jail_infos() {
 			$r['stat'] = $img_path['dis'];
 		}
 
+        global $bastille_prefix;
+        if (!isset($bastille_prefix)) {
+            $bastille_prefix = '/usr/local/bastille';
+            $b_conf = '/usr/local/etc/bastille/bastille.conf';
+            if (file_exists($b_conf)) {
+                $lines = @file($b_conf);
+                if ($lines) {
+                    foreach ($lines as $line) {
+                        if (preg_match('/^bastille_prefix="?(.*?)"?$/', trim($line), $matches)) {
+                            $bastille_prefix = $matches[1];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        $r['interface'] = '-';
+        $jail_conf_file = "{$bastille_prefix}/jails/{$item}/jail.conf";
+
+        if (file_exists($jail_conf_file)) {
+            $lines = @file($jail_conf_file);
+            if ($lines) {
+                foreach ($lines as $line) {
+                    if (preg_match('/(?:vnet\.)?interface\s*=\s*"?([^";\s]+)/', $line, $matches)) {
+                        $r['interface'] = $matches[1];
+                        break;
+                    }
+                }
+            }
+        }
+
 		// Display custom template icons if available
 		$template_icon = "{$jail_dir}/{$item}/plugin_icon.png";
 		if (file_exists($template_icon)) {
