@@ -4,12 +4,18 @@ table.area_data_selection {
     border-collapse: collapse;
 }
 
+table.area_data_selection td.lcell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 table.area_data_selection th {
     position: relative;
     padding: 5px 8px;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible !important;
+    z-index: 50;
 }
 
 /* The visible handle */
@@ -20,7 +26,7 @@ table.area_data_selection th {
     width: 6px;
     height: 100%;
     cursor: col-resize;
-    z-index: 100;
+    z-index: 999;
     user-select: none;
     touch-action: none;
 }
