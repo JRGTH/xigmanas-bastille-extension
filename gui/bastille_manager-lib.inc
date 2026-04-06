@@ -177,6 +177,24 @@ function get_all_interface_list() {
 	return $iflist;
 }
 
+function bastille_get_jail_interface($conf_path) {
+    if (file_exists($conf_path)) {
+        $lines = @file($conf_path);
+        if ($lines) {
+            foreach ($lines as $line) {
+                // Case 1: VNET or interface
+                if (preg_match('/(?:vnet\.)?interface\s*=\s*"?([^";\s]+)/', $line, $matches)) {
+                    return $matches[1];
+                } // Case 2: (ip4.addr = nic|ip;)
+                elseif (preg_match('/ip4\.addr\s*=\s*"?([^|";\s]+)\|/', $line, $matches)) {
+                    return $matches[1];
+                }
+            }
+        }
+    }
+    return '-';
+}
+
 //	list base releases
 $a_release = get_all_release_list();
 $l_release = [];
@@ -339,6 +357,9 @@ function get_jail_infos() {
 		} else {
 			$r['stat'] = $img_path['dis'];
 		}
+
+        $jail_conf_file = "{$jail_dir}/{$item}/jail.conf";
+        $r['interface'] = bastille_get_jail_interface($jail_conf_file);
 
 		// Display custom template icons if available
 		$template_icon = "{$jail_dir}/{$item}/plugin_icon.png";
