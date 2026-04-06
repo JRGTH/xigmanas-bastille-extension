@@ -374,6 +374,30 @@ $(window).on("load", function() {
     $(document).on('click', "input[name='<?=$checkbox_member_name;?>[]']", function() {
         controlactionbuttons(this, '<?=$checkbox_member_name;?>[]');
     });
+    // Close web-terminal modal
+    $("#web-terminal-close").click(function() {
+        $("#web-terminal-modal").hide();
+        $("#web-terminal-iframe-container").empty(); // Destroy iframe completely
+    });
+
+    // Pop-out web-terminal button
+    $("#web-terminal-popout").click(function(e) {
+        e.preventDefault();
+        var jailname = $(this).data('jail');
+        if (jailname) {
+            // Close modal first
+            $("#web-terminal-close").click();
+            // Open new tab with direct web-terminal URL
+            // We use the same backend script, which will launch a NEW ttyd instance
+            window.open('bastille_manager_web_terminal.php?jailname=' + encodeURIComponent(jailname), '_blank');
+        }
+    });
+
+    //TODO Fullscreen web-terminal button
+    $("#web-terminal-fullscreen").click(function() {
+        $("#web-terminal-content").toggleClass('fullscreen');
+    });
+
 });
 
 function disableactionbuttons(ab_disable) {
@@ -474,9 +498,15 @@ function updateJailTable() {
         autoRefresh.selectedJails.push($(this).val());
     });
 
-    fetch('bastille_manager_gui.php?action=refresh_table')
+    // Timeout for fetch (10 seconds)
+    const fetchTimeout = setTimeout(() => {
+        if (refreshAbortController) refreshAbortController.abort();
+    }, 10000);
+
+    fetch('bastille_manager_gui.php?action=refresh_table', { signal })
         .then(response => response.json())
         .then(data => {
+            clearTimeout(fetchTimeout);
             if (data.success) {
                 var tbody = $(".area_data_selection tbody");
                 tbody.empty();
@@ -514,6 +544,21 @@ function updateJailTable() {
                         '<td><a href="bastille_manager_jconf.php?jailname=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['mod'];?>"></a></td>' +
                         '<td><a href="bastille_manager_info.php?uuid=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['inf'];?>"></a></td>' +
                         '</tr></tbody></table>');
+
+                    // WebTerminal Button Logic (Controlled by LocalStorage)
+                    if (localStorage.getItem('bastille_show_web_terminal_button') === 'true') {
+                        var webTerminalBtn = '';
+                        if (jail.state === "Up") {
+                            // Changed to call openWebTerminal() instead of direct link
+                            webTerminalBtn = '<a href="#" onclick="openWebTerminal(\'' + jail.jailname + '\'); return false;" title="Web terminal">' +
+                                                 '<img src="ext/bastille/images/web-terminal.svg" class="web-terminal-icon" alt="Web Terminal" />' +
+                                                 '</a>';
+                        } else {
+                            webTerminalBtn = '<img src="ext/bastille/images/web-terminal.svg" class="web-terminal-icon web-terminal-icon-disabled" alt="web-terminal" title="Jail is down" />';
+                        }
+                        tools.find('tr').append($('<td>').html(webTerminalBtn));
+                    }
+
                     row.append(tools);
 
                     tbody.append(row);
@@ -529,7 +574,11 @@ function updateJailTable() {
             }
         })
         .catch(error => {
-            console.error('Error fetching jail data: ', error);
+            if (error.name === 'AbortError') {
+                console.log('Fetch aborted');
+            } else {
+                console.error('Error fetching jail data:', error);
+            }
         })
         .finally(() => {
             autoRefresh.isUpdating = false;

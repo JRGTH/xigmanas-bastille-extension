@@ -308,20 +308,30 @@ $(document).ready(function(){
 	});
 
     // --- CHECKBOX REFRESH LOGIC (LocalStorage) ---
-    var $chk = $("#show_refresh_button");
-
-    // 1. Read initial state from LocalStorage
-    var savedState = localStorage.getItem('bastille_show_refresh_button');
-    if (savedState === 'true') {
-        $chk.prop('checked', true);
+    var $chkRefresh = $("#show_refresh_button");
+    var savedStateRefresh = localStorage.getItem('bastille_show_refresh_button');
+    if (savedStateRefresh === 'true') {
+        $chkRefresh.prop('checked', true);
     } else {
-        $chk.prop('checked', false);
+        $chkRefresh.prop('checked', false);
     }
-
-    // Save changes by clicking
-    $chk.change(function() {
+    $chkRefresh.change(function() {
         var isChecked = $(this).is(':checked');
         localStorage.setItem('bastille_show_refresh_button', isChecked);
+    });
+
+    // --- LOGIC OF THE CONSOLE CHECKBOX (LocalStorage) ---
+    var $chkConsole = $("#show_web_terminal_button");
+    var savedStateConsole = localStorage.getItem('bastille_show_web_terminal_button');
+    // Default to true if not set, or false? Let's default to false for safety/cleanliness if ttyd not installed
+    if (savedStateConsole === 'true') {
+        $chkConsole.prop('checked', true);
+    } else {
+        $chkConsole.prop('checked', false);
+    }
+    $chkConsole.change(function() {
+        var isChecked = $(this).is(':checked');
+        localStorage.setItem('bastille_show_web_terminal_button', isChecked);
     });
 
 	// --- CHECKBOX BETA EDITOR LOGIC (LocalStorage) ---

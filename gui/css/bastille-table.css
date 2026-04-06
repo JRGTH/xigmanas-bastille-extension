@@ -31,11 +31,6 @@ table.area_data_selection th {
     touch-action: none;
 }
 
-.resizer:hover, .resizing {
-    background-color: #007bff;
-    opacity: 1;
-}
-
 .web-terminal-icon {
     width: 16px;
     height: 16px;
