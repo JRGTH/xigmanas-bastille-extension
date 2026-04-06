@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.4.12......Bump version, fix to properly parse network interfaces, by rucko24.
 1.4.11......Re-add Interface, rename endpoint, add info for Mozzilla CA, by rucko24.
 1.4.10......Bug fix, change sed delimiters for the IP settings.
 1.4.09......Minor changes, update bastille.conf.sample file.

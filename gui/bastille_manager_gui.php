@@ -153,7 +153,8 @@ if ($_POST):
         endforeach;
 
         if (!empty($commands)):
-            $executor = new BastilleManagerMwExecParallel($commands);
+            $executor = new
+            ($commands);
             $results = $executor->executeWithSelect();
 
             $success_count = 0;
@@ -837,32 +838,10 @@ endif;
 					<td class="lcell"><?=htmlspecialchars($sphere_record['rel']);?>&nbsp;</td>
 					<td class="lcell"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
                     <?php
-                            if (!isset($bastille_prefix)) {
-                                $bastille_prefix = '/usr/local/bastille';
-                                $b_conf = '/usr/local/etc/bastille/bastille.conf';
-                                if (file_exists($b_conf)) {
-                                    $lines = file($b_conf);
-                                    foreach ($lines as $line) {
-                                        if (preg_match('/^bastille_prefix="?(.*?)"?$/', trim($line), $matches)) {
-                                            $bastille_prefix = $matches[1];
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-    $jname = $sphere_record['jailname'];
-    $jail_conf_file = "{$bastille_prefix}/jails/{$jname}/jail.conf";
-    $jail_interface = '-';
-    if (file_exists($jail_conf_file)) {
-        $lines = file($jail_conf_file);
-        foreach ($lines as $line) {
-            if (preg_match('/(?:vnet\.)?interface\s*=\s*"?([^";\s]+)/', $line, $matches)) {
-                $jail_interface = $matches[1];
-                break;
-            }
-        }
-    }
-    ?>
+                            $jname = $sphere_record['jailname'];
+                            $jail_conf_file = "{$jail_dir}/{$jname}/jail.conf";
+                            $jail_interface = bastille_get_jail_interface($jail_conf_file);
+                    ?>
                     <td class="lcell"><?=htmlspecialchars($jail_interface);?>&nbsp;</td>
 					<td class="lcell"><img src="<?=$sphere_record['stat'];?>"></td>
 					<td class="lcell"><img src="<?=$sphere_record['logo'];?>"></td>
