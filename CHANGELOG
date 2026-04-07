@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.5.00......Bump version, Feature Monaco Editor and several improvements and fixes.
 1.4.12......Bump version, fix to properly parse network interfaces, by rucko24.
 1.4.11......Re-add Interface, rename endpoint, add info for Mozzilla CA, by rucko24.
 1.4.10......Bug fix, change sed delimiters for the IP settings.
