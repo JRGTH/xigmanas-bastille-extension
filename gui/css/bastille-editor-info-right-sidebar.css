@@ -1,0 +1,118 @@
+/* // Modern Info Sidebar - Enterprise Style */
+.ide-info-sidebar {
+    position: fixed;
+    top: 0;
+    right: -360px; /* // Un poco más ancho para las gráficas */
+    width: 350px;
+    height: 100vh;
+    background-color: #f8f9fa; /* // Fondo gris muy suave de fondo */
+    box-shadow: -5px 0 20px rgba(0,0,0,0.05);
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 9000;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Inter', -apple-system, sans-serif;
+    border-left: 1px solid #e9ecef;
+}
+
+.ide-info-sidebar.open {
+    right: 0;
+}
+
+.info-sidebar-header {
+    padding: 15px 20px;
+    /*background: #ffffff;*/
+    border-bottom: 1px solid #edf0f2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-main-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#sidebar-filename {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--txc-tnt-active);
+    margin: 0;
+}
+
+/*(Tabs) */
+.modern-tabs {
+    display: flex;
+    background: #ffffff;
+    padding: 0 15px;
+    border-bottom: 1px solid #edf0f2;
+}
+
+.tab-link {
+    padding: 12px 15px;
+    font-size: 12px;
+    color: #6c757d;
+    cursor: pointer;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.tab-link.active {
+    color: #3875d6;
+    border-bottom-color: #3875d6;
+}
+
+.tab-link:hover:not(.active) {
+    color: #333;
+    background: #f8f9fa;
+}
+
+/* Content and Cards */
+.info-sidebar-content {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modern-card {
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #eceef0;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.card-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--txc-root);
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.card-value {
+    font-size: 13px;
+    color: var(--text-color-secondary);
+    font-weight: 500;
+    word-break: break-all;
+}
+
+.close-sidebar-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    opacity: 0.7;
+    margin-left: auto;
+    transition: opacity 0.2s;
+}
+
+.close-sidebar-btn:hover {
+    opacity: 1;
+}

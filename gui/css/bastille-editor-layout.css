@@ -1,0 +1,113 @@
+/* MAIN IDE CONTAINER */
+.ide-container {
+    display: grid;
+    /* Sidebar | Resizer | Main Area */
+    grid-template-columns: 260px 4px 1fr;
+    height: calc(100vh - 130px); /* Dynamic height based on viewport */
+    min-height: 500px;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid #999;
+    background: #fff;
+}
+
+/* SIDEBAR LAYOUT */
+.ide-sidebar {
+    display: flex;
+    flex-direction: column; /* Stack header, search, and list vertically */
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+    background-color: #f8f9fa;
+}
+
+/* VERTICAL SPLIT-PANEL RESIZER */
+.ide-resizer {
+    width: 4px;
+    cursor: col-resize;
+    background: #cbd5e0;
+    z-index: 10;
+    transition: background 0.2s;
+}
+.ide-resizer:hover,
+.ide-resizer.resizing {
+    background: #4a5568;
+}
+
+/* MAIN EDITOR AREA */
+.ide-main {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #fff;
+}
+
+/* MAIN CONTENT CONTAINER */
+#editor-content-area {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    position: relative;
+    background-color: var(--bgc-root) !important;
+    overflow: hidden;
+}
+
+/* Monaco Editor */
+#monaco-container {
+    height: 100%;
+    width: 100%;
+    display: block;
+    background-color: var(--txc-tnt-active);
+}
+
+/* MULTIMEDIA PREVIEW SLIDE */
+.media-preview-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: var(--bgc-root);
+}
+
+/* IMAGE DESIGN (USING THE TRANSPARENCY CHECKERBOARD) */
+.media-preview-layer img {
+    max-width: 95%;
+    max-height: 95%;
+    object-fit: contain;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+    /* El tablero de ajedrez solo vive "detrás" de la foto */
+    background-image: linear-gradient(45deg, #ccc 25%, transparent 25%),
+                      linear-gradient(-45deg, #ccc 25%, transparent 25%),
+                      linear-gradient(45deg, transparent 75%, #ccc 75%),
+                      linear-gradient(-45deg, transparent 75%, #ccc 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color: var(--txc-tnt-active);
+}
+
+/* VIDEO DESIGN */
+.media-preview-layer video {
+    max-width: 100%;
+    max-height: 100%;
+    box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    outline: none;
+}
+
+/* SIDEBAR TOGGLE (ZEN MODE) */
+.sidebar-hidden.ide-container {
+    grid-template-columns: 1fr !important;
+}
+.sidebar-hidden .ide-sidebar,
+.sidebar-hidden .ide-resizer {
+    display: none !important;
+}
