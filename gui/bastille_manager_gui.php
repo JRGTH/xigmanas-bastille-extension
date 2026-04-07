@@ -893,30 +893,29 @@ endforeach;
 		<input name="autoboot_selected_jail" id="autoboot_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_autoboot;?>"/>
 	</div>
 
-    <div id="web-terminal-modal">
-        <div id="web-terminal-content">
-            <div id="web-terminal-header">
-                <span id="web-terminal-title"></span>
-                <img src="ext/bastille/images/info-ssl.svg" class="icon-svg ssl-help-icon"
-                         title="MOZILLA_PKIX_ERROR_SELF_SIGNED_CERT Mozilla will display this initial warning, to fix it: Use the button “Open in New Tab” (Top right corner, in this window)" />
-                <div id="web-terminal-right-buttons">
-                    <a href="#" id="web-terminal-fullscreen" class="web-terminal-btn-fullscreen" title="Fullscreen">
-                        <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" />
-                     </a>
-                    <a href="#" id="web-terminal-popout" class="web-terminal-btn-open-tab">Open in New Tab</a>
-                    <span id="web-terminal-close" style="cursor:pointer; font-weight:bold; font-size:1.3em;">&times;</span>
-                </div>
-            </div>
-            <div id="web-terminal-iframe-container">
-                <iframe id="web-terminal-iframe" src="about:blank"></iframe>
-            </div>
-        </div>
-    </div>
-
 <?php
     include 'formend.inc';
 ?>
 </td></tr></tbody></table></form>
+    <div id="web-terminal-modal">
+            <div id="web-terminal-content">
+                <div id="web-terminal-header">
+                    <span id="web-terminal-title"></span>
+                    <img src="ext/bastille/images/info-ssl.svg" class="icon-svg ssl-help-icon"
+                             title="MOZILLA_PKIX_ERROR_SELF_SIGNED_CERT Mozilla will display this initial warning, to fix it: Use the button “Open in New Tab” (Top right corner, in this window)" />
+                    <div id="web-terminal-right-buttons">
+                        <a href="#" id="web-terminal-fullscreen" class="web-terminal-btn-fullscreen" title="Fullscreen">
+                            <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" />
+                         </a>
+                        <a href="#" id="web-terminal-popout" class="web-terminal-btn-open-tab">Open in New Tab</a>
+                        <span id="web-terminal-close" style="cursor:pointer; font-weight:bold; font-size:1.3em;">&times;</span>
+                    </div>
+                </div>
+                <div id="web-terminal-iframe-container">
+                    <iframe id="web-terminal-iframe" src="about:blank"></iframe>
+                </div>
+            </div>
+    </div>
 <?php
 include 'fend.inc';
 ?>

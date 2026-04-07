@@ -19,3 +19,8 @@
   --icon-size-container: 20px;
   --icon-color: #777777;
 }
+
+#area_data_frame {
+  position: relative;
+  z-index: 1;
+}
