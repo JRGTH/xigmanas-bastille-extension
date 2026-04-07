@@ -1,8 +1,8 @@
 **Description:**
 
- This is the XigmaNAS Bastille Extension to create and manage FreeBSD Jails/Containers.
+ This is the XigmaNAS Bastille Extension to quickly create and manage FreeBSD Jails/Containers.
 
-**Install**
+**Installation Example**
 
 ```
 mkdir -p /mnt/tank/extensions/bastille
@@ -12,11 +12,13 @@ fetch --no-verify-peer https://raw.githubusercontent.com/JRGTH/xigmanas-bastille
 
 **Credits and Contributors**
 
-J.M. Rivera (JRGTH) BastilleBSD and XigmaNAS Add-on.  
-Andreas Schmidhuber (crestAT) XigmaNAS Add-on.  
+J.M. Rivera (JRGTH) BastilleBSD and XigmaNAS Bastille Add-on.  
+Andreas Schmidhuber (crestAT) XigmaNAS Bastille Add-on.  
 rucko24 (0x52) XigmaNAS Add-on.  
-tschettervictor (victort) BastilleBSD and XigmaNAS Add-on.  
+tschettervictor (victort) BastilleBSD and XigmaNAS Bastille Add-on.  
 Christer Edwards (cedwards) BastilleBSD.  
+n-connect XigmaNAS Bastille Add-on.  
+sghebuz XigmaNAS Bastille Add-on.  
 Raul Fernandez Garcia (Spanish translation)  
 Anders Malm (Swedish translation)  
 lijinbiao (Simplified Chinese translation)  
