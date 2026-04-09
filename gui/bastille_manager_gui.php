@@ -153,8 +153,7 @@ if ($_POST):
         endforeach;
 
         if (!empty($commands)):
-            $executor = new
-            ($commands);
+            $executor = new BastilleManagerMwExecParallel($commands);
             $results = $executor->executeWithSelect();
 
             $success_count = 0;

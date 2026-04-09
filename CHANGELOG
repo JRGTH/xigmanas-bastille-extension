@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.5.02......Bug fix for jail startup.
 1.5.01......Bug fix for the Top-down menu focus issue.
 1.5.00......Bump version, Feature Monaco Editor and several improvements and fixes.
 1.4.12......Bump version, fix to properly parse network interfaces, by rucko24.
