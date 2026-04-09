@@ -42,6 +42,57 @@ require_once("bastille_manager-lib.inc");
 $gt_selection_delete_confirm = gtext('Do you really want to destroy this base release?');
 $pgtitle = [gtext("Extensions"), gtext('Bastille'),gtext('Releases')];
 
+// --- ASYNCHRONOUS STREAMING PROCESSING ---
+if (isset($_GET['action']) && $_GET['action'] === 'stream') {
+    //This line allows us to avoid gluing downloads together, and prevents the PHP session from blocking the application.
+    session_write_close();
+
+    @ini_set('output_buffering', '0');
+    @ini_set('zlib.output_compression', '0');
+    @ini_set('implicit_flush', '1');
+    ob_implicit_flush(1);
+    header('X-Accel-Buffering: no');
+    header('Content-Encoding: none');
+    header('Content-Type: text/plain; charset=utf-8');
+    header('Cache-Control: no-cache, must-revalidate');
+    while (ob_get_level()) ob_end_clean();
+
+    $mode = $_GET['mode'] ?? '';
+    $get_release = $_GET['release'] ?? '';
+
+    if ($mode === 'bootstrap') {
+        $lib32 = ($_GET['lib32'] === 'true') ? "lib32" : "";
+        $ports = ($_GET['ports'] === 'true') ? "ports" : "";
+        $src = ($_GET['src'] === 'true') ? "src" : "";
+        if (!empty($config_path)) {
+            exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"base $lib32 $ports $src\"");
+        }
+        $command = sprintf('/usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
+    } else {
+        $command = sprintf('/usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
+    }
+
+    $handle = popen($command, 'r');
+    if ($handle) {
+        stream_set_blocking($handle, false);
+        while (!feof($handle)) {
+            $chunk = fread($handle, 128);
+            if ($chunk !== false && $chunk !== '') {
+                echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $chunk);
+                flush();
+            } else {
+                usleep(20000);
+            }
+        }
+        pclose($handle);
+    }
+
+    if ($mode === 'bootstrap' && !empty($config_path)) {
+        exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$default_distfiles\"");
+    }
+    exit;
+}
+
 $sphere_array = [];
 $sphere_record = [];
 $pconfig = [];
@@ -227,21 +278,64 @@ endif;
 
 include 'fbegin.inc';
 ?>
+
 <script type="text/javascript">
-//<![CDATA[
-$(window).on("load",function() {
-	// Init action buttons
-	$("#Destroy").click(function () {
-		return confirm('<?=$gt_selection_delete_confirm;?>');
-	});
-	$("#iform").submit(function() { spinner(); });
-	$(".spin").click(function() { spinner(); });
-});
-function enable_change(enable_change) {
-	document.iform.name.disabled = !enable_change;
+async function runBastilleAction(mode) {
+    const release = document.getElementsByName('release_item')[0].value;
+    if(!release) return;
+    if(mode === 'destroy' && !confirm('<?=$gt_selection_delete_confirm;?>')) return;
+
+    const logArea = document.getElementById('log-area');
+    const logContainer = document.getElementById('log-container');
+
+    logContainer.style.display = 'block';
+    logArea.textContent = ""; // Empieza vacío, sin "Processing..."
+
+    const btnDown = document.getElementById('btn-download');
+    const btnDest = document.getElementById('btn-destroy');
+    btnDown.disabled = btnDest.disabled = true;
+
+    const params = new URLSearchParams({
+        action: 'stream', mode: mode, release: release,
+        lib32: document.getElementsByName('lib32')[0].checked,
+        ports: document.getElementsByName('ports')[0].checked,
+        src: document.getElementsByName('src')[0].checked
+    });
+
+    try {
+        const response = await fetch('bastille_manager_tarballs.php?' + params.toString());
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        let fullText = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+
+            for (let i = 0; i < chunk.length; i++) {
+                const char = chunk[i];
+                if (char === '\r') {
+                    // Si hay un retorno de carro, buscamos el último salto de línea
+                    const lastNewline = fullText.lastIndexOf('\n');
+                    // Borramos desde el último salto de línea hasta el final para sobreescribir el progreso
+                    fullText = lastNewline !== -1 ? fullText.substring(0, lastNewline + 1) : '';
+                } else {
+                    fullText += char;
+                }
+            }
+            logArea.textContent = fullText;
+        }
+    } catch (e) {
+        logArea.textContent += "\n[Error]: " + e;
+    } finally {
+        btnDown.disabled = btnDest.disabled = false;
+    }
 }
-//]]>
 </script>
+
 <?php
 $document = new co_DOMDocument();
 $document->
@@ -256,71 +350,48 @@ $document->
 			ins_tabnav_record('bastille_manager_tarballs.php',gettext('Base Releases'),gettext('Reload page'),true);
 $document->render();
 ?>
-<form action="bastille_manager_tarballs.php" method="post" name="iform" id="iform"><table id="area_data"><tbody><tr><td id="area_data_frame">
-<?php
-	if(!empty($errormsg)):
-		print_error_box($errormsg);
-	endif;
-	if(!empty($savemsg)):
-		print_info_box($savemsg);
-	endif;
-	if(!empty($input_errors)):
-		print_input_errors($input_errors);
-	endif;
-	if(file_exists($d_sysrebootreqd_path)):
-		print_info_box(get_std_save_message(0));
-	endif;
-?>
-	<table class="area_data_settings">
-		<colgroup>
-			<col class="area_data_settings_col_tag">
-			<col class="area_data_settings_col_data">
-		</colgroup>
-		<thead>
-<?php
-			if (is_dir($reldir)):
-				if (!is_dir_empty($reldir)):
-					html_titleline2(gettext('FreeBSD/Linux Base Release Installed'));
-				endif;
-				foreach ($sphere_array as $sphere_record):
-					if (file_exists("{$reldir}/{$sphere_record['relname']}/root/.profile")):
-						html_text2('releases',gettext('Installed Base:'),htmlspecialchars($sphere_record['relname']));
-					elseif (file_exists("{$reldir}/{$sphere_record['relname']}/debootstrap/debootstrap")):
-						html_text2('releases',gettext('Installed Base:'),htmlspecialchars($sphere_record['relname']));
-					else:
-						html_text2('releases',gettext('Unknown Base:'),htmlspecialchars($sphere_record['relname']));
-					endif;
-				endforeach;
-			endif;
-?>
-<?php
-			html_separator();
-			html_titleline2(gettext('FreeBSD Base Release Download'));
-?>
-		</thead>
-		<tbody>
-<?php
-			html_combobox2('release_item',gettext('Select Base Release'),!empty($pconfig['release_item']),$a_action,'',true,false);
-			html_titleline2(gettext('Optional Distfiles (Overrides config, has no effect on Linux Releases)'));
-			html_checkbox2('lib32',gettext('32-bit Compatibility'),!empty($pconfig['lib32']) ? true : false,gettext('lib32.txz'),'',false);
-			html_checkbox2('ports',gettext('Ports tree'),!empty($pconfig['ports']) ? true : false,gettext('ports.txz'),'',false);
-			html_checkbox2('src',gettext('System source tree'),!empty($pconfig['src']) ? true : false,gettext('src.txz'),'',false);
-?>
-		</tbody>
-	</table>
-	<div id="submit">
-		<input name="Download" type="submit" class="formbtn" value="<?=gtext("Download");?>" onclick="enable_change(true)" />
-		<input name="Destroy" id="Destroy" type="submit" class="formbtn" value="<?=gtext("Destroy");?>"/>
-		<input name="Cancel" type="submit" class="formbtn" value="<?=gtext("Cancel");?>" />
-	</div>
-	<div id="remarks">
-		<?php html_remark("note", gtext("Note"), sprintf(gtext("Slow Internet connections may render the Web GUI unresponsive until download completes.")));?>
-		<div> <?=gtext("To fetch EOL/Unsupported releases, edit [bastille_url_freebsd] variable under [Bastille > Configuration] with: [http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/].")?></div>
-	</div>
-<?php
-	include 'formend.inc';
-?>
-</td></tr></tbody></table></form>
-<?php
-include 'fend.inc';
-?>
+
+<form action="bastille_manager_tarballs.php" method="post" name="iform" id="iform">
+    <table id="area_data"><tbody><tr><td id="area_data_frame">
+
+        <div id="log-container" style="display:none; margin-bottom:15px;">
+            <?php
+                print_info_box('<div id="log-area" style="text-align: left; white-space: pre-wrap; font-family: monospace; font-size: 11px; padding: 5px;"></div>');
+            ?>
+        </div>
+
+        <table class="area_data_settings">
+           <colgroup><col class="area_data_settings_col_tag"><col class="area_data_settings_col_data"></colgroup>
+           <thead>
+              <?php
+              if (!empty($sphere_array)):
+                 html_titleline2(gettext('FreeBSD/Linux Base Release Installed'));
+                 foreach ($sphere_array as $sphere_record):
+                    html_text2('releases', gettext('Installed Base:'), htmlspecialchars($sphere_record['relname']));
+                 endforeach;
+              endif;
+              html_separator();
+              html_titleline2(gettext('FreeBSD Base Release Download'));
+              ?>
+           </thead>
+           <tbody>
+              <?php
+              html_combobox2('release_item', gettext('Select Base Release'), '', $a_action, '', true, false);
+              html_titleline2(gettext('Optional Distfiles (Overrides config, has no effect on Linux Releases)'));
+              html_checkbox2('lib32', gettext('32-bit Compatibility'), false, 'lib32.txz', '', false);
+              html_checkbox2('ports', gettext('Ports tree'), false, 'ports.txz', '', false);
+              html_checkbox2('src', gettext('System source tree'), false, 'src.txz', '', false);
+              ?>
+           </tbody>
+        </table>
+
+        <div id="submit">
+           <input name="Download" id="btn-download" type="button" class="formbtn" value="<?=gtext("Download");?>" onclick="runBastilleAction('bootstrap')" />
+           <input name="Destroy" id="btn-destroy" type="button" class="formbtn" value="<?=gtext("Destroy");?>" onclick="runBastilleAction('destroy')" />
+           <input name="Cancel" type="submit" class="formbtn" value="<?=gtext("Cancel");?>" />
+        </div>
+
+    </td></tr></tbody></table>
+</form>
+
+<?php include 'fend.inc'; ?>
