@@ -47,3 +47,64 @@ table.area_data_selection th {
 a:hover .web-terminal-icon {
    transform: scale(1.1);
 }
+
+@media screen and (max-width: 768px) {
+    /* Usamos el punto (.) porque es una clase, no un ID */
+    table.area_data_selection,
+    table.area_data_selection thead,
+    table.area_data_selection tbody,
+    table.area_data_selection tr,
+    table.area_data_selection th,
+    table.area_data_selection td {
+        display: block;
+        width: 100%;
+    }
+
+    /* Ocultamos la cabecera real (los <th> que me acabas de enseñar) */
+    table.area_data_selection thead {
+        display: none;
+    }
+
+    /* Diseño de la Tarjeta (Card) */
+    table.area_data_selection tr {
+        margin-bottom: 1rem;
+        background-color: #fff;
+        border: 1px solid rgba(150, 150, 150, 0.3);
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    table.area_data_selection td {
+        position: relative;
+        padding: 12px 12px 12px 45%;
+        text-align: right !important;
+        border-bottom: 1px solid rgba(150, 150, 150, 0.1);
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        word-break: break-all;
+    }
+
+    table.area_data_selection td:last-child {
+        border-bottom: none;
+        justify-content: center; /* Centramos los botones de acciones al final */
+    }
+
+    /* Inyección de las etiquetas usando data-label */
+    table.area_data_selection td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 12px;
+        width: 40%;
+        text-align: left;
+        font-weight: bold;
+        opacity: 0.8;
+    }
+
+    /* Ocultamos la celda del checkbox "Select" en móvil para ahorrar espacio (opcional) */
+    table.area_data_selection td:first-child {
+        display: none;
+    }
+}

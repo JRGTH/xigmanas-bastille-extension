@@ -826,25 +826,25 @@ foreach ($sphere_array as $sphere_record):
 endif;
     ?>
 					</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['id']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['name']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['boot']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['prio']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['state']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['type']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['ip']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['ports']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['rel']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
+					<td class="lcell" data-label="JID"><?=htmlspecialchars($sphere_record['id']);?>&nbsp;</td>
+                    <td class="lcell" data-label="Name"><?=htmlspecialchars($sphere_record['name']);?>&nbsp;</td>
+                    <td class="lcell" data-label="Boot"><?=htmlspecialchars($sphere_record['boot']);?>&nbsp;</td>
+                    <td class="lcell" data-label="Prio"><?=htmlspecialchars($sphere_record['prio']);?>&nbsp;</td>
+                    <td class="lcell" data-label="State"><?=htmlspecialchars($sphere_record['state']);?>&nbsp;</td>
+                    <td class="lcell" data-label="Type"><?=htmlspecialchars($sphere_record['type']);?>&nbsp;</td>
+                    <td class="lcell" data-label="IP Address"><?=htmlspecialchars($sphere_record['ip']);?>&nbsp;</td>
+                    <td class="lcell" data-label="Published Ports"><?=htmlspecialchars($sphere_record['ports']);?>&nbsp;</td>
+                    <td class="lcell" data-label="Release"><?=htmlspecialchars($sphere_record['rel']);?>&nbsp;</td>
+                    <td class="lcell" data-label="Tags"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
                     <?php
                             $jname = $sphere_record['jailname'];
                             $jail_conf_file = "{$jail_dir}/{$jname}/jail.conf";
                             $jail_interface = bastille_get_jail_interface($jail_conf_file);
                     ?>
-                    <td class="lcell"><?=htmlspecialchars($jail_interface);?>&nbsp;</td>
-					<td class="lcell"><img src="<?=$sphere_record['stat'];?>"></td>
-					<td class="lcell"><img src="<?=$sphere_record['logo'];?>"></td>
-					<td class="lcebld">
+                    <td class="lcell" data-label="Interface"><?=htmlspecialchars($jail_interface);?>&nbsp;</td>
+					<td class="lcell" data-label="Active"><img src="<?=$sphere_record['stat'];?>"></td>
+					<td class="lcell" data-label="Template"><img src="<?=$sphere_record['logo'];?>"></td>
+					<td class="lcebld" data-label="Toolbox">
 						<table class="area_data_selection_toolbox"><tbody><tr>
 							<td>
 <?php
