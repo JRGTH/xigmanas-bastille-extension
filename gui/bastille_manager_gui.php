@@ -814,7 +814,7 @@ foreach ($sphere_array as $sphere_record):
     $notprotected = !isset($sphere_record['protected']);
     ?>
 				<tr>
-					<td class="lcelc">
+					<td class="lcelc" data-label="Select">
 <?php
                             if ($notdirty && $notprotected):
                                 ?>
