@@ -70,6 +70,7 @@ BASTILLECONFFILE="/conf/bastille_config"
 BASTILLECONFLINK="/var/etc/bastille_conf"
 BASTILLECONF_EXT="${CWDIR}/conf/bastille.conf.ext"
 INCLUDE_PATH="${CWDIR}/conf/system"
+UPDATE_BUNDLED_FILES="0"
 FREEBSD_UPDATE="${INCLUDE_PATH}/freebsd-update/${HOSTVERSION}"
 SYSTEM_INCLUDE="${INCLUDE_PATH}/include/${HOSTVERSION}"
 THIRDPARTY_INCLUDE="${INCLUDE_PATH}/thirdparty/include/${HOSTVERSION}"
@@ -510,17 +511,17 @@ include_files()
 		else
 			# Install the files in full platforms natively.
 			for _usrbin_file in ${USRBIN_FILES}; do
-				if [ ! -f "/usr/bin/${_usrbin_file}" ]; then
+				if [ ! -f "/usr/bin/${_usrbin_file}" ] || [ "${UPDATE_BUNDLED_FILES}" -eq 1 ]; then
 					install -m 0555  "${SYSTEM_INCLUDE}/${_usrbin_file}" /usr/bin/${_usrbin_file}
 				fi
 			done
 			for _usrsbin_file in ${USRSBIN_FILES}; do
-				if [ ! -f "/usr/sbin/${_usrsbin_file}" ]; then
+				if [ ! -f "/usr/sbin/${_usrsbin_file}" ] || [ "${UPDATE_BUNDLED_FILES}" -eq 1 ]; then
 					install -m 0555  "${SYSTEM_INCLUDE}/${_usrsbin_file}" /usr/sbin/${_usrsbin_file}
 				fi
 			done
 			for _localbin_file in ${LOCALBIN_FILES}; do
-				if [ ! -f "/usr/local/bin/${_localbin_file}" ]; then
+				if [ ! -f "/usr/local/bin/${_localbin_file}" ] || [ "${UPDATE_BUNDLED_FILES}" -eq 1 ]; then
 					install -m 0544 ${SYSTEM_INCLUDE}/${_localbin_file} /usr/local/bin/${_localbin_file}
 				fi
 			done
@@ -547,6 +548,10 @@ include_files()
 				fi
 			fi
 		done
+	fi
+
+	if [ "${UPDATE_BUNDLED_FILES}" -eq 1 ]; then
+		UPDATE_BUNDLED_FILES="0"
 	fi
 }
 
@@ -1106,6 +1111,11 @@ pkg_upgrade()
 	# Re-fetch bastille package and extract.
 	if [ -f "${CWDIR}/${FULLAPPNAME}${BASTILLEPATH}/${APPNAME}" ]; then
 		bastille_upgrade
+
+		# Check and update bundled files.
+		UPDATE_BUNDLED_FILES="1"
+		echo "Updating bundled files..."
+		include_files
 	else
 		bastille_initial_download
 	fi
