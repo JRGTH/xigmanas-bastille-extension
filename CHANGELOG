@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.5.06......Update: Add support for 14.4 release, set file permissions.
 1.5.05......Bugfix to update bundled files upon upgrade request. 
 1.5.04......Bugfix for IP address column displays a hyphen in the IP addresses, by rucko24. 
 1.5.03......Update some bundled files for 14.3(p14).
