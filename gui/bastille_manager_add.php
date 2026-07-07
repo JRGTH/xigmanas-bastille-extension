@@ -68,6 +68,8 @@ endif;
 if($_POST):
 	global $jail_dir;
 	global $configfile;
+	unset($errormsg);
+	unset($savemsg);
 	unset($input_errors);
 	$pconfig = $_POST;
 	if(isset($_POST['Cancel']) && $_POST['Cancel']):
@@ -123,18 +125,26 @@ if($_POST):
 
 		if(isset($_POST['emptyjail'])):
 			// Just create an empty container with minimal jail.conf.
-			$cmd = ("/usr/local/bin/bastille create -E {$jname}");
+			$cmd = ("/usr/local/bin/bastille create -E $jname 2> $logevent");
 		else:
 			if (isset($_POST['autostart'])):
-				$cmd = ("/usr/local/bin/bastille create {$options} {$jname} {$release} {$ipaddr} {$interface}");
+				$cmd = ("/usr/local/bin/bastille create $options $jname $release $ipaddr $interface 2> $logevent");
 			else:
-				$cmd = ("/usr/local/bin/bastille create --no-boot {$options} {$jname} {$release} {$ipaddr} {$interface}");
+				$cmd = ("/usr/local/bin/bastille create --no-boot $options $jname $release $ipaddr $interface 2> $logevent");
 			endif;
 		endif;
 
 		if ($_POST['Create']):
 			if(get_all_release_list()):
-				unset($output,$retval);mwexec2($cmd,$output,$retval);
+				unset($output,$retval);
+				$output = [];
+				exec($cmd,$output,$retval);
+				$ausgabe = "";
+				if (file_exists($logevent)) {
+					$ausgabe = file_get_contents($logevent);
+				}
+				$ausgabe = preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $ausgabe);
+				$ausgabe = trim($ausgabe);
 				if($retval == 0):
 					//if (isset($_POST['autostart'])):
 					//	exec("/usr/sbin/sysrc -f {$configfile} {$jname}_AUTO_START=\"YES\"");
@@ -148,7 +158,8 @@ if($_POST):
 					header('Location: bastille_manager_gui.php');
 					exit;
 				else:
-					$errormsg .= gtext("Failed to create container.");
+					//$errormsg .= gtext("Failed to create container.");
+					$errormsg .= str_replace("\n", "<br />", htmlspecialchars($ausgabe)) . "<br />";
 				endif;
 			else:
 				$errormsg .= gtext(" <<< Failed to create container.");
