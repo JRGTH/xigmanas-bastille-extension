@@ -109,14 +109,22 @@ if($_POST):
 			$release = "debian-bookworm";
 		endif;
 
-		if(isset($_POST['thickjail']) && isset($_POST['vnetjail'])):
+		if(isset($_POST['thickjail']) && isset($_POST['vnetjail']) && isset($_POST['staticmac'])):
+			$options = "-T -V -M";
+		elseif(isset($_POST['thickjail']) && isset($_POST['bridgejail']) && isset($_POST['staticmac'])):
+			$options = "-T -B -M";
+		elseif(isset($_POST['thickjail']) && isset($_POST['vnetjail'])):
 			$options = "-T -V";
 		elseif(isset($_POST['thickjail']) && isset($_POST['bridgejail'])):
 			$options = "-T -B";
+		elseif(isset($_POST['vnetjail']) && isset($_POST['staticmac'])):
+			$options = "-V -M";
 		elseif(isset($_POST['thickjail'])):
 			$options = "-T";
 		elseif(isset($_POST['vnetjail'])):
 			$options = "-V";
+		elseif(isset($_POST['staticmac'])):
+			$options = "-M";
 		elseif(isset($_POST['bridgejail'])):
 			$options = "-B";
 		elseif(isset($_POST['linuxjail'])):
@@ -187,6 +195,7 @@ function emptyjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -198,6 +207,7 @@ function emptyjail_change() {
 			showElementById('thickjail_tr', 'hide');
 			showElementById('vnetjail_tr', 'hide');
 			showElementById('bridgejail_tr', 'hide');
+			showElementById('staticmac_tr', 'hide');
 			//showElementById('nowstart_tr', 'hide');
 			showElementById('autostart_tr', 'hide');
 			showElementById('linuxjail_tr', 'hide');
@@ -214,6 +224,7 @@ function linuxjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -226,6 +237,7 @@ function linuxjail_change() {
 			showElementById('thickjail_tr', 'hide');
 			showElementById('vnetjail_tr', 'hide');
 			showElementById('bridgejail_tr', 'hide');
+			showElementById('staticmac_tr', 'hide');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('emptyjail_tr', 'hide');
@@ -242,6 +254,7 @@ function vnetjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -253,6 +266,7 @@ function vnetjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'hide');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -269,6 +283,7 @@ function bridgejail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -280,6 +295,7 @@ function bridgejail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'hide');
 			showElementById('bridgejail_tr', 'show');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -338,6 +354,7 @@ $document->render();
 				if($host_version > "12100"):
 					html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Only supported on 13.x and above).'),'',false,false,'vnetjail_change()');
 					html_checkbox2('bridgejail',gettext('Enable Bridge VNET(VIMAGE)'),!empty($pconfig['bridgejail']) ? true : false,gettext('Bridge VNET-enabled containers are attached to a specified, already existing external bridge(Only supported on 13.x and above).'),'',false,false,'bridgejail_change()');
+					html_checkbox2('staticmac',gettext('Static MAC address'),!empty($pconfig['bridgejail']) ? true : false,gettext('Use a static/persistent MAC address (VNET only).'),'',false,false,'staticmac_change()');
 				endif;
 				html_checkbox2('emptyjail',gettext('Create an empty container'),!empty($pconfig['emptyjail']) ? true : false,gettext('This are ideal for custom builds, experimenting with unsupported RELEASES or Linux jails.'),'',false,false,'emptyjail_change()');
 				if($linux_compat_support == "YES"):
