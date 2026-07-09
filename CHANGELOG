@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.5.09......Fix typo in bastille_manager_add page.
 1.5.08......Add static MAC option on VNET jails creation through the WebGUI.
 1.5.07......Improve error output on jail creation, early support for 14.4 release.
 1.5.06......Update: Add support for 14.4 release, set file permissions.

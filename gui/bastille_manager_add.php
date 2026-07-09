@@ -354,7 +354,7 @@ $document->render();
 				if($host_version > "12100"):
 					html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Only supported on 13.x and above).'),'',false,false,'vnetjail_change()');
 					html_checkbox2('bridgejail',gettext('Enable Bridge VNET(VIMAGE)'),!empty($pconfig['bridgejail']) ? true : false,gettext('Bridge VNET-enabled containers are attached to a specified, already existing external bridge(Only supported on 13.x and above).'),'',false,false,'bridgejail_change()');
-					html_checkbox2('staticmac',gettext('Static MAC address'),!empty($pconfig['bridgejail']) ? true : false,gettext('Use a static/persistent MAC address (VNET only).'),'',false,false,'staticmac_change()');
+					html_checkbox2('staticmac',gettext('Static MAC address'),!empty($pconfig['staticmac']) ? true : false,gettext('Use a static/persistent MAC address (VNET only).'),'',false,false,'staticmac_change()');
 				endif;
 				html_checkbox2('emptyjail',gettext('Create an empty container'),!empty($pconfig['emptyjail']) ? true : false,gettext('This are ideal for custom builds, experimenting with unsupported RELEASES or Linux jails.'),'',false,false,'emptyjail_change()');
 				if($linux_compat_support == "YES"):
