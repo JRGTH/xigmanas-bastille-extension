@@ -119,6 +119,8 @@ if($_POST):
 			$options = "-T -B";
 		elseif(isset($_POST['vnetjail']) && isset($_POST['staticmac'])):
 			$options = "-V -M";
+		elseif(isset($_POST['bridgejail']) && isset($_POST['staticmac'])):
+			$options = "-B -M";
 		elseif(isset($_POST['thickjail'])):
 			$options = "-T";
 		elseif(isset($_POST['vnetjail'])):
