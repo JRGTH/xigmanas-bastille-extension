@@ -237,14 +237,32 @@ a:hover .web-terminal-icon {
         margin-bottom: 8px;
     }
 
+    /* Same height as the interval combo; explicit colors so the theme does not paint it (cyan) */
     #jail-filter {
         display: block;
         flex: 1 1 auto;
         min-width: 0;
         box-sizing: border-box;
-        height: 34px;
-        padding: 4px 8px;
-        font-size: 16px; /* 16px avoids the automatic zoom on focus in iOS */
+        align-self: stretch; /* same height as the Refresh/combo row, whatever the theme font is */
+        padding: 0 6px;
+        font-family: inherit;
+        font-size: inherit;
+        color: #000 !important;
+        background-color: #fff !important;
+        border: 1px solid var(--boc-button, #555);
+        border-radius: var(--bor, 3px);
+        outline: none;
+    }
+
+    #jail-filter:focus {
+        color: #000 !important;
+        background-color: #fff !important;
+        border-color: #3a7bd5;
+    }
+
+    #jail-filter::placeholder {
+        color: #777;
+        opacity: 1;
     }
 
     #jail-toolbar > #refresh-controls {

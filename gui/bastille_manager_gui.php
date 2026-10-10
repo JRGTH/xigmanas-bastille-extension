@@ -854,7 +854,7 @@ endif;
     </table>
 
     <div id="jail-toolbar">
-    <input type="search" id="jail-filter" class="formfld" autocomplete="off" placeholder="<?=gtext('Filter jails...');?>" aria-label="<?=gtext('Filter jails');?>">
+    <input type="search" id="jail-filter" autocomplete="off" placeholder="<?=gtext('Filter jails...');?>" aria-label="<?=gtext('Filter jails');?>">
     <div id="refresh-controls" style="text-align: right; display: none; position: relative;">
         <span id="refresh-spinner" style="display: none;"></span>
         <button type="button" id="refresh-now" class="formbtn">Refresh</button>
