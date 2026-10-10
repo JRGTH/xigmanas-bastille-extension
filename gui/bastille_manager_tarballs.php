@@ -79,6 +79,7 @@ $sphere_array = $rel_list;
 
 if ($linux_compat_support == "YES"):
 	$a_action = [
+		'14.4-RELEASE' => gettext('14.4-RELEASE'),
 		'14.3-RELEASE' => gettext('14.3-RELEASE'),
 		'14.2-RELEASE' => gettext('14.2-RELEASE'),
 		'14.1-RELEASE' => gettext('14.1-RELEASE'),
@@ -97,6 +98,7 @@ if ($linux_compat_support == "YES"):
 	];
 else:
 	$a_action = [
+		'14.4-RELEASE' => gettext('14.4-RELEASE'),
 		'14.3-RELEASE' => gettext('14.3-RELEASE'),
 		'14.2-RELEASE' => gettext('14.2-RELEASE'),
 		'14.1-RELEASE' => gettext('14.1-RELEASE'),
