@@ -48,6 +48,12 @@ a:hover .web-terminal-icon {
    transform: scale(1.1);
 }
 
+/* Jail filter: hidden by default, shown only by the mobile media query below */
+#jail-filter,
+#jail-filter-empty {
+    display: none;
+}
+
 @media screen and (max-width: 768px) {
     /* Child combinators: do not touch the nested .area_data_selection_toolbox table */
     table.area_data_selection,
@@ -221,6 +227,39 @@ a:hover .web-terminal-icon {
     #area_data_frame {
         padding-left: 4px !important;
         padding-right: 4px !important;
+    }
+
+    /* Filter next to the Refresh controls (hidden on desktop) */
+    #jail-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    #jail-filter {
+        display: block;
+        flex: 1 1 auto;
+        min-width: 0;
+        box-sizing: border-box;
+        height: 34px;
+        padding: 4px 8px;
+        font-size: 16px; /* 16px avoids the automatic zoom on focus in iOS */
+    }
+
+    #jail-toolbar > #refresh-controls {
+        flex: 0 0 auto;
+    }
+
+    table.area_data_selection > tbody > tr.is-filtered-out {
+        display: none !important;
+    }
+
+    #jail-filter-empty.visible {
+        display: block;
+        padding: 16px;
+        text-align: center;
+        opacity: 0.7;
     }
 
     #back-to-top.visible {

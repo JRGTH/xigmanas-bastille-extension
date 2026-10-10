@@ -342,6 +342,10 @@ $(window).on("load", function() {
 	applyExpandedCards();
 	markEmptyCells();
 
+	// Filter (mobile): typing filters the cards, selecting a jail keeps it visible
+	$('#jail-filter').on('input', applyJailFilter);
+	$(document).on('change', "table.area_data_selection input[type='checkbox']", applyJailFilter);
+
 	// Back to top button. The XigmaNAS layout may scroll an inner container instead of
 	// the window, so listen to every scroll (capture phase) and remember what moved.
 	// The button hangs from <body>, so no ancestor (transform/overflow) can break position:fixed
@@ -614,6 +618,7 @@ function updateJailTable() {
                 // Keep the expanded cards (mobile layout) open across refreshes
                 applyExpandedCards();
                 markEmptyCells();
+                applyJailFilter();
 
                 // Reapply saved column widths after updating the table
                 applySavedColumnWidths();
@@ -647,6 +652,23 @@ function stopAutoRefresh() {
 function syncResizerHeights() {
     var totalHeight = $("table.area_data_selection").outerHeight();
     $('.resizer').css('height', totalHeight + 'px');
+}
+
+// --- JAIL FILTER (mobile layout) ---
+function applyJailFilter() {
+    var query = $.trim($("#jail-filter").val()).toLowerCase();
+    var visible = 0;
+    var $rows = $("table.area_data_selection > tbody > tr[data-jail]");
+    $rows.each(function() {
+        var $row = $(this);
+        // Selected jails always stay visible: hidden checked rows would still be submitted
+        var match = query === '' ||
+            $row.find("input[type='checkbox']").prop('checked') ||
+            $row.text().toLowerCase().indexOf(query) !== -1;
+        $row.toggleClass('is-filtered-out', !match);
+        if (match) visible++;
+    });
+    $("#jail-filter-empty").toggleClass('visible', query !== '' && $rows.length > 0 && visible === 0);
 }
 
 // --- EMPTY CELLS (mobile layout hides them) ---
@@ -831,6 +853,8 @@ endif;
        </tbody>
     </table>
 
+    <div id="jail-toolbar">
+    <input type="search" id="jail-filter" class="formfld" autocomplete="off" placeholder="<?=gtext('Filter jails...');?>" aria-label="<?=gtext('Filter jails');?>">
     <div id="refresh-controls" style="text-align: right; display: none; position: relative;">
         <span id="refresh-spinner" style="display: none;"></span>
         <button type="button" id="refresh-now" class="formbtn">Refresh</button>
@@ -841,6 +865,7 @@ endif;
             <option value="60000">60s</option>
             <option value="0">Manual</option>
         </select>
+    </div>
     </div>
 
 	<table class="area_data_selection" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
@@ -964,6 +989,7 @@ endforeach;
 			</tr>
 		</tfoot>
 	</table>
+	<div id="jail-filter-empty"><?=gtext('No jails match the filter');?></div>
 	<div id="submit">
 		<input name="start_selected_jail" id="start_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_start;?>"/>
 		<input name="stop_selected_jail" id="stop_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_stop;?>"/>
