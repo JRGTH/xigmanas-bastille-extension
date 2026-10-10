@@ -169,16 +169,17 @@ a:hover .web-terminal-icon {
         display: none;
     }
 
-    /* Round button like the back-to-top one: same up-arrow.svg, pointing down when collapsed */
+    /* Same up-arrow.svg as the back-to-top button, without the circle. The svg is white, so
+       brightness() turns it gray (opacity would fade it into the white card instead) */
     table.area_data_selection > tbody > tr > td:nth-child(3)::after {
         content: "";
         position: absolute;
-        right: 12px;
+        right: 8px;
         top: 50%;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: rgba(60, 60, 60, 0.85) url('../images/up-arrow.svg') center / 26px 26px no-repeat;
+        width: 44px;
+        height: 44px;
+        background: url('../images/up-arrow.svg') center / 44px 44px no-repeat;
+        filter: brightness(0.47);
         transform: translateY(-50%) rotate(180deg);
         transition: transform 0.2s ease;
     }
