@@ -224,6 +224,12 @@ a:hover .web-terminal-icon {
     }
 
     #back-to-top.visible {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #back-to-top svg {
         display: block;
     }
 }
