@@ -339,6 +339,15 @@ $(window).on("load", function() {
 
 	// Mobile cards: tap the name to expand/collapse the jail details
 	applyExpandedCards();
+	markEmptyCells();
+
+	// Back to top button
+	$(window).on('scroll', function() {
+		$('#back-to-top').toggleClass('visible', $(window).scrollTop() > 300);
+	});
+	$('#back-to-top').on('click', function() {
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	});
 	$(document).on('click', 'table.area_data_selection > tbody > tr > td:nth-child(3)', function() {
 		if (!window.matchMedia('(max-width: 768px)').matches) return;
 		var $row = $(this).parent();
@@ -589,6 +598,7 @@ function updateJailTable() {
 
                 // Keep the expanded cards (mobile layout) open across refreshes
                 applyExpandedCards();
+                markEmptyCells();
 
                 // Reapply saved column widths after updating the table
                 applySavedColumnWidths();
@@ -622,6 +632,15 @@ function stopAutoRefresh() {
 function syncResizerHeights() {
     var totalHeight = $("table.area_data_selection").outerHeight();
     $('.resizer').css('height', totalHeight + 'px');
+}
+
+// --- EMPTY CELLS (mobile layout hides them) ---
+function markEmptyCells() {
+    $("table.area_data_selection > tbody > tr > td.lcell").each(function() {
+        var $td = $(this);
+        var empty = !$td.find('img').length && $td.text().replace(/[\s\u00a0]+/g, '') .replace(/^-$/, '') === '';
+        $td.toggleClass('is-empty', empty);
+    });
 }
 
 // --- EXPANDED CARDS (mobile layout) ---
@@ -751,7 +770,7 @@ function applySavedColumnWidths() {
 if (!document.querySelector('meta[name="viewport"]')) {
     var meta = document.createElement('meta');
     meta.name = "viewport";
-    meta.content = "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no";
+    meta.content = "width=device-width, initial-scale=1.0";
     document.getElementsByTagName('head')[0].appendChild(meta);
 }
 </script>
@@ -941,6 +960,7 @@ endforeach;
     include 'formend.inc';
 ?>
 </td></tr></tbody></table></form>
+    <button type="button" id="back-to-top" title="<?=gtext('Back to top');?>" aria-label="<?=gtext('Back to top');?>">&#9650;</button>
     <div id="web-terminal-modal">
             <div id="web-terminal-content">
                 <div id="web-terminal-header">

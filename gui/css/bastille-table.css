@@ -79,30 +79,32 @@ a:hover .web-terminal-icon {
         overflow: hidden;
     }
 
-    table.area_data_selection > tbody > tr > td {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: center;
+    /* Block (not flex) so long values such as IPv6 addresses wrap normally.
+       td.lcell is needed to beat the desktop nowrap/ellipsis rule */
+    table.area_data_selection > tbody > tr > td,
+    table.area_data_selection > tbody > tr > td.lcell {
+        display: block;
         min-width: 0;
         min-height: 44px;
         padding: 8px 12px;
         text-align: left !important;
         white-space: normal;
         overflow: visible;
+        text-overflow: clip;
         overflow-wrap: anywhere;
         border-bottom: 1px solid rgba(150, 150, 150, 0.2);
     }
 
     table.area_data_selection > tbody > tr > td::before {
         content: attr(data-label);
+        display: block;
         font-size: 0.75em;
         font-weight: bold;
         opacity: 0.7;
         margin-bottom: 2px;
     }
 
-    /* Brief view: Name, State, Active, IP and Toolbox. The rest only when expanded */
+    /* Brief view: Name, State | IP and Toolbox. The rest only when expanded */
     table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(2),
     table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(4),
     table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(5),
@@ -111,33 +113,39 @@ a:hover .web-terminal-icon {
     table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(10),
     table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(11),
     table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(12),
-    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(14) {
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(13),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(14),
+    /* Empty values ("-") are not worth a cell */
+    table.area_data_selection > tbody > tr > td.is-empty {
         display: none;
     }
 
-    /* Order: Name, State | Active, IP, (Ports), details in pairs, Toolbox last */
+    /* Order: Name, State | IP, details in pairs, Toolbox last */
     table.area_data_selection > tbody > tr > td:nth-child(3),
-    table.area_data_selection > tbody > tr > td:nth-child(8),
-    table.area_data_selection > tbody > tr > td:nth-child(9),
     table.area_data_selection > tbody > tr > td:nth-child(15) {
         grid-column: 1 / -1;
     }
 
     table.area_data_selection > tbody > tr > td:nth-child(3)  { order: -5; }
     table.area_data_selection > tbody > tr > td:nth-child(6)  { order: -4; }
-    table.area_data_selection > tbody > tr > td:nth-child(13) { order: -4; }
-    table.area_data_selection > tbody > tr > td:nth-child(8)  { order: -3; }
-    table.area_data_selection > tbody > tr > td:nth-child(9)  { order: -2; }
+    table.area_data_selection > tbody > tr > td:nth-child(8)  { order: -4; }
     table.area_data_selection > tbody > tr > td:nth-child(15) { order: 1; }
 
     /* Name is the expand/collapse handle */
     table.area_data_selection > tbody > tr > td:nth-child(3) {
         position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
         min-height: 56px;
         padding-left: 52px;
         padding-right: 40px;
         cursor: pointer;
         font-weight: bold;
+    }
+
+    table.area_data_selection > tbody > tr > td:nth-child(3)::before {
+        display: none;
     }
 
     table.area_data_selection > tbody > tr > td:nth-child(3)::after {
@@ -163,6 +171,7 @@ a:hover .web-terminal-icon {
         width: 48px !important;
         height: 56px;
         padding: 0;
+        display: flex;
         align-items: center;
         justify-content: center;
         border-bottom: none;
@@ -180,6 +189,8 @@ a:hover .web-terminal-icon {
 
     /* Toolbox: icons side by side, bigger touch targets */
     table.area_data_selection > tbody > tr > td.lcebld {
+        display: flex;
+        flex-direction: column;
         align-items: center;
         border-bottom: none;
     }
@@ -189,7 +200,12 @@ a:hover .web-terminal-icon {
     }
 
     table.area_data_selection_toolbox td {
-        padding: 6px 10px;
+        padding: 8px 14px;
+    }
+
+    table.area_data_selection_toolbox img {
+        width: 24px;
+        height: 24px;
     }
 
     /* Footer: only the "add" button, without the empty spacer cell */
@@ -200,4 +216,34 @@ a:hover .web-terminal-icon {
     table.area_data_selection > tfoot > tr > td.lceadd {
         text-align: center;
     }
+
+    /* Use the width we have: trim the padding of the XigmaNAS content frame */
+    #area_data_frame {
+        padding-left: 4px !important;
+        padding-right: 4px !important;
+    }
+
+    #back-to-top.visible {
+        display: block;
+    }
+}
+
+/* Back to top button (shown only on small screens, once the page is scrolled) */
+#back-to-top {
+    display: none;
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgba(150, 150, 150, 0.5);
+    border-radius: 50%;
+    background: rgba(60, 60, 60, 0.85);
+    color: #fff;
+    font-size: 18px;
+    line-height: 44px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 1000;
 }
