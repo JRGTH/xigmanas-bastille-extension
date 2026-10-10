@@ -77,7 +77,55 @@ function job_json($data) {
     exit;
 }
 
-if (isset($_REQUEST['action']) && in_array($_REQUEST['action'], ['start', 'status'], true)) {
+// --- Partial downloads (staged in <cache>/.resume/<release>/) ---
+function bastille_cachedir() {
+    global $config_path;
+    if (empty($config_path) || !is_file($config_path)) return '';
+    return trim((string)shell_exec('/bin/sh -c ' . escapeshellarg('. ' . escapeshellarg($config_path) . ' 2>/dev/null; echo "$bastille_cachedir"')));
+}
+
+function partial_list() {
+    $cache = bastille_cachedir();
+    if ($cache === '' || !is_dir("{$cache}/.resume")) return [];
+    $out = [];
+    foreach (glob("{$cache}/.resume/*", GLOB_ONLYDIR) ?: [] as $dir) {
+        $rel = basename($dir);
+        if (!preg_match('/^[0-9]+\.[0-9]+-RELEASE$/', $rel)) continue;
+        $have = 0;
+        $total = 0;
+        foreach (glob("{$dir}/*.txz") ?: [] as $f) $have += (int)filesize($f);
+        foreach (glob("{$dir}/*.size") ?: [] as $f) $total += (int)trim((string)file_get_contents($f));
+        if ($have === 0) continue; // empty staging dir, nothing worth resuming
+        $out[] = ['release' => $rel, 'have' => $have, 'total' => $total];
+    }
+    return $out;
+}
+
+function partial_discard($rel) {
+    $cache = bastille_cachedir();
+    if ($cache === '' || !preg_match('/^[0-9]+\.[0-9]+-RELEASE$/', $rel)) return false;
+    $dir = "{$cache}/.resume/{$rel}";
+    if (is_dir($dir)) exec('/bin/rm -rf ' . escapeshellarg($dir));
+    @rmdir("{$cache}/.resume"); // only succeeds when empty
+    return true;
+}
+
+function partial_box_html() {
+    $html = '';
+    foreach (partial_list() as $p) {
+        $mb = fn($b) => (int)round($b / 1048576);
+        $size = $p['total'] > 0 ? sprintf('%d / %d MB', $mb($p['have']), $mb($p['total'])) : sprintf('%d MB', $mb($p['have']));
+        $rel = htmlspecialchars($p['release']);
+        $html .= '<div class="partial-row" style="padding:5px;">'
+            . '<b>' . gtext('Incomplete download') . ':</b> ' . $rel . ' (' . $size . ') '
+            . '<input type="button" class="formbtn partial-btn" value="' . gtext('Resume') . '" onclick="resumePartial(\'' . $rel . '\')" /> '
+            . '<input type="button" class="formbtn partial-btn" value="' . gtext('Discard') . '" onclick="discardPartial(\'' . $rel . '\')" />'
+            . '</div>';
+    }
+    return $html;
+}
+
+if (isset($_REQUEST['action']) && in_array($_REQUEST['action'], ['start', 'status', 'discard'], true)) {
     // Do not hold the PHP session lock, otherwise the rest of the WebGUI would block.
     session_write_close();
 
@@ -102,6 +150,12 @@ if (isset($_REQUEST['action']) && in_array($_REQUEST['action'], ['start', 'statu
         ]);
     }
 
+    if ($_REQUEST['action'] === 'discard') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') job_json(['ok' => false, 'error' => 'POST required']);
+        if (job_state() === 'running') job_json(['ok' => false, 'error' => gtext('Another operation is already running.')]);
+        job_json(['ok' => partial_discard($_POST['release'] ?? '')]);
+    }
+
     // action=start (POST only)
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') job_json(['ok' => false, 'error' => 'POST required']);
     if (job_state() === 'running') job_json(['ok' => false, 'error' => gtext('Another operation is already running.')]);
@@ -119,6 +173,18 @@ if (isset($_REQUEST['action']) && in_array($_REQUEST['action'], ['start', 'statu
     }
     if ($mode === 'bootstrap' && get_state_zfs() == "Invalid ZFS configuration") {
         job_json(['ok' => false, 'error' => gtext("Cannot bootstrap with an invalid ZFS configuration.")]);
+    }
+
+    // Housekeeping: drop partial downloads of other releases untouched for 7+ days,
+    // and the staged partial of a release that is being destroyed.
+    if ($mode === 'bootstrap') {
+        $cache = bastille_cachedir();
+        if ($cache !== '' && is_dir("{$cache}/.resume")) {
+            exec('/usr/bin/find ' . escapeshellarg("{$cache}/.resume") . ' -mindepth 1 -maxdepth 1 -type d -mtime +7 ! -name '
+                . escapeshellarg($release) . ' -exec /bin/rm -rf {} + 2>/dev/null');
+        }
+    } else {
+        partial_discard($release);
     }
 
     if (!is_dir($job_dir)) @mkdir($job_dir, 0755, true);
@@ -174,6 +240,7 @@ if (isset($_REQUEST['action']) && in_array($_REQUEST['action'], ['start', 'statu
                 echo "[Size of \$a.txz unknown at \$url, leaving it to bastille (no resume)]"
                 continue;;
         esac
+        echo "\$remote" > "\$dir/\$a.size"
         have=\$(/usr/bin/stat -f %z "\$f" 2>/dev/null || echo 0)
         [ "\$have" -eq "\$remote" ] && continue
         [ "\$have" -gt "\$remote" ] && /bin/rm -f "\$f" && have=0
@@ -456,6 +523,7 @@ function renderLog() {
 
 function setBusy(busy) {
     el('btn-download').disabled = el('btn-destroy').disabled = busy;
+    document.querySelectorAll('.partial-btn').forEach(b => b.disabled = busy);
 }
 
 function setStatus(text) { const e = el('job-status'); if (e.textContent !== text) e.textContent = text; }
@@ -484,7 +552,7 @@ async function pollJob() {
                 interrupted: isDl ? '<?=gtext("Interrupted. Press Download again to resume.");?>' : '<?=gtext("Interrupted.");?>'
             };
             setStatus(d.release + ': ' + msgs[d.state]);
-            if (d.state === 'done' && sawRunning) { sawRunning = false; refreshInstalled(); }
+            if (sawRunning) { sawRunning = false; refreshInstalled(); }
         }
     } catch (e) {
         // Network hiccup: the job keeps running on the server, keep polling.
@@ -505,6 +573,9 @@ async function refreshInstalled() {
         const newTok = doc.querySelector('input[name="authtoken"]');
         const oldTok = document.querySelector('input[name="authtoken"]');
         if (newTok && oldTok) oldTok.value = newTok.value;
+        const newBox = doc.getElementById('partial-box');
+        const oldBox = el('partial-box');
+        if (newBox && oldBox) oldBox.innerHTML = newBox.innerHTML;
     } catch (e) { /* the list refreshes on the next page load */ }
 }
 
@@ -545,6 +616,26 @@ async function runBastilleAction(mode) {
     }
 }
 
+function resumePartial(release) {
+    document.getElementsByName('release_item')[0].value = release;
+    runBastilleAction('bootstrap');
+}
+
+async function discardPartial(release) {
+    if (!confirm('<?=gtext("Discard this incomplete download?");?>')) return;
+    const body = new FormData();
+    body.append('authtoken', document.querySelector('input[name="authtoken"]')?.value || '');
+    body.append('action', 'discard');
+    body.append('release', release);
+    try {
+        const r = await fetch(JOB_URL, { method: 'POST', body: body });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        if (!d.ok) alert(d.error || 'Error');
+    } catch (e) { alert(e); }
+    refreshInstalled();
+}
+
 // On page load, re-attach to a running job or show the result of the last one.
 document.addEventListener('DOMContentLoaded', startPolling);
 </script>
@@ -566,6 +657,8 @@ $document->render();
 
 <form action="bastille_manager_tarballs.php" method="post" name="iform" id="iform">
     <table id="area_data"><tbody><tr><td id="area_data_frame">
+
+        <div id="partial-box"><?=partial_box_html();?></div>
 
         <div id="log-container" style="display:none; margin-bottom:15px;">
             <?php
