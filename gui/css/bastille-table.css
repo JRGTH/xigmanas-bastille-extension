@@ -67,8 +67,9 @@ a:hover .web-terminal-icon {
         display: none;
     }
 
-    /* Card: 2-column grid, label above value */
+    /* Card: 2-column grid, label above value. Brief view by default, tap the name to expand */
     table.area_data_selection > tbody > tr {
+        position: relative;
         display: grid;
         grid-template-columns: 1fr 1fr;
         margin-bottom: 1rem;
@@ -101,31 +102,75 @@ a:hover .web-terminal-icon {
         margin-bottom: 2px;
     }
 
-    /* Wide fields take the whole row and go first (Select, Name, IP, Ports), the
-       Toolbox goes last; the remaining 10 short fields pair up in two columns */
-    table.area_data_selection > tbody > tr > td:nth-child(1),
+    /* Brief view: Name, State, Active, IP and Toolbox. The rest only when expanded */
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(2),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(4),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(5),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(7),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(9),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(10),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(11),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(12),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(14) {
+        display: none;
+    }
+
+    /* Order: Name, State | Active, IP, (Ports), details in pairs, Toolbox last */
     table.area_data_selection > tbody > tr > td:nth-child(3),
     table.area_data_selection > tbody > tr > td:nth-child(8),
     table.area_data_selection > tbody > tr > td:nth-child(9),
     table.area_data_selection > tbody > tr > td:nth-child(15) {
         grid-column: 1 / -1;
-        order: -1;
     }
 
-    table.area_data_selection > tbody > tr > td:nth-child(15) {
-        order: 1;
+    table.area_data_selection > tbody > tr > td:nth-child(3)  { order: -5; }
+    table.area_data_selection > tbody > tr > td:nth-child(6)  { order: -4; }
+    table.area_data_selection > tbody > tr > td:nth-child(13) { order: -4; }
+    table.area_data_selection > tbody > tr > td:nth-child(8)  { order: -3; }
+    table.area_data_selection > tbody > tr > td:nth-child(9)  { order: -2; }
+    table.area_data_selection > tbody > tr > td:nth-child(15) { order: 1; }
+
+    /* Name is the expand/collapse handle */
+    table.area_data_selection > tbody > tr > td:nth-child(3) {
+        position: relative;
+        min-height: 56px;
+        padding-left: 52px;
+        padding-right: 40px;
+        cursor: pointer;
+        font-weight: bold;
     }
 
-    /* Selection checkbox stays available: the Start/Stop/Restart buttons need it */
+    table.area_data_selection > tbody > tr > td:nth-child(3)::after {
+        content: "\25BE";
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.2em;
+        opacity: 0.7;
+    }
+
+    table.area_data_selection > tbody > tr.expanded > td:nth-child(3)::after {
+        content: "\25B4";
+    }
+
+    /* Selection checkbox stays available (Start/Stop/Restart/Autoboot need it):
+       pinned to the left of the Name row, out of the grid flow */
     table.area_data_selection > tbody > tr > td.lcelc {
-        flex-direction: row;
-        justify-content: flex-start;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 48px !important;
+        height: 56px;
+        padding: 0;
         align-items: center;
-        gap: 8px;
+        justify-content: center;
+        border-bottom: none;
+        z-index: 1;
     }
 
     table.area_data_selection > tbody > tr > td.lcelc::before {
-        margin: 0;
+        display: none;
     }
 
     table.area_data_selection > tbody > tr > td.lcelc input[type="checkbox"] {

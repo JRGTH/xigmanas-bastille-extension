@@ -337,6 +337,18 @@ $(window).on("load", function() {
     $("#iform").submit(function() { spinner(); });
     $(".spin").click(function() { spinner(); });
 
+	// Mobile cards: tap the name to expand/collapse the jail details
+	applyExpandedCards();
+	$(document).on('click', 'table.area_data_selection > tbody > tr > td:nth-child(3)', function() {
+		if (!window.matchMedia('(max-width: 768px)').matches) return;
+		var $row = $(this).parent();
+		$row.toggleClass('expanded');
+		var jails = getExpandedCards();
+		var name = String($row.attr('data-jail'));
+		jails = $row.hasClass('expanded') ? jails.concat([name]) : jails.filter(function(j) { return j !== name; });
+		try { localStorage.setItem('bastille_expanded_jails', JSON.stringify(jails)); } catch (e) {}
+	});
+
 	// Attempt to load the previously saved interval
 	var savedInterval = localStorage.getItem('bastille_refresh_interval');
     if (savedInterval !== null) {
@@ -511,14 +523,14 @@ function updateJailTable() {
                 var table = $("table.area_data_selection");
                 var tbody = table.children("tbody");
                 // Labels for the mobile card layout, taken from the real headers
-                var labels = table.find("thead th").map(function() { return $(this).text().trim(); }).get();
+                var labels = table.find("thead tr:last-child th").map(function() { return $(this).text().trim(); }).get();
                 var cell = function(idx, content) {
                     var td = $('<td class="lcell">').attr('data-label', labels[idx] || '');
                     return (typeof content === 'string') ? td.text(content) : td.append(content);
                 };
                 tbody.empty();
                 data.jails.forEach(function(jail) {
-                    var row = $('<tr>');
+                    var row = $('<tr>').attr('data-jail', jail.jailname);
                     var checkCell = $('<td class="lcelc">').attr('data-label', labels[0] || '');
                     var cb = $('<input type="checkbox">')
                         .attr('name', '<?=$checkbox_member_name;?>[]')
@@ -575,6 +587,9 @@ function updateJailTable() {
                 // Restore button state
                 controlactionbuttons(null, '<?=$checkbox_member_name;?>[]');
 
+                // Keep the expanded cards (mobile layout) open across refreshes
+                applyExpandedCards();
+
                 // Reapply saved column widths after updating the table
                 applySavedColumnWidths();
                 syncResizerHeights();
@@ -607,6 +622,23 @@ function stopAutoRefresh() {
 function syncResizerHeights() {
     var totalHeight = $("table.area_data_selection").outerHeight();
     $('.resizer').css('height', totalHeight + 'px');
+}
+
+// --- EXPANDED CARDS (mobile layout) ---
+function getExpandedCards() {
+    try {
+        var jails = JSON.parse(localStorage.getItem('bastille_expanded_jails') || '[]');
+        return Array.isArray(jails) ? jails : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function applyExpandedCards() {
+    var jails = getExpandedCards();
+    $("table.area_data_selection > tbody > tr[data-jail]").each(function() {
+        $(this).toggleClass('expanded', jails.indexOf(String($(this).attr('data-jail'))) !== -1);
+    });
 }
 
 // --- STABLE REDIMENSIONING FUNCTION (without %) ---
@@ -826,7 +858,7 @@ foreach ($sphere_array as $sphere_record):
     $notdirty = (UPDATENOTIFY_MODE_DIRTY != $notificationmode) && (UPDATENOTIFY_MODE_DIRTY_CONFIG != $notificationmode);
     $notprotected = !isset($sphere_record['protected']);
     ?>
-				<tr>
+				<tr data-jail="<?=htmlspecialchars($sphere_record['jailname']);?>">
 					<td class="lcelc" data-label="<?=gtext('Select');?>">
 <?php
                             if ($notdirty && $notprotected):
