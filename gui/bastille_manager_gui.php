@@ -342,6 +342,8 @@ $(window).on("load", function() {
 	applyExpandedCards();
 	markEmptyCells();
 
+	syncJailFilterStyle();
+
 	// Filter (mobile): typing filters the cards, selecting a jail keeps it visible
 	$('#jail-filter').on('input', applyJailFilter);
 	$(document).on('change', "table.area_data_selection input[type='checkbox']", applyJailFilter);
@@ -652,6 +654,26 @@ function stopAutoRefresh() {
 function syncResizerHeights() {
     var totalHeight = $("table.area_data_selection").outerHeight();
     $('.resizer').css('height', totalHeight + 'px');
+}
+
+// --- JAIL FILTER (mobile layout) ---
+// The filter takes its look from the original interval combo (#refresh-interval): same font,
+// size, border and colors, whatever theme is active. Inline !important beats the theme's
+// own input/focus rules (the cyan background).
+function syncJailFilterStyle() {
+    var select = document.getElementById('refresh-interval');
+    var input = document.getElementById('jail-filter');
+    if (!select || !input) return;
+    var cs = window.getComputedStyle(select);
+    var bg = cs.backgroundColor;
+    if (!bg || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') bg = '#fff';
+    var set = function(prop, value) { input.style.setProperty(prop, value, 'important'); };
+    set('font-family', cs.fontFamily);
+    set('font-size', cs.fontSize);
+    set('background-color', bg);
+    set('color', cs.color);
+    set('border', cs.borderTopWidth + ' ' + cs.borderTopStyle + ' ' + cs.borderTopColor);
+    set('border-radius', cs.borderTopLeftRadius);
 }
 
 // --- JAIL FILTER (mobile layout) ---
