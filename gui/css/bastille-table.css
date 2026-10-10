@@ -180,12 +180,12 @@ a:hover .web-terminal-icon {
         height: 44px;
         background: url('../images/up-arrow.svg') center / 44px 44px no-repeat;
         filter: brightness(0.47);
-        transform: translateY(-50%) rotate(180deg);
+        transform: translateY(calc(-50% + 5px)) rotate(180deg);
         transition: transform 0.2s ease;
     }
 
     table.area_data_selection > tbody > tr.expanded > td:nth-child(3)::after {
-        transform: translateY(-50%) rotate(0deg);
+        transform: translateY(calc(-50% + 5px)) rotate(0deg);
     }
 
     /* Selection checkbox stays available (Start/Stop/Restart/Autoboot need it):
@@ -295,6 +295,18 @@ a:hover .web-terminal-icon {
 
     #jail-toolbar > #refresh-controls {
         flex: 0 0 auto;
+    }
+
+    /* The spinner used to sit left of Refresh (over the filter): move it under the controls,
+       in the bottom right corner, and leave room for it */
+    #jail-toolbar {
+        margin-bottom: 20px;
+    }
+
+    #jail-toolbar #refresh-spinner {
+        top: 100%;
+        right: 6px;
+        margin-top: 4px;
     }
 
     table.area_data_selection > tbody > tr.is-filtered-out {
