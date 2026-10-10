@@ -307,7 +307,7 @@ $(document).ready(function(){
 		$('#getinfo_ext').html(data.ext);
 	});
 
-    // --- LOGICA DEL CHECKBOX REFRESH (LocalStorage) ---
+    // --- CHECKBOX REFRESH LOGIC (LocalStorage) ---
     var $chkRefresh = $("#show_refresh_button");
     var savedStateRefresh = localStorage.getItem('bastille_show_refresh_button');
     if (savedStateRefresh === 'true') {
@@ -320,7 +320,7 @@ $(document).ready(function(){
         localStorage.setItem('bastille_show_refresh_button', isChecked);
     });
 
-    // --- LOGICA DEL CHECKBOX CONSOLE (LocalStorage) ---
+    // --- LOGIC OF THE CONSOLE CHECKBOX (LocalStorage) ---
     var $chkConsole = $("#show_web_terminal_button");
     var savedStateConsole = localStorage.getItem('bastille_show_web_terminal_button');
     // Default to true if not set, or false? Let's default to false for safety/cleanliness if ttyd not installed
@@ -333,6 +333,19 @@ $(document).ready(function(){
         var isChecked = $(this).is(':checked');
         localStorage.setItem('bastille_show_web_terminal_button', isChecked);
     });
+
+	// --- CHECKBOX BETA EDITOR LOGIC (LocalStorage) ---
+    var $chkBeta = $("#enable_beta_editor");
+    var savedBetaState = localStorage.getItem('bastille_enable_beta_editor');
+    if (savedBetaState === 'true') {
+		$chkBeta.prop('checked', true);
+	} else {
+		$chkBeta.prop('checked', false);
+	}
+    $chkBeta.change(function() {
+		localStorage.setItem('bastille_enable_beta_editor', $(this).is(':checked'));
+	});
+
 });
 //]]>
 </script>
@@ -399,6 +412,9 @@ $(document).ready(function(){
                 <?php html_titleline(gtext("Web terminal"));?>
                 <?php html_checkbox2('show_web_terminal_button',gtext('Show web terminal button'),'' ? true : false,gtext('This will display a terminal icon in the Containers tab, in each jail row, to open the ttyd in a modal windowl, aka “Web Terminal”'),'',false);?>
                 <?php html_text2("ssl_troubleshooting", gtext("MOZILLA_PKIX_ERROR_SELF_SIGNED_CERT"), gtext("Mozilla will display this initial warning, to fix it: Use the button “Open in New Tab” (Top right corner, in the same Web Terminal window.)"));?>
+                <?php html_separator();?>
+                <?php html_titleline(gtext("File Editor v2 (Beta)"));?>
+                <?php html_checkbox2('enable_beta_editor', gtext('Enable New Editor'), '' ? true : false, gtext('Use the new editor with Quick Search and syntax highlighting instead of the legacy editor.'), '', false);?>
                 <?php html_separator();?>
 			</table>
 			<div id="remarks">

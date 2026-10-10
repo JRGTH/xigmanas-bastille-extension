@@ -68,6 +68,8 @@ endif;
 if($_POST):
 	global $jail_dir;
 	global $configfile;
+	unset($errormsg);
+	unset($savemsg);
 	unset($input_errors);
 	$pconfig = $_POST;
 	if(isset($_POST['Cancel']) && $_POST['Cancel']):
@@ -107,14 +109,24 @@ if($_POST):
 			$release = "debian-bookworm";
 		endif;
 
-		if(isset($_POST['thickjail']) && isset($_POST['vnetjail'])):
+		if(isset($_POST['thickjail']) && isset($_POST['vnetjail']) && isset($_POST['staticmac'])):
+			$options = "-T -V -M";
+		elseif(isset($_POST['thickjail']) && isset($_POST['bridgejail']) && isset($_POST['staticmac'])):
+			$options = "-T -B -M";
+		elseif(isset($_POST['thickjail']) && isset($_POST['vnetjail'])):
 			$options = "-T -V";
 		elseif(isset($_POST['thickjail']) && isset($_POST['bridgejail'])):
 			$options = "-T -B";
+		elseif(isset($_POST['vnetjail']) && isset($_POST['staticmac'])):
+			$options = "-V -M";
+		elseif(isset($_POST['bridgejail']) && isset($_POST['staticmac'])):
+			$options = "-B -M";
 		elseif(isset($_POST['thickjail'])):
 			$options = "-T";
 		elseif(isset($_POST['vnetjail'])):
 			$options = "-V";
+		elseif(isset($_POST['staticmac'])):
+			$options = "-M";
 		elseif(isset($_POST['bridgejail'])):
 			$options = "-B";
 		elseif(isset($_POST['linuxjail'])):
@@ -123,18 +135,26 @@ if($_POST):
 
 		if(isset($_POST['emptyjail'])):
 			// Just create an empty container with minimal jail.conf.
-			$cmd = ("/usr/local/bin/bastille create -E {$jname}");
+			$cmd = ("/usr/local/bin/bastille create -E $jname 2> $logevent");
 		else:
 			if (isset($_POST['autostart'])):
-				$cmd = ("/usr/local/bin/bastille create {$options} {$jname} {$release} {$ipaddr} {$interface}");
+				$cmd = ("/usr/local/bin/bastille create $options $jname $release $ipaddr $interface 2> $logevent");
 			else:
-				$cmd = ("/usr/local/bin/bastille create --no-boot {$options} {$jname} {$release} {$ipaddr} {$interface}");
+				$cmd = ("/usr/local/bin/bastille create --no-boot $options $jname $release $ipaddr $interface 2> $logevent");
 			endif;
 		endif;
 
 		if ($_POST['Create']):
 			if(get_all_release_list()):
-				unset($output,$retval);mwexec2($cmd,$output,$retval);
+				unset($output,$retval);
+				$output = [];
+				exec($cmd,$output,$retval);
+				$ausgabe = "";
+				if (file_exists($logevent)) {
+					$ausgabe = file_get_contents($logevent);
+				}
+				$ausgabe = preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $ausgabe);
+				$ausgabe = trim($ausgabe);
 				if($retval == 0):
 					//if (isset($_POST['autostart'])):
 					//	exec("/usr/sbin/sysrc -f {$configfile} {$jname}_AUTO_START=\"YES\"");
@@ -148,7 +168,8 @@ if($_POST):
 					header('Location: bastille_manager_gui.php');
 					exit;
 				else:
-					$errormsg .= gtext("Failed to create container.");
+					//$errormsg .= gtext("Failed to create container.");
+					$errormsg .= str_replace("\n", "<br />", htmlspecialchars($ausgabe)) . "<br />";
 				endif;
 			else:
 				$errormsg .= gtext(" <<< Failed to create container.");
@@ -176,6 +197,7 @@ function emptyjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -187,6 +209,7 @@ function emptyjail_change() {
 			showElementById('thickjail_tr', 'hide');
 			showElementById('vnetjail_tr', 'hide');
 			showElementById('bridgejail_tr', 'hide');
+			showElementById('staticmac_tr', 'hide');
 			//showElementById('nowstart_tr', 'hide');
 			showElementById('autostart_tr', 'hide');
 			showElementById('linuxjail_tr', 'hide');
@@ -203,6 +226,7 @@ function linuxjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -215,6 +239,7 @@ function linuxjail_change() {
 			showElementById('thickjail_tr', 'hide');
 			showElementById('vnetjail_tr', 'hide');
 			showElementById('bridgejail_tr', 'hide');
+			showElementById('staticmac_tr', 'hide');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('emptyjail_tr', 'hide');
@@ -231,6 +256,7 @@ function vnetjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -242,6 +268,7 @@ function vnetjail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'hide');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -258,6 +285,7 @@ function bridgejail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'show');
 			showElementById('bridgejail_tr', 'show');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -269,6 +297,7 @@ function bridgejail_change() {
 			showElementById('thickjail_tr', 'show');
 			showElementById('vnetjail_tr', 'hide');
 			showElementById('bridgejail_tr', 'show');
+			showElementById('staticmac_tr', 'show');
 			//showElementById('nowstart_tr', 'show');
 			showElementById('autostart_tr', 'show');
 			showElementById('linuxjail_tr', 'show');
@@ -327,6 +356,7 @@ $document->render();
 				if($host_version > "12100"):
 					html_checkbox2('vnetjail',gettext('Enable VNET(VIMAGE)'),!empty($pconfig['vnetjail']) ? true : false,gettext('VNET-enabled containers are attached to a virtual bridge interface for connectivity(Only supported on 13.x and above).'),'',false,false,'vnetjail_change()');
 					html_checkbox2('bridgejail',gettext('Enable Bridge VNET(VIMAGE)'),!empty($pconfig['bridgejail']) ? true : false,gettext('Bridge VNET-enabled containers are attached to a specified, already existing external bridge(Only supported on 13.x and above).'),'',false,false,'bridgejail_change()');
+					html_checkbox2('staticmac',gettext('Static MAC address'),!empty($pconfig['staticmac']) ? true : false,gettext('Use a static/persistent MAC address (VNET only).'),'',false,false,'staticmac_change()');
 				endif;
 				html_checkbox2('emptyjail',gettext('Create an empty container'),!empty($pconfig['emptyjail']) ? true : false,gettext('This are ideal for custom builds, experimenting with unsupported RELEASES or Linux jails.'),'',false,false,'emptyjail_change()');
 				if($linux_compat_support == "YES"):

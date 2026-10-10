@@ -277,19 +277,29 @@ function get_jail_infos() {
 		$fields = preg_split('/\s+/', trim($line), 10);
 
 		if (count($fields) >= 6) {
-			$name = $fields[1];
-			$jail_data_map[$name] = [
-				'jid' => $fields[0],
-				'boot' => $fields[2],
-				'prio' => $fields[3],
-				'state' => $fields[4],
-				'type' => $fields[5],
-				'ip' => $fields[6] ?? '-',
-				'ports' => $fields[7] ?? '-',
-				'release' => $fields[8] ?? '-',
-				'tags' => $fields[9] ?? '-'
-			];
-		}
+            $name = $fields[1];
+            $raw_ip = $fields[6] ?? '-';
+            if (strpos($raw_ip, '|') !== false) {
+                $ip_parts = explode('|', $raw_ip);
+                $clean_ip = trim(end($ip_parts));
+            } else {
+                $clean_ip = rtrim($raw_ip, '-');
+                if (empty($clean_ip)) {
+                    $clean_ip = '-';
+                }
+            }
+            $jail_data_map[$name] = [
+               'jid' => $fields[0],
+               'boot' => $fields[2],
+               'prio' => $fields[3],
+               'state' => $fields[4],
+               'type' => $fields[5],
+               'ip' => $clean_ip,
+               'ports' => $fields[7] ?? '-',
+               'release' => $fields[8] ?? '-',
+               'tags' => $fields[9] ?? '-'
+            ];
+        }
 	}
 
 	// Now process each jail from bastille list jail (for jail names)
@@ -387,4 +397,34 @@ function get_jail_infos() {
 
 	return $result;
 }
+
+/**
+ * Detects FreeBSD flags for a given path.
+ * Moved here to be accessible by both API and View.
+ * - schg
+ */
+function freeBsdFileFlags($path) {
+    $ls_executor = new BastilleManagerMwExecParallel([
+        'flags_check' => "ls -loA " . escapeshellarg($path)
+    ]);
+    $results = $ls_executor->executeWithSelect();
+    $output = $results['flags_check']['stdout'] ?? '';
+
+    $file_flags = [];
+    $lines = explode("\n", trim($output));
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (empty($line) || strpos($line, 'total') === 0) continue;
+        if (strpos($line, 'schg') !== false) {
+            $parts = preg_split('/\s+/', $line);
+            $name = end($parts);
+            if (isset($parts[4])) {
+                $file_flags[$name] = $parts[4];
+            }
+        }
+    }
+    return $file_flags;
+}
+
 ?>

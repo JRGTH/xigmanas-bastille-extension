@@ -3,6 +3,18 @@
 ======================
 Version    Description
 
+1.5.10......Add static MAC missing options in bastille_manager_add page.
+1.5.09......Fix typo in bastille_manager_add page.
+1.5.08......Add static MAC option on VNET jails creation through the WebGUI.
+1.5.07......Improve error output on jail creation, early support for 14.4 release.
+1.5.06......Update: Add support for 14.4 release, set file permissions.
+1.5.05......Bugfix to update bundled files upon upgrade request.
+1.5.04......Bugfix for IP address column displays a hyphen in the IP addresses, by rucko24.
+1.5.03......Update some bundled files for 14.3(p14).
+1.5.02......Bug fix for jail startup.
+1.5.01......Bug fix for the Top-down menu focus issue.
+1.5.00......Bump version, Feature Monaco Editor and several improvements and fixes.
+1.4.12......Bump version, fix to properly parse network interfaces, by rucko24.
 1.4.11......Re-add Interface, rename endpoint, add info for Mozzilla CA, by rucko24.
 1.4.10......Bug fix, change sed delimiters for the IP settings.
 1.4.09......Minor changes, update bastille.conf.sample file.
@@ -68,7 +80,7 @@ Version    Description
 1.1.37......Workaround to copy host resolv.conf to jail path.
 1.1.36......Update bastille config, use current extension path.
 1.1.35......Update bastille config.
-1.1.34......Add option to create externally bridged vnet jails thought the webgui.
+1.1.34......Add option to create externally bridged vnet jails through the webgui.
 1.1.33......Update: Add support for 14.0 and 14.1 releases.
 1.1.32......Update release list, tarballs.php to include 13.3.
 1.1.31......Update bastille config files.
