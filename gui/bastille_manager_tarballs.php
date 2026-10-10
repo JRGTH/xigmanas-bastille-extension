@@ -113,7 +113,7 @@ function partial_discard($rel) {
 function partial_box_html() {
     $html = '';
     foreach (partial_list() as $p) {
-        $mb = fn($b) => (int)round($b / 1048576);
+        $mb = fn($b) => intdiv((int)$b, 1048576);
         $size = $p['total'] > 0 ? sprintf('%d / %d MB', $mb($p['have']), $mb($p['total'])) : sprintf('%d MB', $mb($p['have']));
         $rel = htmlspecialchars($p['release']);
         $html .= '<div class="partial-row" style="padding:5px;">'
@@ -658,8 +658,6 @@ $document->render();
 <form action="bastille_manager_tarballs.php" method="post" name="iform" id="iform">
     <table id="area_data"><tbody><tr><td id="area_data_frame">
 
-        <div id="partial-box"><?=partial_box_html();?></div>
-
         <div id="log-container" style="display:none; margin-bottom:15px;">
             <?php
                 print_info_box('<div id="job-status" style="font-weight:bold; padding:5px;"></div><div id="log-area" style="text-align: left; white-space: pre-wrap; font-family: monospace; font-size: 11px; padding: 5px; max-height: 400px; overflow-y: auto;"></div>');
@@ -696,6 +694,8 @@ $document->render();
            <input name="Destroy" id="btn-destroy" type="button" class="formbtn" value="<?=gtext("Destroy");?>" onclick="runBastilleAction('destroy')" />
            <input name="Cancel" type="submit" class="formbtn" value="<?=gtext("Cancel");?>" />
         </div>
+
+        <div id="partial-box" style="margin-top:10px;"><?=partial_box_html();?></div>
 
     </td></tr></tbody></table>
     <?php include 'formend.inc'; ?>
