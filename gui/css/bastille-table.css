@@ -160,7 +160,7 @@ a:hover .web-terminal-icon {
         justify-content: center;
         min-height: 56px;
         padding-left: 52px;
-        padding-right: 40px;
+        padding-right: 60px;
         cursor: pointer;
         font-weight: bold;
     }
@@ -169,18 +169,22 @@ a:hover .web-terminal-icon {
         display: none;
     }
 
+    /* Round button like the back-to-top one: same up-arrow.svg, pointing down when collapsed */
     table.area_data_selection > tbody > tr > td:nth-child(3)::after {
-        content: "\25BE";
+        content: "";
         position: absolute;
-        right: 14px;
+        right: 12px;
         top: 50%;
-        transform: translateY(-50%);
-        font-size: 1.2em;
-        opacity: 0.7;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(60, 60, 60, 0.85) url('../images/up-arrow.svg') center / 26px 26px no-repeat;
+        transform: translateY(-50%) rotate(180deg);
+        transition: transform 0.2s ease;
     }
 
     table.area_data_selection > tbody > tr.expanded > td:nth-child(3)::after {
-        content: "\25B4";
+        transform: translateY(-50%) rotate(0deg);
     }
 
     /* Selection checkbox stays available (Start/Stop/Restart/Autoboot need it):
