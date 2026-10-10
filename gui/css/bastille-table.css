@@ -110,6 +110,21 @@ a:hover .web-terminal-icon {
         margin-bottom: 2px;
     }
 
+    /* Cards stay white in every state: the theme paints the row gray on hover, and on
+       touch screens the hover sticks after tapping to expand */
+    table.area_data_selection > tbody > tr,
+    table.area_data_selection > tbody > tr:hover,
+    table.area_data_selection > tbody > tr > td,
+    table.area_data_selection > tbody > tr:hover > td {
+        background-color: #fff !important;
+        color: #000;
+    }
+
+    table.area_data_selection > tbody > tr > td.lcebld,
+    table.area_data_selection > tbody > tr:hover > td.lcebld {
+        background-color: #e8e8e8 !important;
+    }
+
     /* Brief view: Name, State | IP and Toolbox. The rest only when expanded */
     table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(2),
     table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(4),
@@ -221,6 +236,14 @@ a:hover .web-terminal-icon {
 
     table.area_data_selection > tfoot > tr > td.lceadd {
         text-align: center;
+    }
+
+    /* The XigmaNAS footer/menu can be wider than the phone, which makes the page pan
+       sideways and leaves position:fixed elements (back to top) off-screen */
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
     }
 
     /* Use the width we have: trim the padding of the XigmaNAS content frame */
