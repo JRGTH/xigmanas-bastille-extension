@@ -208,11 +208,6 @@ a:hover .web-terminal-icon {
         display: none;
     }
 
-    table.area_data_selection > tbody > tr > td.lcelc input[type="checkbox"] {
-        width: 22px;
-        height: 22px;
-    }
-
     /* Toolbox: icons side by side, bigger touch targets */
     table.area_data_selection > tbody > tr > td.lcebld {
         display: flex;
