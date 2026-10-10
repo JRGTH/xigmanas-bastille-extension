@@ -233,7 +233,7 @@ a:hover .web-terminal-icon {
     display: none;
     position: fixed;
     right: 16px;
-    bottom: 16px;
+    bottom: 48px; /* above the fixed XigmaNAS footer bar */
     width: 44px;
     height: 44px;
     padding: 0;

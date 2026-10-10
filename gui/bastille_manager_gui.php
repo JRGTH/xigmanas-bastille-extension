@@ -341,12 +341,22 @@ $(window).on("load", function() {
 	applyExpandedCards();
 	markEmptyCells();
 
-	// Back to top button
-	$(window).on('scroll', function() {
-		$('#back-to-top').toggleClass('visible', $(window).scrollTop() > 300);
-	});
+	// Back to top button. The XigmaNAS layout may scroll an inner container instead of
+	// the window, so listen to every scroll (capture phase) and remember what moved.
+	var backToTopScroller = null;
+	document.addEventListener('scroll', function(e) {
+		var isDoc = (e.target === document);
+		var el = isDoc ? window : e.target;
+		var top = isDoc ? (window.pageYOffset || document.documentElement.scrollTop) : e.target.scrollTop;
+		if (top > 300) {
+			backToTopScroller = el;
+			$('#back-to-top').addClass('visible');
+		} else if (el === backToTopScroller) {
+			$('#back-to-top').removeClass('visible');
+		}
+	}, true);
 	$('#back-to-top').on('click', function() {
-		window.scrollTo({ top: 0, behavior: 'smooth' });
+		(backToTopScroller || window).scrollTo({ top: 0, behavior: 'smooth' });
 	});
 	$(document).on('click', 'table.area_data_selection > tbody > tr > td:nth-child(3)', function() {
 		if (!window.matchMedia('(max-width: 768px)').matches) return;
