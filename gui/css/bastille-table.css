@@ -49,62 +49,110 @@ a:hover .web-terminal-icon {
 }
 
 @media screen and (max-width: 768px) {
-    /* Usamos el punto (.) porque es una clase, no un ID */
+    /* Child combinators: do not touch the nested .area_data_selection_toolbox table */
     table.area_data_selection,
-    table.area_data_selection thead,
-    table.area_data_selection tbody,
-    table.area_data_selection tr,
-    table.area_data_selection th,
-    table.area_data_selection td {
+    table.area_data_selection > tbody,
+    table.area_data_selection > tbody > tr,
+    table.area_data_selection > tbody > tr > td,
+    table.area_data_selection > tfoot,
+    table.area_data_selection > tfoot > tr,
+    table.area_data_selection > tfoot > tr > td {
         display: block;
-        width: 100%;
+        width: 100% !important;
+        box-sizing: border-box;
     }
 
-    /* Ocultamos la cabecera real (los <th> que me acabas de enseñar) */
-    table.area_data_selection thead {
+    /* Column headers are replaced by the data-label of each cell; the "Overview" title row stays */
+    table.area_data_selection > thead > tr:last-child {
         display: none;
     }
 
-    /* Diseño de la Tarjeta (Card) */
-    table.area_data_selection tr {
+    /* Card: 2-column grid, label above value */
+    table.area_data_selection > tbody > tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         margin-bottom: 1rem;
-        background-color: #fff;
-        border: 1px solid rgba(150, 150, 150, 0.3);
+        border: 1px solid rgba(150, 150, 150, 0.4);
         border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
         overflow: hidden;
     }
 
-    table.area_data_selection td {
-        position: relative;
-        padding: 12px 12px 12px 45%;
-        text-align: right !important;
-        border-bottom: 1px solid rgba(150, 150, 150, 0.1);
-        min-height: 40px;
+    table.area_data_selection > tbody > tr > td {
         display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        word-break: break-all;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        min-width: 0;
+        min-height: 44px;
+        padding: 8px 12px;
+        text-align: left !important;
+        white-space: normal;
+        overflow: visible;
+        overflow-wrap: anywhere;
+        border-bottom: 1px solid rgba(150, 150, 150, 0.2);
     }
 
-    table.area_data_selection td:last-child {
-        border-bottom: none;
-        justify-content: center; /* Centramos los botones de acciones al final */
-    }
-
-    /* Inyección de las etiquetas usando data-label */
-    table.area_data_selection td::before {
+    table.area_data_selection > tbody > tr > td::before {
         content: attr(data-label);
-        position: absolute;
-        left: 12px;
-        width: 40%;
-        text-align: left;
+        font-size: 0.75em;
         font-weight: bold;
-        opacity: 0.8;
+        opacity: 0.7;
+        margin-bottom: 2px;
     }
 
-    /* Ocultamos la celda del checkbox "Select" en móvil para ahorrar espacio (opcional) */
-    table.area_data_selection td:first-child {
+    /* Wide fields take the whole row and go first (Select, Name, IP, Ports), the
+       Toolbox goes last; the remaining 10 short fields pair up in two columns */
+    table.area_data_selection > tbody > tr > td:nth-child(1),
+    table.area_data_selection > tbody > tr > td:nth-child(3),
+    table.area_data_selection > tbody > tr > td:nth-child(8),
+    table.area_data_selection > tbody > tr > td:nth-child(9),
+    table.area_data_selection > tbody > tr > td:nth-child(15) {
+        grid-column: 1 / -1;
+        order: -1;
+    }
+
+    table.area_data_selection > tbody > tr > td:nth-child(15) {
+        order: 1;
+    }
+
+    /* Selection checkbox stays available: the Start/Stop/Restart buttons need it */
+    table.area_data_selection > tbody > tr > td.lcelc {
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 8px;
+    }
+
+    table.area_data_selection > tbody > tr > td.lcelc::before {
+        margin: 0;
+    }
+
+    table.area_data_selection > tbody > tr > td.lcelc input[type="checkbox"] {
+        width: 22px;
+        height: 22px;
+    }
+
+    /* Toolbox: icons side by side, bigger touch targets */
+    table.area_data_selection > tbody > tr > td.lcebld {
+        align-items: center;
+        border-bottom: none;
+    }
+
+    table.area_data_selection > tbody > tr > td.lcebld::before {
         display: none;
+    }
+
+    table.area_data_selection_toolbox td {
+        padding: 6px 10px;
+    }
+
+    /* Footer: only the "add" button, without the empty spacer cell */
+    table.area_data_selection > tfoot > tr > td.lcenl {
+        display: none;
+    }
+
+    table.area_data_selection > tfoot > tr > td.lceadd {
+        text-align: center;
     }
 }
