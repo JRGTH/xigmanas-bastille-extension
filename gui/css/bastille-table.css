@@ -220,6 +220,20 @@ a:hover .web-terminal-icon {
         display: none;
     }
 
+    /* Icons spread over the whole card width with equal gaps (3 or 4 icons) */
+    table.area_data_selection_toolbox,
+    table.area_data_selection_toolbox > tbody {
+        display: block;
+        width: 100%;
+    }
+
+    table.area_data_selection_toolbox > tbody > tr {
+        display: flex;
+        justify-content: space-evenly;
+        align-items: center;
+        width: 100%;
+    }
+
     table.area_data_selection_toolbox td {
         padding: 8px 14px;
     }
