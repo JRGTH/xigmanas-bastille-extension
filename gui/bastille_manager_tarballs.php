@@ -42,55 +42,201 @@ require_once("bastille_manager-lib.inc");
 $gt_selection_delete_confirm = gtext('Do you really want to destroy this base release?');
 $pgtitle = [gtext("Extensions"), gtext('Bastille'),gtext('Releases')];
 
-// --- ASYNCHRONOUS STREAMING PROCESSING ---
-if (isset($_GET['action']) && $_GET['action'] === 'stream') {
-    //This line allows us to avoid gluing downloads together, and prevents the PHP session from blocking the application.
+// --- BACKGROUND JOB PROCESSING (download / destroy) ---
+// The job runs detached from the HTTP request, writing its output to a log file.
+// The page only polls that log, so the user can leave and come back at any time.
+$job_dir = "{$rootfolder}/log/release_job";
+$job_meta = "{$job_dir}/job.json";
+$job_log = "{$job_dir}/job.log";
+$job_pid = "{$job_dir}/job.pid";
+$job_exit = "{$job_dir}/job.exit";
+
+function job_read_meta() {
+    global $job_meta;
+    $m = is_file($job_meta) ? json_decode((string)file_get_contents($job_meta), true) : null;
+    return is_array($m) ? $m : null;
+}
+
+// Returns running|done|failed|interrupted|none
+function job_state() {
+    global $job_pid, $job_exit;
+    if (job_read_meta() === null) return 'none';
+    if (is_file($job_exit)) return ((int)trim((string)file_get_contents($job_exit)) === 0) ? 'done' : 'failed';
+    $pid = is_file($job_pid) ? (int)trim((string)file_get_contents($job_pid)) : 0;
+    if ($pid > 0 && (function_exists('posix_kill') ? posix_kill($pid, 0) : exec('/bin/kill -0 ' . $pid . ' 2>/dev/null', $o, $rc) !== false && $rc === 0)) return 'running';
+    // A freshly started job may not have written its pid yet.
+    $m = job_read_meta();
+    if (time() - (int)($m['started'] ?? 0) < 5) return 'running';
+    return 'interrupted';
+}
+
+function job_json($data) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE);
+    exit;
+}
+
+if (isset($_REQUEST['action']) && in_array($_REQUEST['action'], ['start', 'status'], true)) {
+    // Do not hold the PHP session lock, otherwise the rest of the WebGUI would block.
     session_write_close();
 
-    @ini_set('output_buffering', '0');
-    @ini_set('zlib.output_compression', '0');
-    @ini_set('implicit_flush', '1');
-    ob_implicit_flush(1);
-    header('X-Accel-Buffering: no');
-    header('Content-Encoding: none');
-    header('Content-Type: text/plain; charset=utf-8');
-    header('Cache-Control: no-cache, must-revalidate');
-    while (ob_get_level()) ob_end_clean();
+    if ($_REQUEST['action'] === 'status') {
+        $state = job_state();
+        $meta = job_read_meta();
+        $offset = max(0, (int)($_GET['offset'] ?? 0));
+        $text = '';
+        $size = is_file($job_log) ? (int)filesize($job_log) : 0;
+        if ($size > $offset && ($fh = fopen($job_log, 'rb'))) {
+            fseek($fh, $offset);
+            $text = (string)fread($fh, 262144);
+            fclose($fh);
+        }
+        job_json([
+            'state' => $state,
+            'mode' => $meta['mode'] ?? '',
+            'release' => $meta['release'] ?? '',
+            'started' => $meta['started'] ?? 0,
+            'text' => $text,
+            'offset' => $offset + strlen($text),
+        ]);
+    }
 
-    $mode = $_GET['mode'] ?? '';
-    $get_release = $_GET['release'] ?? '';
+    // action=start (POST only)
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') job_json(['ok' => false, 'error' => 'POST required']);
+    if (job_state() === 'running') job_json(['ok' => false, 'error' => gtext('Another operation is already running.')]);
 
+    $mode = $_POST['mode'] ?? '';
+    $release = $_POST['release'] ?? '';
+    if (!in_array($mode, ['bootstrap', 'destroy'], true)) job_json(['ok' => false, 'error' => 'Invalid mode']);
+    if ($mode === 'bootstrap' && !preg_match('/^[0-9]+\.[0-9]+-RELEASE$/', $release)) job_json(['ok' => false, 'error' => 'Invalid release']);
+    if ($mode === 'destroy') {
+        if (!preg_match('/^([0-9]+\.[0-9]+-RELEASE|Debian[0-9]{1,2}|Ubuntu_[0-9]{4})$/', $release)) job_json(['ok' => false, 'error' => 'Invalid release']);
+        if (!is_dir("{$rootfolder}/releases/{$release}")) job_json(['ok' => false, 'error' => sprintf(gtext('%s base does not exist, nothing to do.'), $release)]);
+        if (exec("/usr/bin/grep -wo " . escapeshellarg($release) . " {$jail_dir}/*/fstab 2>/dev/null")) {
+            job_json(['ok' => false, 'error' => sprintf(gtext('%s base appears to have containers child.'), $release)]);
+        }
+    }
+    if ($mode === 'bootstrap' && get_state_zfs() == "Invalid ZFS configuration") {
+        job_json(['ok' => false, 'error' => gtext("Cannot bootstrap with an invalid ZFS configuration.")]);
+    }
+
+    if (!is_dir($job_dir)) @mkdir($job_dir, 0755, true);
+    foreach ([$job_log, $job_pid, $job_exit, "{$job_dir}/job.sh"] as $f) @unlink($f);
+
+    $rel = escapeshellarg($release);
     if ($mode === 'bootstrap') {
-        $lib32 = ($_GET['lib32'] === 'true') ? "lib32" : "";
-        $ports = ($_GET['ports'] === 'true') ? "ports" : "";
-        $src = ($_GET['src'] === 'true') ? "src" : "";
+        $archives = trim('base ' . (($_POST['lib32'] ?? '') === 'true' ? 'lib32 ' : '')
+            . (($_POST['ports'] ?? '') === 'true' ? 'ports ' : '') . (($_POST['src'] ?? '') === 'true' ? 'src' : ''));
+        $sysrc_set = $sysrc_restore = '';
         if (!empty($config_path)) {
-            exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"base $lib32 $ports $src\"");
+            // sysrc adds the quotes itself; never embed them in the value.
+            $restore_val = preg_match('/^[A-Za-z0-9 ]+$/', trim($default_distfiles)) ? trim($default_distfiles) : 'base';
+            $sysrc_set = '/usr/sbin/sysrc -f ' . escapeshellarg($config_path) . ' ' . escapeshellarg("bastille_bootstrap_archives={$archives}") . " >/dev/null\n";
+            $sysrc_restore = '/usr/sbin/sysrc -f ' . escapeshellarg($config_path) . ' ' . escapeshellarg("bastille_bootstrap_archives={$restore_val}") . " >/dev/null\n";
         }
-        $command = sprintf('/usr/local/bin/bastille bootstrap %s 2>&1', escapeshellarg($get_release));
+        // Bastille's own fetch does not resume: a partial file stays in the cache and
+        // then fails the checksum. So the archives are pre-downloaded here with
+        // "fetch -r" (restart at the interrupted byte); bastille then finds them in
+        // the cache, verifies the checksum and extracts. Failed or stalled transfers
+        // are retried, each attempt continuing from what is already on disk.
+        $conf_arg = escapeshellarg($config_path ?: '');
+        $body = <<<SH
+{$sysrc_set}prefetch() (
+    [ -n {$conf_arg} ] && . {$conf_arg} 2>/dev/null
+    [ -z "\$bastille_cachedir" ] && return 0
+    url="\${bastille_url_freebsd}\$(/usr/bin/uname -m)/\$(/usr/bin/uname -p)/{$release}"
+    real="\$bastille_cachedir/{$release}"
+    # Staged outside the release cache dir: a failed first bootstrap makes bastille rm -rf it.
+    dir="\$bastille_cachedir/.resume/{$release}"
+    # First ever bootstrap: no cache dir yet, let bastille create its datasets itself.
+    [ -d "\$bastille_cachedir" ] || return 0
+    /bin/mkdir -p "\$dir" || return 1
+    # Create the per-release cache dir the way bastille does (a ZFS dataset when ZFS is
+    # enabled); a plain directory here would stop bastille from creating the dataset.
+    if [ ! -d "\$real" ]; then
+        case "\$bastille_zfs_enable" in
+            [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee]|[Oo][Nn]|1) zfs_on=1;;
+            *) zfs_on=0;;
+        esac
+        if [ \$zfs_on -eq 1 ] && [ -n "\$bastille_zfs_zpool" ]; then
+            /sbin/zfs create \$bastille_zfs_options -o mountpoint="\$real" "\$bastille_zfs_zpool/\$bastille_zfs_prefix/cache/{$release}" || return 1
+        else
+            /bin/mkdir -p "\$real" || return 1
+        fi
+    fi
+    for a in {$archives}; do
+        f="\$dir/\$a.txz"
+        remote=\$(/usr/bin/fetch -T 30 -s "\$url/\$a.txz" 2>/dev/null)
+        case "\$remote" in
+            ''|*[!0-9]*)
+                # Size unknown (e.g. EOL release on another mirror): let bastille handle it.
+                echo "[Size of \$a.txz unknown at \$url, leaving it to bastille (no resume)]"
+                continue;;
+        esac
+        have=\$(/usr/bin/stat -f %z "\$f" 2>/dev/null || echo 0)
+        [ "\$have" -eq "\$remote" ] && continue
+        [ "\$have" -gt "\$remote" ] && /bin/rm -f "\$f" && have=0
+        [ "\$have" -gt 0 ] && echo "[Resuming \$a.txz at \$have of \$remote bytes]"
+        /usr/bin/fetch -q -r -T 30 -o "\$f" "\$url/\$a.txz" &
+        fp=\$!
+        # fetch only draws its progress bar on a tty, so report progress from the file size.
+        while kill -0 \$fp 2>/dev/null; do
+            cur=\$(/usr/bin/stat -f %z "\$f" 2>/dev/null || echo 0)
+            printf '\r%s: %d / %d MB (%d%%)    ' "\$a.txz" \$((cur / 1048576)) \$((remote / 1048576)) \$((cur * 100 / remote))
+            sleep 1
+        done
+        wait \$fp
+        frc=\$?
+        [ \$frc -eq 0 ] || { printf '\n'; return 1; }
+        printf '\r%s: %d / %d MB (100%%)    \n' "\$a.txz" \$((remote / 1048576)) \$((remote / 1048576))
+    done
+    for a in {$archives}; do
+        [ -f "\$dir/\$a.txz" ] && { /bin/ln -f "\$dir/\$a.txz" "\$real/\$a.txz" 2>/dev/null || /bin/cp -f "\$dir/\$a.txz" "\$real/\$a.txz"; }
+    done
+    return 0
+)
+cleanup() (
+    [ -n {$conf_arg} ] && . {$conf_arg} 2>/dev/null
+    [ -n "\$bastille_cachedir" ] && /bin/rm -rf "\$bastille_cachedir/.resume/{$release}"
+    /bin/rmdir "\$bastille_cachedir/.resume" 2>/dev/null
+)
+max=10
+attempt=1
+bfail=0
+while :; do
+    if prefetch; then
+        /bin/echo "Y" | /usr/local/bin/bastille bootstrap {$rel}
+        rc=\$?
+        # A failure of bastille itself (not the transfer) is rarely transient.
+        [ \$rc -ne 0 ] && bfail=\$((bfail + 1))
+        [ \$bfail -ge 2 ] && break
+    else
+        rc=1
+    fi
+    [ \$rc -eq 0 ] && { cleanup; break; }
+    [ \$attempt -ge \$max ] && break
+    attempt=\$((attempt + 1))
+    echo
+    echo "[Attempt failed. Retrying \$attempt/\$max in 10s...]"
+    sleep 10
+done
+{$sysrc_restore}
+SH;
     } else {
-        $command = sprintf('/usr/local/bin/bastille destroy %s 2>&1', escapeshellarg($get_release));
+        // Already confirmed in the browser and checked for child jails above; bastille asks y/n on stdin.
+        $body = "/bin/echo y | /usr/local/bin/bastille destroy {$rel}\nrc=\$?\n";
     }
 
-    $handle = popen($command, 'r');
-    if ($handle) {
-        stream_set_blocking($handle, false);
-        while (!feof($handle)) {
-            $chunk = fread($handle, 128);
-            if ($chunk !== false && $chunk !== '') {
-                echo preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $chunk);
-                flush();
-            } else {
-                usleep(20000);
-            }
-        }
-        pclose($handle);
-    }
-
-    if ($mode === 'bootstrap' && !empty($config_path)) {
-        exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$default_distfiles\"");
-    }
-    exit;
+    // The exit code is written from inside the subshell (the script itself must survive the request).
+    $script = "#!/bin/sh\necho \$\$ > " . escapeshellarg($job_pid) . "\n"
+        . "(\n{$body}\n"
+        . "echo\nif [ \$rc -eq 0 ]; then echo '[Completed]'; else echo \"[Failed (exit code \$rc)]\"; fi\n"
+        . "echo \$rc > " . escapeshellarg($job_exit) . "\n) < /dev/null >> " . escapeshellarg($job_log) . " 2>&1\n";
+    file_put_contents("{$job_dir}/job.sh", $script);
+    file_put_contents($job_meta, json_encode(['mode' => $mode, 'release' => $release, 'started' => time()]));
+    exec('/usr/bin/nohup /bin/sh ' . escapeshellarg("{$job_dir}/job.sh") . ' > /dev/null 2>&1 &');
+    job_json(['ok' => true]);
 }
 
 $sphere_array = [];
@@ -282,60 +428,125 @@ include 'fbegin.inc';
 ?>
 
 <script type="text/javascript">
-async function runBastilleAction(mode) {
-    const release = document.getElementsByName('release_item')[0].value;
-    if(!release) return;
-    if(mode === 'destroy' && !confirm('<?=$gt_selection_delete_confirm;?>')) return;
+const JOB_URL = 'bastille_manager_tarballs.php';
+let jobOffset = 0, jobRaw = '', jobTimer = null, jobPolling = false, sawRunning = false;
+let lastOut = null, logNode = null;
 
-    const logArea = document.getElementById('log-area');
-    const logContainer = document.getElementById('log-container');
+function el(id) { return document.getElementById(id); }
 
-    logContainer.style.display = 'block';
-    logArea.textContent = ""; // Empieza vacío, sin "Processing..."
+function renderLog() {
+    // Strip ANSI colors and emulate carriage returns (fetch progress lines overwrite themselves).
+    const clean = jobRaw.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
+    let out = '';
+    for (const ch of clean) {
+        if (ch === '\r') {
+            const nl = out.lastIndexOf('\n');
+            out = nl !== -1 ? out.substring(0, nl + 1) : '';
+        } else out += ch;
+    }
+    if (out === lastOut) return; // nothing visible changed: do not touch the DOM (avoids flicker)
+    lastOut = out;
+    const area = el('log-area');
+    const atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 30;
+    // Reuse one text node instead of rebuilding the content on every update.
+    if (!logNode) { area.textContent = ''; logNode = document.createTextNode(''); area.appendChild(logNode); }
+    logNode.data = out;
+    if (atBottom) area.scrollTop = area.scrollHeight;
+}
 
-    const btnDown = document.getElementById('btn-download');
-    const btnDest = document.getElementById('btn-destroy');
-    btnDown.disabled = btnDest.disabled = true;
+function setBusy(busy) {
+    el('btn-download').disabled = el('btn-destroy').disabled = busy;
+}
 
-    const params = new URLSearchParams({
-        action: 'stream', mode: mode, release: release,
-        lib32: document.getElementsByName('lib32')[0].checked,
-        ports: document.getElementsByName('ports')[0].checked,
-        src: document.getElementsByName('src')[0].checked
-    });
+function setStatus(text) { const e = el('job-status'); if (e.textContent !== text) e.textContent = text; }
 
+async function pollJob() {
+    if (jobPolling) return;
+    jobPolling = true;
     try {
-        const response = await fetch('bastille_manager_tarballs.php?' + params.toString());
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        let fullText = "";
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-
-            for (let i = 0; i < chunk.length; i++) {
-                const char = chunk[i];
-                if (char === '\r') {
-                    // Si hay un retorno de carro, buscamos el último salto de línea
-                    const lastNewline = fullText.lastIndexOf('\n');
-                    // Borramos desde el último salto de línea hasta el final para sobreescribir el progreso
-                    fullText = lastNewline !== -1 ? fullText.substring(0, lastNewline + 1) : '';
-                } else {
-                    fullText += char;
-                }
-            }
-            logArea.textContent = fullText;
+        const r = await fetch(JOB_URL + '?action=status&offset=' + jobOffset, { cache: 'no-store' });
+        const d = await r.json();
+        if (d.state === 'none') { stopPolling(); setBusy(false); return; }
+        el('log-container').style.display = 'block';
+        const label = d.mode === 'bootstrap' ? '<?=gtext("Downloading");?>' : '<?=gtext("Destroying");?>';
+        if (d.text) { jobRaw += d.text; jobOffset = d.offset; renderLog(); }
+        if (d.state === 'running') {
+            sawRunning = true;
+            setBusy(true);
+            setStatus(label + ' ' + d.release + ' ...');
+        } else {
+            stopPolling();
+            setBusy(false);
+            const isDl = d.mode === 'bootstrap';
+            const msgs = {
+                done: '<?=gtext("Completed");?>',
+                failed: isDl ? '<?=gtext("Failed. Press Download again to retry; files already downloaded are reused.");?>' : '<?=gtext("Failed.");?>',
+                interrupted: isDl ? '<?=gtext("Interrupted. Press Download again to resume.");?>' : '<?=gtext("Interrupted.");?>'
+            };
+            setStatus(d.release + ': ' + msgs[d.state]);
+            if (d.state === 'done' && sawRunning) { sawRunning = false; refreshInstalled(); }
         }
     } catch (e) {
-        logArea.textContent += "\n[Error]: " + e;
+        // Network hiccup: the job keeps running on the server, keep polling.
+        setStatus('<?=gtext("Connection lost, retrying...");?>');
     } finally {
-        btnDown.disabled = btnDest.disabled = false;
+        jobPolling = false;
     }
 }
+
+// Refresh only the "Installed Base" list (no full page reload, so the log does not flicker).
+async function refreshInstalled() {
+    try {
+        const r = await fetch(JOB_URL, { cache: 'no-store' });
+        const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+        const newHead = doc.querySelector('table.area_data_settings thead');
+        const oldHead = document.querySelector('table.area_data_settings thead');
+        if (newHead && oldHead) oldHead.innerHTML = newHead.innerHTML;
+        const newTok = doc.querySelector('input[name="authtoken"]');
+        const oldTok = document.querySelector('input[name="authtoken"]');
+        if (newTok && oldTok) oldTok.value = newTok.value;
+    } catch (e) { /* the list refreshes on the next page load */ }
+}
+
+function startPolling() {
+    if (!jobTimer) jobTimer = setInterval(pollJob, 1500);
+    pollJob();
+}
+function stopPolling() { clearInterval(jobTimer); jobTimer = null; }
+
+async function runBastilleAction(mode) {
+    const release = document.getElementsByName('release_item')[0].value;
+    if (!release) return;
+    if (mode === 'destroy' && !confirm('<?=$gt_selection_delete_confirm;?>')) return;
+
+    setBusy(true);
+    const body = new FormData();
+    const authToken = document.querySelector('input[name="authtoken"]')?.value || '';
+    if (authToken) body.append('authtoken', authToken);
+    body.append('action', 'start');
+    body.append('mode', mode);
+    body.append('release', release);
+    body.append('lib32', document.getElementsByName('lib32')[0].checked);
+    body.append('ports', document.getElementsByName('ports')[0].checked);
+    body.append('src', document.getElementsByName('src')[0].checked);
+    try {
+        const r = await fetch(JOB_URL, { method: 'POST', body: body });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        if (!d.ok) { alert(d.error); setBusy(false); return; }
+        jobOffset = 0; jobRaw = '';
+        sawRunning = true; // finished jobs started here refresh the page, even if they end between polls
+        el('log-container').style.display = 'block';
+        renderLog();
+        startPolling();
+    } catch (e) {
+        alert(e);
+        setBusy(false);
+    }
+}
+
+// On page load, re-attach to a running job or show the result of the last one.
+document.addEventListener('DOMContentLoaded', startPolling);
 </script>
 
 <?php
@@ -358,7 +569,7 @@ $document->render();
 
         <div id="log-container" style="display:none; margin-bottom:15px;">
             <?php
-                print_info_box('<div id="log-area" style="text-align: left; white-space: pre-wrap; font-family: monospace; font-size: 11px; padding: 5px;"></div>');
+                print_info_box('<div id="job-status" style="font-weight:bold; padding:5px;"></div><div id="log-area" style="text-align: left; white-space: pre-wrap; font-family: monospace; font-size: 11px; padding: 5px; max-height: 400px; overflow-y: auto;"></div>');
             ?>
         </div>
 
@@ -394,6 +605,7 @@ $document->render();
         </div>
 
     </td></tr></tbody></table>
+    <?php include 'formend.inc'; ?>
 </form>
 
 <?php include 'fend.inc'; ?>
