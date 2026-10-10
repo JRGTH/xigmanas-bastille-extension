@@ -229,8 +229,10 @@ a:hover .web-terminal-icon {
         justify-content: center;
     }
 
-    #back-to-top svg {
+    #back-to-top .back-to-top-icon {
         display: block;
+        width: 30px;
+        height: 30px;
     }
 }
 

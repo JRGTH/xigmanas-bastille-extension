@@ -345,7 +345,7 @@ $(window).on("load", function() {
 	// Back to top button. The XigmaNAS layout may scroll an inner container instead of
 	// the window, so listen to every scroll (capture phase) and remember what moved.
 	// The button hangs from <body>, so no ancestor (transform/overflow) can break position:fixed
-	$('<button type="button" id="back-to-top"><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><polygon points="12 7.5 19 17.5 5 17.5" fill="currentColor"/></svg></button>')
+	$('<button type="button" id="back-to-top"><img src="ext/bastille/images/up-arrow.svg" class="back-to-top-icon" alt=""></button>')
 		.attr({ title: '<?=gtext('Back to top');?>', 'aria-label': '<?=gtext('Back to top');?>' })
 		.appendTo('body');
 	var backToTopScroller = null;
