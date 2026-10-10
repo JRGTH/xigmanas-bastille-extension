@@ -309,6 +309,7 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Manager')];
 include 'fbegin.inc';
 ?>
 <link rel="stylesheet" type="text/css" href="ext/bastille/css/styles.css?v=<?=time();?>">
+<link rel="stylesheet" type="text/css" href="ext/bastille/css/bastille-table.css?v=<?=time();?>">
 <script type="text/javascript">
 //<![CDATA[
 var currentEvtSource = null; // Global variable to track current SSE connection
@@ -343,6 +344,10 @@ $(window).on("load", function() {
 
 	// Back to top button. The XigmaNAS layout may scroll an inner container instead of
 	// the window, so listen to every scroll (capture phase) and remember what moved.
+	// The button hangs from <body>, so no ancestor (transform/overflow) can break position:fixed
+	$('<button type="button" id="back-to-top">&#9650;</button>')
+		.attr({ title: '<?=gtext('Back to top');?>', 'aria-label': '<?=gtext('Back to top');?>' })
+		.appendTo('body');
 	var backToTopScroller = null;
 	document.addEventListener('scroll', function(e) {
 		var isDoc = (e.target === document);
@@ -355,7 +360,7 @@ $(window).on("load", function() {
 			$('#back-to-top').removeClass('visible');
 		}
 	}, true);
-	$('#back-to-top').on('click', function() {
+	$(document).on('click', '#back-to-top', function() {
 		(backToTopScroller || window).scrollTo({ top: 0, behavior: 'smooth' });
 	});
 	$(document).on('click', 'table.area_data_selection > tbody > tr > td:nth-child(3)', function() {
@@ -970,7 +975,6 @@ endforeach;
     include 'formend.inc';
 ?>
 </td></tr></tbody></table></form>
-    <button type="button" id="back-to-top" title="<?=gtext('Back to top');?>" aria-label="<?=gtext('Back to top');?>">&#9650;</button>
     <div id="web-terminal-modal">
             <div id="web-terminal-content">
                 <div id="web-terminal-header">
