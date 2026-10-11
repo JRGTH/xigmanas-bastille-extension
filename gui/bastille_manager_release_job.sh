@@ -121,13 +121,22 @@ prefetch() (
 
     for archive in $ARCHIVES; do
         file="$stage/$archive.txz"
-        remote=$("$FETCH_BIN" -T "$FETCH_TIMEOUT" -s "$url/$archive.txz" 2>/dev/null)
-        case "$remote" in
+        answer=$("$FETCH_BIN" -T "$FETCH_TIMEOUT" -s "$url/$archive.txz" 2>&1)
+        case "$answer" in
             ''|*[!0-9]*)
-                # Size unknown (e.g. EOL release on another mirror): let bastille handle it.
-                echo "[Size of $archive.txz unknown at $url, leaving it to bastille (no resume)]"
-                continue ;;
+                case "$answer" in
+                    *"Not Found"*)
+                        # Not on this mirror (e.g. an EOL release moved to the archive): let
+                        # bastille handle it.
+                        echo "[$archive.txz not found at $url, leaving it to bastille (no resume)]"
+                        continue ;;
+                esac
+                # Anything else (timeout, no route, DNS...) is a network problem: fail so the
+                # job retries later. Never hand a partial file to bastille.
+                echo "[Cannot reach $url: $answer]"
+                return 1 ;;
         esac
+        remote=$answer
         echo "$remote" > "$stage/$archive.size"
 
         have=$(file_size "$file")
