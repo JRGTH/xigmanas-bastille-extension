@@ -22,7 +22,6 @@ import {
   executeDownloadRequest,
   openSSE,
   triggerDownload,
-  showNotification,
   initPendingJobResume,
 } from "./modules/download.js";
 import {
@@ -53,10 +52,10 @@ import {
 } from "./modules/editor.js";
 import {
   closeInfoSidebar,
-  initNotifications,
   showFileInfo,
   switchTab,
 } from "./modules/sidebar-info.js";
+import { initNotifications } from "./modules/notification.js";
 import { initContextMenu } from "./modules/context-menu.js";
 import { initTreeDelegation, initHomeButton } from "./modules/tree.js";
 import { initDragAndDrop } from './modules/dragdrop.js';

@@ -7,6 +7,12 @@
 
 import { releaseCfg, postAction, fetchStatus, fetchPage } from "./release-api.js";
 import { initLog, resetLog, appendLog } from "./release-log.js";
+import { initNotifications, showNotification } from "./notification.js";
+
+// A running job is remembered here so that, when the user comes back to the page after it
+// ended, the notification they missed is shown (same idea as "bastille_pending_job" for the
+// editor, but a separate key: the editor expects a compression job in that one).
+const PENDING_KEY = "bastille_pending_release_job";
 
 const $ = (id) => document.getElementById(id);
 const field = (name) => document.getElementsByName(name)[0];
@@ -16,6 +22,30 @@ let timer = null;
 let polling = false;
 // True once this page started a job or saw one running: refresh the lists when it ends.
 let watching = false;
+
+function savePending(mode, release) {
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ mode, release }));
+  } catch {
+    // Storage blocked: the notification for a job finished while away is simply not shown.
+  }
+}
+
+function hasPending() {
+  try {
+    return localStorage.getItem(PENDING_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+function clearPending() {
+  try {
+    localStorage.removeItem(PENDING_KEY);
+  } catch {
+    // Nothing to clean.
+  }
+}
 
 export function initReleaseJob() {
   initLog($("log-area"));
@@ -52,6 +82,8 @@ async function startJob(mode, release) {
   if (mode === "destroy" && !confirm(releaseCfg.text.confirmDestroy)) {
     return;
   }
+  // The click is the moment browsers allow asking for notification permission.
+  initNotifications();
   setBusy(true);
   try {
     const result = await postAction({
@@ -69,6 +101,7 @@ async function startJob(mode, release) {
     }
     offset = 0;
     watching = true;
+    savePending(mode, release);
     resetLog();
     $("log-container").style.display = "block";
     startPolling();
@@ -126,6 +159,7 @@ async function poll() {
   try {
     const status = await fetchStatus(offset);
     if (status.state === "none") {
+      clearPending();
       stopPolling();
       setBusy(false);
       return;
@@ -149,6 +183,9 @@ function showState({ state, mode, release }) {
   const text = releaseCfg.text;
   if (state === "running") {
     watching = true;
+    if (!hasPending()) {
+      savePending(mode, release);
+    }
     setBusy(true);
     setStatus(`${isDownload ? text.downloading : text.destroying} ${release} ...`);
     return;
@@ -161,7 +198,15 @@ function showState({ state, mode, release }) {
     failed: isDownload ? text.failedDownload : text.failedDestroy,
     interrupted: isDownload ? text.interruptedDownload : text.interruptedDestroy,
   };
-  setStatus(`${release}: ${messages[state]}`);
+  const finished = `${release}: ${messages[state]}`;
+  setStatus(finished);
+  // Notify when the user is not looking at the result: the tab is hidden, or the job ended
+  // while they were away (this page never saw it run, "watching" is false). A job they
+  // watched finish in a visible tab needs no notification.
+  if (hasPending() && (document.hidden || !watching)) {
+    showNotification(text.notificationTitle, finished);
+  }
+  clearPending();
   if (state === "done") {
     dismissJob();
   }

@@ -51,6 +51,7 @@ final class BastilleReleaseView
                 'interruptedDownload' => $this->t('Interrupted. Press Download again to resume.'),
                 'interruptedDestroy' => $this->t('Interrupted.'),
                 'connectionLost' => $this->t('Connection lost, retrying...'),
+                'notificationTitle' => $this->t('Base Releases'),
                 'confirmDestroy' => $this->t('Do you really want to destroy this base release?'),
                 'confirmDiscard' => $this->t('Discard this incomplete download?'),
             ],
