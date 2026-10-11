@@ -7,12 +7,8 @@
 
 import { releaseCfg, postAction, fetchStatus, fetchPage } from "./release-api.js";
 import { initLog, resetLog, appendLog } from "./release-log.js";
-import { initNotifications, showNotification } from "./notification.js";
-
-// A running job is remembered here so that, when the user comes back to the page after it
-// ended, the notification they missed is shown (same idea as "bastille_pending_job" for the
-// editor, but a separate key: the editor expects a compression job in that one).
-const PENDING_KEY = "bastille_pending_release_job";
+import { initNotifications } from "./notification.js";
+import { savePending, hasPending, claimPending, notifyEnded } from "./release-notify.js";
 
 const $ = (id) => document.getElementById(id);
 const field = (name) => document.getElementsByName(name)[0];
@@ -20,32 +16,10 @@ const field = (name) => document.getElementsByName(name)[0];
 let offset = 0;
 let timer = null;
 let polling = false;
+// The finished job (release and state) whose log is on screen, null while one runs.
+let shownJob = null;
 // True once this page started a job or saw one running: refresh the lists when it ends.
 let watching = false;
-
-function savePending(mode, release) {
-  try {
-    localStorage.setItem(PENDING_KEY, JSON.stringify({ mode, release }));
-  } catch {
-    // Storage blocked: the notification for a job finished while away is simply not shown.
-  }
-}
-
-function hasPending() {
-  try {
-    return localStorage.getItem(PENDING_KEY) !== null;
-  } catch {
-    return false;
-  }
-}
-
-function clearPending() {
-  try {
-    localStorage.removeItem(PENDING_KEY);
-  } catch {
-    // Nothing to clean.
-  }
-}
 
 export function initReleaseJob() {
   initLog($("log-area"));
@@ -101,6 +75,7 @@ async function startJob(mode, release) {
     }
     offset = 0;
     watching = true;
+    shownJob = null;
     savePending(mode, release);
     resetLog();
     $("log-container").style.display = "block";
@@ -122,6 +97,18 @@ async function dismissJob() {
   }
 }
 
+// The log on screen belongs to a download that was just discarded ("Interrupted. Press
+// Download again to resume."): it would be misleading. Hide it and make the server forget the
+// job so it does not come back after F5. A log of another release stays, it is still true.
+function forgetShownJob() {
+  shownJob = null;
+  claimPending();
+  $("log-container").style.display = "none";
+  resetLog();
+  setStatus("");
+  dismissJob();
+}
+
 async function discardPartial(release) {
   if (!confirm(releaseCfg.text.confirmDiscard)) {
     return;
@@ -130,6 +117,8 @@ async function discardPartial(release) {
     const result = await postAction({ action: "discard", release });
     if (!result.ok) {
       alert(result.error ?? "Error");
+    } else if (shownJob?.release === release) {
+      forgetShownJob();
     }
   } catch (error) {
     alert(error);
@@ -159,7 +148,7 @@ async function poll() {
   try {
     const status = await fetchStatus(offset);
     if (status.state === "none") {
-      clearPending();
+      claimPending();
       stopPolling();
       setBusy(false);
       return;
@@ -182,6 +171,7 @@ function showState({ state, mode, release }) {
   const isDownload = mode === "bootstrap";
   const text = releaseCfg.text;
   if (state === "running") {
+    shownJob = null;
     watching = true;
     if (!hasPending()) {
       savePending(mode, release);
@@ -200,13 +190,13 @@ function showState({ state, mode, release }) {
   };
   const finished = `${release}: ${messages[state]}`;
   setStatus(finished);
+  shownJob = { release, state };
   // Notify when the user is not looking at the result: the tab is hidden, or the job ended
   // while they were away (this page never saw it run, "watching" is false). A job they
   // watched finish in a visible tab needs no notification.
-  if (hasPending() && (document.hidden || !watching)) {
-    showNotification(text.notificationTitle, finished);
+  if (claimPending() && (document.hidden || !watching)) {
+    notifyEnded(mode, state, release);
   }
-  clearPending();
   if (state === "done") {
     dismissJob();
   }

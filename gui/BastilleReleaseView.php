@@ -42,7 +42,7 @@ final class BastilleReleaseView
         return json_encode([
             'endpoint' => $endpoint,
             'pollMs' => 1500,
-            'text' => [
+            'text' => $this->notificationTexts() + [
                 'downloading' => $this->t('Downloading'),
                 'destroying' => $this->t('Destroying'),
                 'completed' => $this->t('Completed'),
@@ -51,11 +51,37 @@ final class BastilleReleaseView
                 'interruptedDownload' => $this->t('Interrupted. Press Download again to resume.'),
                 'interruptedDestroy' => $this->t('Interrupted.'),
                 'connectionLost' => $this->t('Connection lost, retrying...'),
-                'notificationTitle' => $this->t('Base Releases'),
                 'confirmDestroy' => $this->t('Do you really want to destroy this base release?'),
                 'confirmDiscard' => $this->t('Discard this incomplete download?'),
             ],
         ], JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    }
+
+    /**
+     * JSON for window.RELEASE_CONFIG on pages that only watch a release job and notify when it
+     * ends (bastille_manager_gui.php): the endpoint and the notification texts, nothing else.
+     */
+    public function watchConfig(string $endpoint): string
+    {
+        return json_encode([
+            'endpoint' => $endpoint,
+            'pollMs' => 3000,
+            'text' => $this->notificationTexts(),
+        ], JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    }
+
+    /** @return array<string, string> */
+    private function notificationTexts(): array
+    {
+        return [
+            'notificationTitle' => $this->t('Base Releases'),
+            'notifyDownloadDone' => $this->t('Download of version %s completed successfully.'),
+            'notifyDownloadFailed' => $this->t('Download of version %s failed.'),
+            'notifyDownloadInterrupted' => $this->t('Download of version %s was interrupted.'),
+            'notifyDestroyDone' => $this->t('Deletion of version %s completed successfully.'),
+            'notifyDestroyFailed' => $this->t('Deletion of version %s failed.'),
+            'notifyDestroyInterrupted' => $this->t('Deletion of version %s was interrupted.'),
+        ];
     }
 
     private function partialButton(string $action, string $escapedRelease, string $label): string
