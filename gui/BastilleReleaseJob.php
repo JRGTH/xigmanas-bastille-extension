@@ -175,9 +175,8 @@ final class BastilleReleaseJob
     /** @return list<int> every child, grandchild... of $pid */
     private function descendants(int $pid): array
     {
-        exec('/bin/pgrep -P ' . $pid . ' 2>/dev/null', $output);
         $found = [];
-        foreach ($output as $line) {
+        foreach (explode("\n", self::run('/bin/pgrep -P ' . $pid . ' 2>/dev/null')['stdout']) as $line) {
             $child = (int) trim($line);
             if ($child > 0) {
                 $found[] = $child;
@@ -193,7 +192,7 @@ final class BastilleReleaseJob
             posix_kill($pid, $signal);
             return;
         }
-        exec('/bin/kill -' . $signal . ' ' . $pid . ' 2>/dev/null');
+        self::run('/bin/kill -' . $signal . ' ' . $pid . ' 2>/dev/null');
     }
 
     private function path(string $file): string
@@ -218,12 +217,22 @@ final class BastilleReleaseJob
         if (function_exists('posix_kill')) {
             return posix_kill($pid, 0);
         }
-        exec('/bin/kill -0 ' . $pid . ' 2>/dev/null', $output, $code);
-        return $code === 0;
+        return self::run('/bin/kill -0 ' . $pid . ' 2>/dev/null')['return_code'] === 0;
     }
 
     private static function launchDetached(string $command): void
     {
-        exec('/usr/bin/nohup ' . $command . ' > /dev/null 2>&1 &');
+        (new BastilleManagerMwExecParallel([$command]))->executeDetached();
+    }
+
+    /**
+     * Run a short command and wait for it.
+     *
+     * @return array{stdout: string, return_code: int}
+     */
+    private static function run(string $command): array
+    {
+        $result = (new BastilleManagerMwExecParallel(['run' => $command]))->executeWithSelect();
+        return ['stdout' => $result['run']['stdout'] ?? '', 'return_code' => $result['run']['return_code'] ?? -1];
     }
 }
