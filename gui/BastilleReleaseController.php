@@ -82,6 +82,9 @@ final class BastilleReleaseController
         if ($mode === null) {
             return $this->error('Invalid mode');
         }
+        if ($mode === BastilleJobMode::Destroy) {
+            $release = BastilleReleaseName::installedNameFor($release);
+        }
 
         $error = match ($mode) {
             BastilleJobMode::Bootstrap => $this->checkBootstrap($release),
@@ -93,8 +96,10 @@ final class BastilleReleaseController
 
         // Housekeeping of staged downloads (see BastilleReleaseCache).
         if ($mode === BastilleJobMode::Bootstrap) {
+            // Download a FreeBSD base release.
             $this->cache->purgeStale(self::STALE_PARTIAL_DAYS, $release);
         } else {
+            // Delete the FreeBSD base release/directory.
             $this->cache->discard($release);
         }
 
@@ -105,7 +110,8 @@ final class BastilleReleaseController
                 $this->bastilleConf,
                 $this->archivesFrom($post),
                 $this->restoreArchives(),
-                $this->resumeDownloads,
+                // The pre-download knows FreeBSD mirrors only; Linux releases go through bastille.
+                $this->resumeDownloads && BastilleReleaseName::isFreeBsd($release),
             );
         } catch (RuntimeException $e) {
             return $this->error($e->getMessage());
@@ -131,6 +137,7 @@ final class BastilleReleaseController
             return 'Invalid release';
         }
         if (($this->isZfsInvalid)()) {
+            // Abort bootstrap if invalid ZFS configuration.
             return $this->t('Cannot bootstrap with an invalid ZFS configuration.');
         }
         return null;
@@ -142,8 +149,10 @@ final class BastilleReleaseController
             return 'Invalid release';
         }
         if (!is_dir("{$this->releasesDir}/{$release}")) {
+            // FreeBSD base release check.
             return sprintf($this->t('%s base does not exist, nothing to do.'), $release);
         }
+        // Do not delete base releases with containers child.
         if ($this->isUsedByJails($release)) {
             return sprintf($this->t('%s base appears to have containers child.'), $release);
         }

@@ -44,7 +44,7 @@ final class BastilleReleaseCache
         $partials = [];
         foreach (glob("{$staging}/*", GLOB_ONLYDIR) ?: [] as $dir) {
             $release = basename($dir);
-            if (!BastilleReleaseName::isBootstrappable($release)) {
+            if (!BastilleReleaseName::isFreeBsd($release)) {
                 continue;
             }
             $have = array_sum(array_map(filesize(...), glob("{$dir}/*.txz") ?: []));
@@ -63,7 +63,7 @@ final class BastilleReleaseCache
     /** Delete the staged download of one release. False when the name is not acceptable. */
     public function discard(string $release): bool
     {
-        if (!BastilleReleaseName::isBootstrappable($release)) {
+        if (!BastilleReleaseName::isFreeBsd($release)) {
             return false;
         }
         $staging = $this->stagingDir();

@@ -164,6 +164,7 @@ set_archives() {
 }
 
 run_bootstrap() {
+    # Override default distfiles once.
     set_archives "$ARCHIVES"
 
     attempt=1
@@ -189,6 +190,7 @@ run_bootstrap() {
         sleep "$RETRY_DELAY"
     done
 
+    # Set back default distfiles.
     set_archives "$RESTORE_ARCHIVES"
     return "$rc"
 }
