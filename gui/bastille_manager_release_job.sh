@@ -19,6 +19,9 @@
 # Why the pre-download ("prefetch") exists, i.e. assumptions about Bastille:
 #   - bastille's own fetch cannot resume and leaves a partial file in the cache, which then
 #     fails the checksum on every retry;
+#   - the transfer itself uses curl (-C - resumes) when available, because "fetch -r" only
+#     writes the final size to the output file when it exits, so no progress can be shown
+#     while it runs; fetch (-r) is the fallback;
 #   - a failed first bootstrap makes bastille rm -rf its cache/<release> directory, so the
 #     download is staged in <cache>/.resume/<release> and linked into cache/<release>;
 #   - bastille creates cache/<release> as a ZFS dataset only when the directory does not
@@ -38,6 +41,7 @@ RESUME=${7:-1}
 
 BASTILLE_BIN=${BASTILLE_BIN:-/usr/local/bin/bastille}
 FETCH_BIN=${FETCH_BIN:-/usr/bin/fetch}
+CURL_BIN=${CURL_BIN:-/usr/local/bin/curl}
 SYSRC_BIN=${SYSRC_BIN:-/usr/sbin/sysrc}
 ZFS_BIN=${ZFS_BIN:-/sbin/zfs}
 ARCH_M=${ARCH_M:-$(uname -m)}
@@ -81,21 +85,45 @@ prepare_cache_dir() {
     fi
 }
 
-# Download one archive into the staging dir with fetch -r (restart at the interrupted
-# byte). fetch only draws its progress bar on a tty, so progress is reported from the
-# file size instead.
+# Download one archive into the staging dir, continuing a partial file if there is one.
+# Neither tool draws a usable progress bar when its output is a file, so progress is
+# reported from the size of the file.
 download_archive() {
     _url=$1
     _file=$2
     _name=$3
     _remote=$4
+    _resumed=$5
 
-    "$FETCH_BIN" -q -r -T "$FETCH_TIMEOUT" -o "$_file" "$_url" &
+    if [ -x "$CURL_BIN" ]; then
+        # -C - resumes at the size of the file; the file grows while it downloads.
+        # --speed-limit/--speed-time abort a connection that stalls for FETCH_TIMEOUT seconds.
+        "$CURL_BIN" -sS -f -L -C - --connect-timeout "$FETCH_TIMEOUT" \
+            --speed-limit 1 --speed-time "$FETCH_TIMEOUT" -o "$_file" "$_url" &
+        _tool=curl
+    else
+        "$FETCH_BIN" -q -r -T "$FETCH_TIMEOUT" -o "$_file" "$_url" &
+        _tool=fetch
+    fi
     _pid=$!
+    _prev=-1
+    _since=$(date +%s)
     while kill -0 "$_pid" 2>/dev/null; do
         _cur=$(file_size "$_file")
-        printf '\r%s: %d / %d MB (%d%%)    ' "$_name" \
-            $((_cur / 1048576)) $((_remote / 1048576)) $((_cur * 100 / _remote))
+        _now=$(date +%s)
+        if [ "$_cur" != "$_prev" ]; then
+            _prev=$_cur
+            _since=$_now
+        fi
+        _note=""
+        if [ "$_tool" = fetch ] && [ "$_resumed" -eq 1 ]; then
+            # "fetch -r" only writes the final size to the file when it exits.
+            _note=" - resuming, the size updates when it finishes"
+        elif [ $((_now - _since)) -ge 3 ]; then
+            _note=" - no data for $((_now - _since))s"
+        fi
+        printf '\r%s: %d / %d MB (%d%%)%s    ' "$_name" \
+            $((_cur / 1048576)) $((_remote / 1048576)) $((_cur * 100 / _remote)) "$_note"
         sleep "$PROGRESS_INTERVAL"
     done
     wait "$_pid"
@@ -145,8 +173,12 @@ prefetch() (
             rm -f "$file"
             have=0
         fi
-        [ "$have" -gt 0 ] && echo "[Resuming $archive.txz at $have of $remote bytes]"
-        download_archive "$url/$archive.txz" "$file" "$archive.txz" "$remote" || return 1
+        resumed=0
+        if [ "$have" -gt 0 ]; then
+            resumed=1
+            echo "[Resuming $archive.txz at $have of $remote bytes]"
+        fi
+        download_archive "$url/$archive.txz" "$file" "$archive.txz" "$remote" "$resumed" || return 1
     done
 
     for archive in $ARCHIVES; do
