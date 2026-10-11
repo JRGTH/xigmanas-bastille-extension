@@ -39,6 +39,7 @@ require_once 'auth.inc';
 require_once 'guiconfig.inc';
 require_once 'bastille_manager-lib.inc';
 require_once 'BastilleManagerMwExecParallel.php';
+require_once __DIR__ . '/BastilleReleaseView.php';
 
 $img_path = [
     'add' => 'images/add.png',
@@ -310,6 +311,9 @@ include 'fbegin.inc';
 ?>
 <link rel="stylesheet" type="text/css" href="ext/bastille/css/styles.css?v=<?=time();?>">
 <link rel="stylesheet" type="text/css" href="ext/bastille/css/bastille-table.css?v=<?=time();?>">
+<?php // Tells the user when a Base Releases download/destroy left running ends, wherever they are. ?>
+<script>window.RELEASE_CONFIG = <?=(new BastilleReleaseView(gtext(...)))->watchConfig('bastille_manager_tarballs.php');?>;</script>
+<script type="module" src="ext/bastille/js/release_watch_main.js?v=<?=filemtime(__DIR__ . '/js/release_watch_main.js');?>"></script>
 <script type="text/javascript">
 //<![CDATA[
 var currentEvtSource = null; // Global variable to track current SSE connection

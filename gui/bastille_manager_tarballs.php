@@ -39,8 +39,47 @@ require_once 'auth.inc';
 require_once 'guiconfig.inc';
 require_once("bastille_manager-lib.inc");
 
-$gt_selection_delete_confirm = gtext('Do you really want to destroy this base release?');
 $pgtitle = [gtext("Extensions"), gtext('Bastille'),gtext('Releases')];
+
+// The release job classes live next to this page (Bastille*.php).
+spl_autoload_register(static function (string $class): void {
+	$file = __DIR__ . "/{$class}.php";
+	if (str_starts_with($class, 'Bastille') && is_file($file)) {
+		require_once $file;
+	}
+});
+
+// Set RELEASE_RESUME_DOWNLOADS="NO" in the extension config to fall back to a plain
+// "bastille bootstrap" (see the header of bastille_manager_release_job.sh).
+$resume_downloads = strtoupper(trim((string)shell_exec('/usr/sbin/sysrc -f ' . escapeshellarg($configfile) . ' -qn RELEASE_RESUME_DOWNLOADS 2>/dev/null'))) !== 'NO';
+
+$release_cache = new BastilleReleaseCache((string)$config_path);
+$release_view = new BastilleReleaseView(gtext(...));
+$release_controller = new BastilleReleaseController(
+	new BastilleReleaseJob("{$rootfolder}/log/release_job", __DIR__ . '/bastille_manager_release_job.sh'),
+	$release_cache,
+	"{$rootfolder}/releases",
+	$jail_dir,
+	(string)$config_path,
+	(string)$default_distfiles,
+	$resume_downloads,
+	static fn(): bool => get_state_zfs() === 'Invalid ZFS configuration',
+	gtext(...),
+);
+
+// JSON endpoints polled by js/modules/release-job.js
+$release_action = (string)($_GET['action'] ?? $_POST['action'] ?? '');
+if (BastilleReleaseController::handles($release_action)) {
+	// Do not hold the PHP session lock, otherwise the rest of the WebGUI blocks while a job runs.
+	session_write_close();
+	header('Content-Type: application/json; charset=utf-8');
+	header('Cache-Control: no-store');
+	echo json_encode(
+		$release_controller->handle($release_action, $_SERVER['REQUEST_METHOD'], $_GET, $_POST),
+		JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR,
+	);
+	exit;
+}
 
 $sphere_array = [];
 $sphere_record = [];
@@ -118,113 +157,7 @@ if($_POST):
 		exit;
 	endif;
 
-	if (isset($_POST['Download']) && $_POST['Download']):
-		$lib32 = "";
-		$ports = "";
-		$src = "";
-		$get_release = $pconfig['release_item'];
-		$check_release = ("{$rootfolder}/releases/{$get_release}");
-		$cmd = sprintf('/bin/echo "Y" | /usr/local/bin/bastille bootstrap %1$s > %2$s 2>&1', $get_release, $logevent);
-		$base_mandatory = "base";
-		$zfs_status = get_state_zfs();
 
-		//unset($lib32,$ports,$src);
-		if (isset($_POST['lib32'])):
-			$lib32 = "lib32";
-		endif;
-		if (isset($_POST['ports'])):
-			$ports = "ports";
-		endif;
-		if (isset($_POST['src'])):
-			$src = "src";
-		endif;
-		$opt_tarballs = "$lib32 $ports $src";
-
-		// Download a FreeBSD base release.
-		if ($_POST['Download']):
-			if($zfs_status == "Invalid ZFS configuration"):
-				// Abort bootstrap if invalid ZFS configuration.
-				$input_errors[] = gtext("Cannot bootstrap with an invalid ZFS configuration.");
-			else:
-				$savemsg = "";
-				$errormsg = "";
-				if ($opt_tarballs):
-					if ($config_path):
-						// Override default distfiles once.
-						exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$base_mandatory $opt_tarballs\"");
-					endif;
-				endif;
-				$return_val = 0;
-				$output = [];
-				exec($cmd,$output,$return_val);
-                if($return_val == 0):
-                      $ausgabe = "";
-                      if (file_exists($logevent)) {
-                          $ausgabe = file_get_contents($logevent);
-                      }
-                      $ausgabe = preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $ausgabe);
-                      $ausgabe = trim($ausgabe);
-                      if (!empty($ausgabe)) {
-                          $savemsg .= str_replace("\n", "<br />", htmlspecialchars($ausgabe)) . "<br />";
-                      } else {
-                          $savemsg .= sprintf(gtext('%s Bootstrap process completed successfully.'), $get_release) . "<br />";
-                      }
-                      // Set back default distfiles.
-                      exec("/usr/sbin/sysrc -f {$config_path} bastille_bootstrap_archives=\"$default_distfiles\"");
-                else:
-                      $errormsg .= sprintf(gtext('%s Failed to download and/or extract release base.'),$get_release);
-                endif;
-
-			endif;
-		endif;
-	endif;
-
-	if (isset($_POST['Destroy']) && $_POST['Destroy']):
-		if ($_POST['Destroy']):
-			$get_release = $pconfig['release_item'];
-			if($get_release == 'ubuntu-bionic'):
-				$get_release = "Ubuntu_1804";
-			elseif($get_release == 'ubuntu-focal'):
-				$get_release = "Ubuntu_2004";
-			elseif($get_release == 'ubuntu-jammy'):
-				$get_release = "Ubuntu_2204";
-			elseif($get_release == 'debian-stretch'):
-				$get_release = "Debian9";
-			elseif($get_release == 'debian-buster'):
-				$get_release = "Debian10";
-			elseif($get_release == 'debian-bullseye'):
-				$get_release = "Debian11";
-			elseif($get_release == 'debian-bookworm'):
-				$get_release = "Debian12";
-			endif;
-
-			$check_release = ("{$rootfolder}/releases/{$get_release}");
-			$check_used = exec("/usr/bin/grep -wo {$get_release} {$jail_dir}/*/fstab 2>/dev/null");
-
-			$cmd = ("/usr/local/bin/bastille destroy {$get_release}");
-
-			if (!file_exists($check_release)):
-				// FreeBSD base release check.
-				$savemsg .= sprintf(gtext('%s base does not exist, nothing to do.'),$get_release);
-			else:
-				// Do not delete base releases with containers child.
-				if ($check_used):
-					$errormsg .= sprintf(gtext('%s base appears to have containers child.'),$get_release);
-				else:
-					// Delete the FreeBSD base release/directory.
-					if ($_POST['Destroy']):
-						unset($output,$retval);mwexec2($cmd,$output,$retval);
-						if($retval == 0):
-							//$savemsg .= sprintf(gtext('%s base deleted successfully.'),$get_release);
-							header('Location: bastille_manager_tarballs.php');
-						else:
-							$errormsg .= sprintf(gtext('%s failed to delete.'),$get_release);
-						endif;
-					endif;
-				endif;
-			endif;
-		endif;
-	endif;
 endif;
 
 include 'fbegin.inc';
@@ -233,17 +166,13 @@ include 'fbegin.inc';
 //<![CDATA[
 $(window).on("load",function() {
 	// Init action buttons
-	$("#Destroy").click(function () {
-		return confirm('<?=$gt_selection_delete_confirm;?>');
-	});
 	$("#iform").submit(function() { spinner(); });
 	$(".spin").click(function() { spinner(); });
 });
-function enable_change(enable_change) {
-	document.iform.name.disabled = !enable_change;
-}
 //]]>
 </script>
+<script>window.RELEASE_CONFIG = <?=$release_view->clientConfig('bastille_manager_tarballs.php');?>;</script>
+<script type="module" src="ext/bastille/js/release_main.js?v=<?=filemtime(__DIR__ . '/js/release_main.js');?>"></script>
 <?php
 $document = new co_DOMDocument();
 $document->
@@ -273,6 +202,11 @@ $document->render();
 		print_info_box(get_std_save_message(0));
 	endif;
 ?>
+	<div id="log-container" style="display:none; margin-bottom:15px;">
+<?php
+		print_info_box('<div id="job-status" style="font-weight:bold; padding:5px;"></div><div id="log-area" style="text-align: left; white-space: pre-wrap; font-family: monospace; font-size: 11px; padding: 5px; max-height: 400px; overflow-y: auto;"></div>');
+?>
+	</div>
 	<table class="area_data_settings">
 		<colgroup>
 			<col class="area_data_settings_col_tag">
@@ -311,12 +245,13 @@ $document->render();
 		</tbody>
 	</table>
 	<div id="submit">
-		<input name="Download" type="submit" class="formbtn" value="<?=gtext("Download");?>" onclick="enable_change(true)" />
-		<input name="Destroy" id="Destroy" type="submit" class="formbtn" value="<?=gtext("Destroy");?>"/>
+		<input name="Download" id="btn-download" type="button" class="formbtn" data-job-action="bootstrap" value="<?=gtext("Download");?>" />
+		<input name="Destroy" id="btn-destroy" type="button" class="formbtn" data-job-action="destroy" value="<?=gtext("Destroy");?>" />
 		<input name="Cancel" type="submit" class="formbtn" value="<?=gtext("Cancel");?>" />
 	</div>
+	<div id="partial-box" style="margin-top:10px;"><?=$release_view->partialBox($release_cache->partials());?></div>
 	<div id="remarks">
-		<?php html_remark("note", gtext("Note"), sprintf(gtext("Slow Internet connections may render the Web GUI unresponsive until download completes.")));?>
+		<?php html_remark("note", gtext("Note"), sprintf(gtext("Downloads run in the background: you can leave this page and come back to see the progress. An interrupted download can be resumed.")));?>
 		<div> <?=gtext("To fetch EOL/Unsupported releases, edit [bastille_url_freebsd] variable under [Bastille > Configuration] with: [http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/].")?></div>
 	</div>
 <?php
