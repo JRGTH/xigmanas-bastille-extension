@@ -309,6 +309,7 @@ $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Manager')];
 include 'fbegin.inc';
 ?>
 <link rel="stylesheet" type="text/css" href="ext/bastille/css/styles.css?v=<?=time();?>">
+<link rel="stylesheet" type="text/css" href="ext/bastille/css/bastille-table.css?v=<?=time();?>">
 <script type="text/javascript">
 //<![CDATA[
 var currentEvtSource = null; // Global variable to track current SSE connection
@@ -336,6 +337,47 @@ $(window).on("load", function() {
     disableactionbuttons(true);
     $("#iform").submit(function() { spinner(); });
     $(".spin").click(function() { spinner(); });
+
+	// Mobile cards: tap the name to expand/collapse the jail details
+	applyExpandedCards();
+	markEmptyCells();
+
+	syncJailFilterStyle();
+
+	// Filter (mobile): typing filters the cards, selecting a jail keeps it visible
+	$('#jail-filter').on('input', applyJailFilter);
+	$(document).on('change', "table.area_data_selection input[type='checkbox']", applyJailFilter);
+
+	// Back to top button. The XigmaNAS layout may scroll an inner container instead of
+	// the window, so listen to every scroll (capture phase) and remember what moved.
+	// The button hangs from <body>, so no ancestor (transform/overflow) can break position:fixed
+	$('<button type="button" id="back-to-top"><img src="ext/bastille/images/up-arrow.svg" class="back-to-top-icon" alt=""></button>')
+		.attr({ title: '<?=gtext('Back to top');?>', 'aria-label': '<?=gtext('Back to top');?>' })
+		.appendTo('body');
+	var backToTopScroller = null;
+	document.addEventListener('scroll', function(e) {
+		var isDoc = (e.target === document);
+		var el = isDoc ? window : e.target;
+		var top = isDoc ? (window.pageYOffset || document.documentElement.scrollTop) : e.target.scrollTop;
+		if (top > 300) {
+			backToTopScroller = el;
+			$('#back-to-top').addClass('visible');
+		} else if (el === backToTopScroller) {
+			$('#back-to-top').removeClass('visible');
+		}
+	}, true);
+	$(document).on('click', '#back-to-top', function() {
+		(backToTopScroller || window).scrollTo({ top: 0, behavior: 'smooth' });
+	});
+	$(document).on('click', 'table.area_data_selection > tbody > tr > td:nth-child(3)', function() {
+		if (!window.matchMedia('(max-width: 768px)').matches) return;
+		var $row = $(this).parent();
+		$row.toggleClass('expanded');
+		var jails = getExpandedCards();
+		var name = String($row.attr('data-jail'));
+		jails = $row.hasClass('expanded') ? jails.concat([name]) : jails.filter(function(j) { return j !== name; });
+		try { localStorage.setItem('bastille_expanded_jails', JSON.stringify(jails)); } catch (e) {}
+	});
 
 	// Attempt to load the previously saved interval
 	var savedInterval = localStorage.getItem('bastille_refresh_interval');
@@ -508,11 +550,18 @@ function updateJailTable() {
         .then(data => {
             clearTimeout(fetchTimeout);
             if (data.success) {
-                var tbody = $(".area_data_selection tbody");
+                var table = $("table.area_data_selection");
+                var tbody = table.children("tbody");
+                // Labels for the mobile card layout, taken from the real headers
+                var labels = table.find("thead tr:last-child th").map(function() { return $(this).text().trim(); }).get();
+                var cell = function(idx, content) {
+                    var td = $('<td class="lcell">').attr('data-label', labels[idx] || '');
+                    return (typeof content === 'string') ? td.text(content) : td.append(content);
+                };
                 tbody.empty();
                 data.jails.forEach(function(jail) {
-                    var row = $('<tr>');
-                    var checkCell = $('<td class="lcelc">');
+                    var row = $('<tr>').attr('data-jail', jail.jailname);
+                    var checkCell = $('<td class="lcelc">').attr('data-label', labels[0] || '');
                     var cb = $('<input type="checkbox">')
                         .attr('name', '<?=$checkbox_member_name;?>[]')
                         .attr('value', jail.jailname)
@@ -523,23 +572,23 @@ function updateJailTable() {
                     row.append(checkCell);
 
                     // 2. Data Columns
-                    row.append($('<td class="lcell">').text(jail.id || '-'));
-                    row.append($('<td class="lcell">').text(jail.name || '-'));
-                    row.append($('<td class="lcell">').text(jail.boot || '-'));
-                    row.append($('<td class="lcell">').text(jail.prio || '-'));
-                    row.append($('<td class="lcell">').text(jail.state || '-'));
-                    row.append($('<td class="lcell">').text(jail.type || '-'));
-                    row.append($('<td class="lcell">').text(jail.ip || '-'));
-                    row.append($('<td class="lcell">').text(jail.ports || '-'));
-                    row.append($('<td class="lcell">').text(jail.rel || '-'));
-                    row.append($('<td class="lcell">').text(jail.tags || '-'));
-                    row.append($('<td class="lcell">').text(jail.interface || '-'));
+                    row.append(cell(1, jail.id || '-'));
+                    row.append(cell(2, jail.name || '-'));
+                    row.append(cell(3, jail.boot || '-'));
+                    row.append(cell(4, jail.prio || '-'));
+                    row.append(cell(5, jail.state || '-'));
+                    row.append(cell(6, jail.type || '-'));
+                    row.append(cell(7, jail.ip || '-'));
+                    row.append(cell(8, jail.ports || '-'));
+                    row.append(cell(9, jail.rel || '-'));
+                    row.append(cell(10, jail.tags || '-'));
+                    row.append(cell(11, jail.interface || '-'));
 
                     var statImg = (jail.state === "Up") ? '<?=$img_path['ena'];?>' : '<?=$img_path['dis'];?>';
-                    row.append($('<td class="lcell">').append($('<img>').attr('src', statImg)));
-                    row.append($('<td class="lcell">').append($('<img>').attr('src', jail.logo)));
+                    row.append(cell(12, $('<img>').attr('src', statImg)));
+                    row.append(cell(13, $('<img>').attr('src', jail.logo)));
 
-                    var tools = $('<td class="lcebld">').html('<table class="area_data_selection_toolbox"><tbody><tr>' +
+                    var tools = $('<td class="lcebld">').attr('data-label', labels[14] || '').html('<table class="area_data_selection_toolbox"><tbody><tr>' +
                         '<td><a href="<?=$sphere_scriptname_child;?>?jailname=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$img_path['mai'];?>" class="spin oneemhigh"></a></td>' +
                         '<td><a href="bastille_manager_jconf.php?jailname=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['mod'];?>"></a></td>' +
                         '<td><a href="bastille_manager_info.php?uuid=' + encodeURIComponent(jail.jailname) + '"><img src="<?=$g_img['inf'];?>"></a></td>' +
@@ -567,6 +616,11 @@ function updateJailTable() {
 
                 // Restore button state
                 controlactionbuttons(null, '<?=$checkbox_member_name;?>[]');
+
+                // Keep the expanded cards (mobile layout) open across refreshes
+                applyExpandedCards();
+                markEmptyCells();
+                applyJailFilter();
 
                 // Reapply saved column widths after updating the table
                 applySavedColumnWidths();
@@ -600,6 +654,69 @@ function stopAutoRefresh() {
 function syncResizerHeights() {
     var totalHeight = $("table.area_data_selection").outerHeight();
     $('.resizer').css('height', totalHeight + 'px');
+}
+
+// --- JAIL FILTER (mobile layout) ---
+// The filter takes its look from the original interval combo (#refresh-interval): same font,
+// size, border and colors, whatever theme is active. Inline !important beats the theme's
+// own input/focus rules (the cyan background).
+function syncJailFilterStyle() {
+    var select = document.getElementById('refresh-interval');
+    var input = document.getElementById('jail-filter');
+    if (!select || !input) return;
+    var cs = window.getComputedStyle(select);
+    var bg = cs.backgroundColor;
+    if (!bg || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') bg = '#fff';
+    var set = function(prop, value) { input.style.setProperty(prop, value, 'important'); };
+    set('font-family', cs.fontFamily);
+    set('font-size', cs.fontSize);
+    set('background-color', bg);
+    set('color', cs.color);
+    set('border', cs.borderTopWidth + ' ' + cs.borderTopStyle + ' ' + cs.borderTopColor);
+    set('border-radius', cs.borderTopLeftRadius);
+}
+
+// --- JAIL FILTER (mobile layout) ---
+function applyJailFilter() {
+    var query = $.trim($("#jail-filter").val()).toLowerCase();
+    var visible = 0;
+    var $rows = $("table.area_data_selection > tbody > tr[data-jail]");
+    $rows.each(function() {
+        var $row = $(this);
+        // Selected jails always stay visible: hidden checked rows would still be submitted
+        var match = query === '' ||
+            $row.find("input[type='checkbox']").prop('checked') ||
+            $row.text().toLowerCase().indexOf(query) !== -1;
+        $row.toggleClass('is-filtered-out', !match);
+        if (match) visible++;
+    });
+    $("#jail-filter-empty").toggleClass('visible', query !== '' && $rows.length > 0 && visible === 0);
+}
+
+// --- EMPTY CELLS (mobile layout hides them) ---
+function markEmptyCells() {
+    $("table.area_data_selection > tbody > tr > td.lcell").each(function() {
+        var $td = $(this);
+        var empty = !$td.find('img').length && $td.text().replace(/[\s\u00a0]+/g, '') .replace(/^-$/, '') === '';
+        $td.toggleClass('is-empty', empty);
+    });
+}
+
+// --- EXPANDED CARDS (mobile layout) ---
+function getExpandedCards() {
+    try {
+        var jails = JSON.parse(localStorage.getItem('bastille_expanded_jails') || '[]');
+        return Array.isArray(jails) ? jails : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function applyExpandedCards() {
+    var jails = getExpandedCards();
+    $("table.area_data_selection > tbody > tr[data-jail]").each(function() {
+        $(this).toggleClass('expanded', jails.indexOf(String($(this).attr('data-jail'))) !== -1);
+    });
 }
 
 // --- STABLE REDIMENSIONING FUNCTION (without %) ---
@@ -709,6 +826,12 @@ function applySavedColumnWidths() {
     }
 }
 //]]>
+if (!document.querySelector('meta[name="viewport"]')) {
+    var meta = document.createElement('meta');
+    meta.name = "viewport";
+    meta.content = "width=device-width, initial-scale=1.0";
+    document.getElementsByTagName('head')[0].appendChild(meta);
+}
 </script>
 <?php
 $document = new co_DOMDocument();
@@ -752,6 +875,8 @@ endif;
        </tbody>
     </table>
 
+    <div id="jail-toolbar">
+    <input type="search" id="jail-filter" autocomplete="off" placeholder="<?=gtext('Filter jails...');?>" aria-label="<?=gtext('Filter jails');?>">
     <div id="refresh-controls" style="text-align: right; display: none; position: relative;">
         <span id="refresh-spinner" style="display: none;"></span>
         <button type="button" id="refresh-now" class="formbtn">Refresh</button>
@@ -762,6 +887,7 @@ endif;
             <option value="60000">60s</option>
             <option value="0">Manual</option>
         </select>
+    </div>
     </div>
 
 	<table class="area_data_selection" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
@@ -813,8 +939,8 @@ foreach ($sphere_array as $sphere_record):
     $notdirty = (UPDATENOTIFY_MODE_DIRTY != $notificationmode) && (UPDATENOTIFY_MODE_DIRTY_CONFIG != $notificationmode);
     $notprotected = !isset($sphere_record['protected']);
     ?>
-				<tr>
-					<td class="lcelc">
+				<tr data-jail="<?=htmlspecialchars($sphere_record['jailname']);?>">
+					<td class="lcelc" data-label="<?=gtext('Select');?>">
 <?php
                             if ($notdirty && $notprotected):
                                 ?>
@@ -826,25 +952,25 @@ foreach ($sphere_array as $sphere_record):
 endif;
     ?>
 					</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['id']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['name']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['boot']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['prio']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['state']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['type']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['ip']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['ports']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['rel']);?>&nbsp;</td>
-					<td class="lcell"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
+					<td class="lcell" data-label="<?=gtext('JID');?>"><?=htmlspecialchars($sphere_record['id']);?>&nbsp;</td>
+                    <td class="lcell" data-label="<?=gtext('Name');?>"><?=htmlspecialchars($sphere_record['name']);?>&nbsp;</td>
+                    <td class="lcell" data-label="<?=gtext('Boot');?>"><?=htmlspecialchars($sphere_record['boot']);?>&nbsp;</td>
+                    <td class="lcell" data-label="<?=gtext('Prio');?>"><?=htmlspecialchars($sphere_record['prio']);?>&nbsp;</td>
+                    <td class="lcell" data-label="<?=gtext('State');?>"><?=htmlspecialchars($sphere_record['state']);?>&nbsp;</td>
+                    <td class="lcell" data-label="<?=gtext('Type');?>"><?=htmlspecialchars($sphere_record['type']);?>&nbsp;</td>
+                    <td class="lcell" data-label="<?=gtext('IP Address');?>"><?=htmlspecialchars($sphere_record['ip']);?>&nbsp;</td>
+                    <td class="lcell" data-label="<?=gtext('Published Ports');?>"><?=htmlspecialchars($sphere_record['ports']);?>&nbsp;</td>
+                    <td class="lcell" data-label="<?=gtext('Release');?>"><?=htmlspecialchars($sphere_record['rel']);?>&nbsp;</td>
+                    <td class="lcell" data-label="<?=gtext('Tags');?>"><?=htmlspecialchars($sphere_record['tags']);?>&nbsp;</td>
                     <?php
                             $jname = $sphere_record['jailname'];
                             $jail_conf_file = "{$jail_dir}/{$jname}/jail.conf";
                             $jail_interface = bastille_get_jail_interface($jail_conf_file);
                     ?>
-                    <td class="lcell"><?=htmlspecialchars($jail_interface);?>&nbsp;</td>
-					<td class="lcell"><img src="<?=$sphere_record['stat'];?>"></td>
-					<td class="lcell"><img src="<?=$sphere_record['logo'];?>"></td>
-					<td class="lcebld">
+                    <td class="lcell" data-label="<?=gtext('Interface');?>"><?=htmlspecialchars($jail_interface);?>&nbsp;</td>
+					<td class="lcell" data-label="<?=gtext('Active');?>"><img src="<?=$sphere_record['stat'];?>"></td>
+					<td class="lcell" data-label="<?=gtext('Template');?>"><img src="<?=$sphere_record['logo'];?>"></td>
+					<td class="lcebld" data-label="<?=gtext('Toolbox');?>">
 						<table class="area_data_selection_toolbox"><tbody><tr>
 							<td>
 <?php
@@ -885,6 +1011,7 @@ endforeach;
 			</tr>
 		</tfoot>
 	</table>
+	<div id="jail-filter-empty"><?=gtext('No jails match the filter');?></div>
 	<div id="submit">
 		<input name="start_selected_jail" id="start_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_start;?>"/>
 		<input name="stop_selected_jail" id="stop_selected_jail" type="submit" class="formbtn" value="<?=$gt_selection_stop;?>"/>
