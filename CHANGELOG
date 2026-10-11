@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.5.11......Feature, add responsive jails table, by rucko24.
 1.5.10......Add static MAC missing options in bastille_manager_add page.
 1.5.09......Fix typo in bastille_manager_add page.
 1.5.08......Add static MAC option on VNET jails creation through the WebGUI.

@@ -47,3 +47,317 @@ table.area_data_selection th {
 a:hover .web-terminal-icon {
    transform: scale(1.1);
 }
+
+/* Jail filter: hidden by default, shown only by the mobile media query below */
+#jail-filter,
+#jail-filter-empty {
+    display: none;
+}
+
+@media screen and (max-width: 768px) {
+    /* Child combinators: do not touch the nested .area_data_selection_toolbox table */
+    table.area_data_selection,
+    table.area_data_selection > tbody,
+    table.area_data_selection > tbody > tr,
+    table.area_data_selection > tbody > tr > td,
+    table.area_data_selection > tfoot,
+    table.area_data_selection > tfoot > tr,
+    table.area_data_selection > tfoot > tr > td {
+        display: block;
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    /* Column headers are replaced by the data-label of each cell; the "Overview" title row stays */
+    table.area_data_selection > thead > tr:last-child {
+        display: none;
+    }
+
+    /* Card: 2-column grid, label above value. Brief view by default, tap the name to expand */
+    table.area_data_selection > tbody > tr {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(150, 150, 150, 0.4);
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+    }
+
+    /* Block (not flex) so long values such as IPv6 addresses wrap normally.
+       td.lcell is needed to beat the desktop nowrap/ellipsis rule */
+    table.area_data_selection > tbody > tr > td,
+    table.area_data_selection > tbody > tr > td.lcell {
+        display: block;
+        min-width: 0;
+        min-height: 44px;
+        padding: 8px 12px;
+        text-align: left !important;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        overflow-wrap: anywhere;
+        border-bottom: 1px solid rgba(150, 150, 150, 0.2);
+    }
+
+    table.area_data_selection > tbody > tr > td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.75em;
+        font-weight: bold;
+        opacity: 0.7;
+        margin-bottom: 2px;
+    }
+
+    /* Cards stay white in every state: the theme paints the row gray on hover, and on
+       touch screens the hover sticks after tapping to expand */
+    table.area_data_selection > tbody > tr,
+    table.area_data_selection > tbody > tr:hover,
+    table.area_data_selection > tbody > tr > td,
+    table.area_data_selection > tbody > tr:hover > td {
+        background-color: #fff !important;
+        color: #000;
+    }
+
+    table.area_data_selection > tbody > tr > td.lcebld,
+    table.area_data_selection > tbody > tr:hover > td.lcebld {
+        background-color: #e8e8e8 !important;
+    }
+
+    /* Brief view: Name, State | IP and Toolbox. The rest only when expanded */
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(2),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(4),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(5),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(7),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(9),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(10),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(11),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(12),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(13),
+    table.area_data_selection > tbody > tr:not(.expanded) > td:nth-child(14),
+    /* Empty values ("-") are not worth a cell */
+    table.area_data_selection > tbody > tr > td.is-empty {
+        display: none;
+    }
+
+    /* Order: Name, State | IP, details in pairs, Toolbox last */
+    table.area_data_selection > tbody > tr > td:nth-child(3),
+    table.area_data_selection > tbody > tr > td:nth-child(15) {
+        grid-column: 1 / -1;
+    }
+
+    table.area_data_selection > tbody > tr > td:nth-child(3)  { order: -5; }
+    table.area_data_selection > tbody > tr > td:nth-child(6)  { order: -4; }
+    table.area_data_selection > tbody > tr > td:nth-child(8)  { order: -4; }
+    table.area_data_selection > tbody > tr > td:nth-child(15) { order: 1; }
+
+    /* Name is the expand/collapse handle */
+    table.area_data_selection > tbody > tr > td:nth-child(3) {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 56px;
+        padding-left: 52px;
+        padding-right: 60px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    table.area_data_selection > tbody > tr > td:nth-child(3)::before {
+        display: none;
+    }
+
+    /* Same up-arrow.svg as the back-to-top button, without the circle. The svg is white, so
+       brightness() turns it gray (opacity would fade it into the white card instead) */
+    table.area_data_selection > tbody > tr > td:nth-child(3)::after {
+        content: "";
+        position: absolute;
+        right: 8px;
+        top: 30%;
+        width: 44px;
+        height: 44px;
+        background: url('../images/up-arrow.svg') center / 30px 30px no-repeat;
+        filter: brightness(0.47);
+        transform: translateY(calc(-50% + 10px)) rotate(180deg);
+        transition: transform 0.2s ease;
+    }
+
+    table.area_data_selection > tbody > tr.expanded > td:nth-child(3)::after {
+        transform: translateY(calc(-50% + 10px)) rotate(0deg);
+    }
+
+    /* Selection checkbox stays available (Start/Stop/Restart/Autoboot need it):
+       pinned to the left of the Name row, out of the grid flow */
+    table.area_data_selection > tbody > tr > td.lcelc {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 48px !important;
+        height: 56px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-bottom: none;
+        z-index: 1;
+    }
+
+    table.area_data_selection > tbody > tr > td.lcelc::before {
+        display: none;
+    }
+
+    /* Toolbox: icons side by side, bigger touch targets */
+    table.area_data_selection > tbody > tr > td.lcebld {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border-bottom: none;
+    }
+
+    table.area_data_selection > tbody > tr > td.lcebld::before {
+        display: none;
+    }
+
+    /* Icons spread over the whole card width with equal gaps (3 or 4 icons) */
+    table.area_data_selection_toolbox,
+    table.area_data_selection_toolbox > tbody {
+        display: block;
+        width: 100%;
+    }
+
+    table.area_data_selection_toolbox > tbody > tr {
+        display: flex;
+        justify-content: space-evenly;
+        align-items: center;
+        width: 100%;
+    }
+
+    table.area_data_selection_toolbox td {
+        padding: 8px 14px;
+    }
+
+    table.area_data_selection_toolbox img {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Footer: only the "add" button, without the empty spacer cell */
+    table.area_data_selection > tfoot > tr > td.lcenl {
+        display: none;
+    }
+
+    table.area_data_selection > tfoot > tr > td.lceadd {
+        text-align: center;
+    }
+
+    /* The XigmaNAS footer/menu can be wider than the phone, which makes the page pan
+       sideways and leaves position:fixed elements (back to top) off-screen */
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* Use the width we have: trim the padding of the XigmaNAS content frame */
+    #area_data_frame {
+        padding-left: 4px !important;
+        padding-right: 4px !important;
+    }
+
+    /* Filter next to the Refresh controls (hidden on desktop) */
+    #jail-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    /* Same height as the interval combo; explicit colors so the theme does not paint it (cyan) */
+    #jail-filter {
+        display: block;
+        flex: 1 1 auto;
+        min-width: 0;
+        box-sizing: border-box;
+        align-self: stretch; /* same height as the Refresh/combo row, whatever the theme font is */
+        padding: 0 6px;
+        font-family: inherit;
+        font-size: inherit;
+        color: #000 !important;
+        background-color: #fff !important;
+        border: 1px solid var(--boc-button, #555);
+        border-radius: var(--bor, 3px);
+        outline: none;
+    }
+
+    #jail-filter:focus {
+        color: #000 !important;
+        background-color: #fff !important;
+        border-color: #3a7bd5;
+    }
+
+    #jail-filter::placeholder {
+        color: #777;
+        opacity: 1;
+    }
+
+    #jail-toolbar > #refresh-controls {
+        flex: 0 0 auto;
+    }
+
+    /* The spinner used to sit left of Refresh (over the filter): move it under the controls,
+       in the bottom right corner, and leave room for it */
+    #jail-toolbar {
+        margin-bottom: 20px;
+    }
+
+    #jail-toolbar #refresh-spinner {
+        top: 100%;
+        right: 6px;
+        margin-top: 4px;
+    }
+
+    table.area_data_selection > tbody > tr.is-filtered-out {
+        display: none !important;
+    }
+
+    #jail-filter-empty.visible {
+        display: block;
+        padding: 16px;
+        text-align: center;
+        opacity: 0.7;
+    }
+
+    #back-to-top.visible {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #back-to-top .back-to-top-icon {
+        display: block;
+        width: 30px;
+        height: 30px;
+    }
+}
+
+/* Back to top button (shown only on small screens, once the page is scrolled) */
+#back-to-top {
+    display: none;
+    position: fixed;
+    right: 16px;
+    bottom: 48px; /* above the fixed XigmaNAS footer bar */
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgba(150, 150, 150, 0.5);
+    border-radius: 50%;
+    background: rgba(60, 60, 60, 0.85);
+    color: #fff;
+    font-size: 18px;
+    line-height: 44px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 1000;
+}

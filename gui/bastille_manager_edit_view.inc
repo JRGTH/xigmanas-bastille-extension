@@ -12,6 +12,12 @@ window.IDE_CONFIG = {
         caret: '<span class="tree-caret"><img src="ext/bastille/images/right-arrow.svg" style="width: 20px;"></span>'
     }
 };
+if (!document.querySelector('meta[name="viewport"]')) {
+    var meta = document.createElement('meta');
+    meta.name = "viewport";
+    meta.content = "width=device-width, initial-scale=1.0";
+    document.getElementsByTagName('head')[0].appendChild(meta);
+}
 </script>
 
 <table width="100%" border="0" cellpadding="0" cellspacing="0">
