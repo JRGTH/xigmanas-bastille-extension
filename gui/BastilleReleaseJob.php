@@ -126,6 +126,23 @@ final class BastilleReleaseJob
         ($this->launcher ?? self::launchDetached(...))($command);
     }
 
+    /**
+     * Forget the last job (its log has been shown), so the next page load starts clean.
+     *
+     * @throws RuntimeException when the job is still running
+     */
+    public function clear(): void
+    {
+        if ($this->state() === BastilleJobState::Running) {
+            throw new RuntimeException('The job is still running.');
+        }
+        foreach (['job.json', 'job.log', 'job.pid', 'job.exit'] as $file) {
+            if (is_file($this->path($file))) {
+                unlink($this->path($file));
+            }
+        }
+    }
+
     private function path(string $file): string
     {
         return "{$this->jobDir}/{$file}";

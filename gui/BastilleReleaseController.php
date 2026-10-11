@@ -9,7 +9,7 @@ declare(strict_types=1);
  */
 final class BastilleReleaseController
 {
-    public const ACTIONS = ['start', 'status', 'discard'];
+    public const ACTIONS = ['start', 'status', 'discard', 'dismiss'];
 
     /** Partial downloads untouched for this many days are deleted when a new download starts. */
     private const STALE_PARTIAL_DAYS = 7;
@@ -52,6 +52,7 @@ final class BastilleReleaseController
         return match ($action) {
             'start' => $this->start($post),
             'discard' => $this->discard($post),
+            'dismiss' => $this->dismiss(),
             default => $this->error('Unknown action'),
         };
     }
@@ -129,6 +130,21 @@ final class BastilleReleaseController
             return $this->error($this->t('Another operation is already running.'));
         }
         return ['ok' => $this->cache->discard((string) ($post['release'] ?? ''))];
+    }
+
+    /**
+     * The page has shown the result of the finished job: forget it.
+     *
+     * @return array<string, mixed>
+     */
+    private function dismiss(): array
+    {
+        try {
+            $this->job->clear();
+        } catch (RuntimeException $e) {
+            return $this->error($e->getMessage());
+        }
+        return ['ok' => true];
     }
 
     private function checkBootstrap(string $release): ?string

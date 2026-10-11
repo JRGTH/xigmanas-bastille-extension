@@ -78,6 +78,17 @@ async function startJob(mode, release) {
   }
 }
 
+// The result of a successful job has been shown: the server forgets it, so after F5 or
+// changing view it is gone. What is on screen now stays until the page is left.
+// Failed and interrupted jobs are kept: their log is what explains the problem.
+async function dismissJob() {
+  try {
+    await postAction({ action: "dismiss" });
+  } catch {
+    // Not critical: the finished job is shown once more on the next visit.
+  }
+}
+
 async function discardPartial(release) {
   if (!confirm(releaseCfg.text.confirmDiscard)) {
     return;
@@ -151,6 +162,9 @@ function showState({ state, mode, release }) {
     interrupted: isDownload ? text.interruptedDownload : text.interruptedDestroy,
   };
   setStatus(`${release}: ${messages[state]}`);
+  if (state === "done") {
+    dismissJob();
+  }
   if (watching) {
     watching = false;
     refreshLists();
