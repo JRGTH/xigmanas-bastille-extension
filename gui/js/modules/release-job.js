@@ -1,7 +1,7 @@
 // modules/release-job.js
 // Starts a download/destroy job, polls its log and re-attaches to it when the page is
 // opened again. Needs window.RELEASE_CONFIG (see release-api.js) and the elements:
-// #btn-download / #btn-destroy (data-job-action), #log-container, #job-status, #log-area,
+// #btn-download / #btn-destroy (data-job-action), the Cancel input, #log-container, #job-status, #log-area,
 // #partial-box (buttons with data-partial-action + data-release), and the form fields
 // release_item, lib32, ports and src.
 
@@ -30,6 +30,11 @@ export function initReleaseJob() {
 // --- events -----------------------------------------------------------------------------
 
 function onClick(event) {
+  if (event.target.closest('input[name="Cancel"]')) {
+    event.preventDefault(); // no form submit: no spinner, no full page reload
+    cancelAndLeave();
+    return;
+  }
   const jobButton = event.target.closest("[data-job-action]");
   if (jobButton) {
     startJob(jobButton.dataset.jobAction, field("release_item").value);
@@ -84,6 +89,18 @@ async function startJob(mode, release) {
     alert(error);
     setBusy(false);
   }
+}
+
+// Cancel: stop the download in progress (if any), forget its staged files and go back to the
+// containers list. A destroy keeps running; it is not safe to interrupt it.
+async function cancelAndLeave() {
+  try {
+    await postAction({ action: "cancel" });
+  } catch {
+    // Leave anyway: the job, if it is still there, is shown when the user comes back.
+  }
+  claimPending();
+  window.location.href = releaseCfg.containersPage;
 }
 
 // The result of a successful job has been shown: the server forgets it, so after F5 or

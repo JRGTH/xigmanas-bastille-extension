@@ -9,7 +9,7 @@ declare(strict_types=1);
  */
 final class BastilleReleaseController
 {
-    public const ACTIONS = ['start', 'status', 'discard', 'dismiss'];
+    public const ACTIONS = ['start', 'status', 'discard', 'dismiss', 'cancel'];
 
     /** Partial downloads untouched for this many days are deleted when a new download starts. */
     private const STALE_PARTIAL_DAYS = 7;
@@ -53,6 +53,7 @@ final class BastilleReleaseController
             'start' => $this->start($post),
             'discard' => $this->discard($post),
             'dismiss' => $this->dismiss(),
+            'cancel' => $this->cancel(),
             default => $this->error('Unknown action'),
         };
     }
@@ -130,6 +131,23 @@ final class BastilleReleaseController
             return $this->error($this->t('Another operation is already running.'));
         }
         return ['ok' => $this->cache->discard((string) ($post['release'] ?? ''))];
+    }
+
+    /**
+     * The Cancel button: stop a running download and delete what it staged, so the user can
+     * leave the page. A destroy is never interrupted halfway: it is left to finish.
+     *
+     * @return array<string, mixed>
+     */
+    private function cancel(): array
+    {
+        $meta = $this->job->meta();
+        if ($this->job->state() === BastilleJobState::Running
+            && ($meta['mode'] ?? '') === BastilleJobMode::Bootstrap->value) {
+            $this->job->stop();
+            $this->cache->discard((string) ($meta['release'] ?? ''));
+        }
+        return ['ok' => true];
     }
 
     /**

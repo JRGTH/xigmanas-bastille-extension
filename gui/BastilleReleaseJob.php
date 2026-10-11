@@ -136,11 +136,64 @@ final class BastilleReleaseJob
         if ($this->state() === BastilleJobState::Running) {
             throw new RuntimeException('The job is still running.');
         }
+        $this->forget();
+    }
+
+    private function forget(): void
+    {
         foreach (['job.json', 'job.log', 'job.pid', 'job.exit'] as $file) {
             if (is_file($this->path($file))) {
                 unlink($this->path($file));
             }
         }
+    }
+
+    /**
+     * Stop the running job: the script and everything it started (curl/fetch, bastille...),
+     * and forget it. The script restores bastille_bootstrap_archives when it receives the
+     * signal. Does nothing when no job is running.
+     */
+    public function stop(): void
+    {
+        if ($this->state() !== BastilleJobState::Running) {
+            return;
+        }
+        $pid = $this->readPid();
+        if ($pid > 0) {
+            $pids = array_merge([$pid], $this->descendants($pid));
+            foreach ($pids as $target) {
+                $this->signal($target, 15);
+            }
+            // Give the script a moment to put the configuration back.
+            for ($i = 0; $i < 30 && $this->isProcessAlive($pid); $i++) {
+                usleep(100000);
+            }
+        }
+        $this->forget();
+    }
+
+    /** @return list<int> every child, grandchild... of $pid */
+    private function descendants(int $pid): array
+    {
+        exec('/bin/pgrep -P ' . $pid . ' 2>/dev/null', $output);
+        $found = [];
+        foreach ($output as $line) {
+            $child = (int) trim($line);
+            if ($child > 0) {
+                $found[] = $child;
+                array_push($found, ...$this->descendants($child));
+            }
+        }
+        return $found;
+    }
+
+    private function signal(int $pid, int $signal): void
+    {
+        if (function_exists('posix_kill')) {
+            posix_kill($pid, $signal);
+            return;
+        }
+        exec('/bin/kill -' . $signal . ' ' . $pid . ' 2>/dev/null');
     }
 
     private function path(string $file): string

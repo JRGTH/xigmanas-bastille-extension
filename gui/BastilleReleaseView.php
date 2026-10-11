@@ -42,6 +42,7 @@ final class BastilleReleaseView
         return json_encode([
             'endpoint' => $endpoint,
             'pollMs' => 1500,
+            'containersPage' => 'bastille_manager_gui.php',
             'text' => $this->notificationTexts() + [
                 'downloading' => $this->t('Downloading'),
                 'destroying' => $this->t('Destroying'),

@@ -241,6 +241,9 @@ run_destroy() {
     echo "y" | "$BASTILLE_BIN" destroy "$RELEASE"
 }
 
+# Stopped from the GUI (Cancel): put the configuration back and end without a result.
+trap 'if [ "$MODE" = bootstrap ]; then set_archives "$RESTORE_ARCHIVES"; fi; exit 143' TERM INT HUP
+
 case "$MODE" in
     bootstrap) run_bootstrap ;;
     destroy)   run_destroy ;;
