@@ -1,15 +1,13 @@
 // modules/release-api.js
 // Requests of the "Base Releases" page to bastille_manager_tarballs.php.
 
-export const releaseCfg = window.RELEASE_CONFIG;
+import { getBaseFormData } from "./state.js";
 
-const authToken = () =>
-  document.querySelector('input[name="authtoken"]')?.value ?? "";
+export const releaseCfg = window.RELEASE_CONFIG;
 
 // POST an action (start / discard). Resolves with the decoded JSON payload.
 export async function postAction(params) {
-  const body = new FormData();
-  body.append("authtoken", authToken());
+  const body = getBaseFormData();
   for (const [key, value] of Object.entries(params)) {
     body.append(key, value);
   }

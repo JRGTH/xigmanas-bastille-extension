@@ -1,4 +1,4 @@
-// main.js
+// editor_main.js
 
 import { cfg } from "./modules/state.js";
 import { showConfirmDialog } from "./modules/modal.js";
