@@ -203,7 +203,7 @@ if($_POST):
 			$check_release = ("{$rootfolder}/releases/{$get_release}");
 			$check_used = exec("/usr/bin/grep -wo {$get_release} {$jail_dir}/*/fstab 2>/dev/null");
 
-			$cmd = ("/usr/local/bin/bastille destroy {$get_release}");
+			$cmd = ("/usr/local/bin/bastille destroy -y {$get_release}");
 
 			if (!file_exists($check_release)):
 				// FreeBSD base release check.
