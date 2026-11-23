@@ -22,5 +22,6 @@ sghebuz XigmaNAS Bastille Add-on.
 Raul Fernandez Garcia (Spanish translation)  
 Anders Malm (Swedish translation)  
 lijinbiao (Simplified Chinese translation)  
+Viper780 (XigmaNAS Bastille Add-on)  
 
 Additional information on Bastille: <a href="http://bastillebsd.org/">http://bastillebsd.org/</a>
