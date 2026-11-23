@@ -79,6 +79,7 @@ $sphere_array = $rel_list;
 
 if ($linux_compat_support == "YES"):
 	$a_action = [
+		'14.5-RELEASE' => gettext('14.5-RELEASE'),
 		'14.4-RELEASE' => gettext('14.4-RELEASE'),
 		'14.3-RELEASE' => gettext('14.3-RELEASE'),
 		'14.2-RELEASE' => gettext('14.2-RELEASE'),
@@ -98,6 +99,7 @@ if ($linux_compat_support == "YES"):
 	];
 else:
 	$a_action = [
+		'14.5-RELEASE' => gettext('14.5-RELEASE'),
 		'14.4-RELEASE' => gettext('14.4-RELEASE'),
 		'14.3-RELEASE' => gettext('14.3-RELEASE'),
 		'14.2-RELEASE' => gettext('14.2-RELEASE'),
@@ -201,7 +203,7 @@ if($_POST):
 			$check_release = ("{$rootfolder}/releases/{$get_release}");
 			$check_used = exec("/usr/bin/grep -wo {$get_release} {$jail_dir}/*/fstab 2>/dev/null");
 
-			$cmd = ("/usr/local/bin/bastille destroy {$get_release}");
+			$cmd = ("/usr/local/bin/bastille destroy -y {$get_release}");
 
 			if (!file_exists($check_release)):
 				// FreeBSD base release check.
