@@ -277,3 +277,64 @@
     color: #383a42;
     border-color: #c8c8c8;
 }
+
+.web-terminal-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.web-terminal-row select {
+    flex: 1 1 auto;
+}
+
+.web-terminal-mini-btn {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 26px;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    border: 1px solid #4b5263;
+    border-radius: 4px;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.web-terminal-mini-btn:hover,
+#web-terminal-theme-toggle button:hover {
+    background: rgba(128,128,128,0.2);
+}
+
+/* Auto / Light / Dark as three icons */
+#web-terminal-theme-toggle {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid #4b5263;
+    border-radius: 6px;
+}
+
+#web-terminal-theme-toggle button {
+    flex: 1 1 0;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    height: 26px;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#web-terminal-theme-toggle button.active {
+    background: rgba(128,128,128,0.35);
+}
+
+#web-terminal-settings-panel.light .web-terminal-mini-btn,
+#web-terminal-settings-panel.light #web-terminal-theme-toggle {
+    border-color: #c8c8c8;
+}

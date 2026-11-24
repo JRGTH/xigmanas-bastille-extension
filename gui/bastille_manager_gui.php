@@ -485,6 +485,12 @@ $(window).on("load", function() {
     }
     $(document).on('mousedown', closeSettingsPanel);
     $(window).on('blur', function() { closeSettingsPanel(null); });
+    $("#web-terminal-font-reset").click(function() {
+        $("#web-terminal-font-size").val(15).trigger('change'); // 15: default of terminalPrefs()
+    });
+    $("#web-terminal-theme-toggle button").click(function() {
+        $("#web-terminal-theme").val($(this).data('theme')).trigger('change');
+    });
     $("#web-terminal-font-size, #web-terminal-theme").change(function() {
         saveTerminalPrefs({
             fontSize: parseInt($("#web-terminal-font-size").val(), 10),
@@ -563,6 +569,7 @@ function openWebTerminal(jailname) {
                     var prefs = terminalPrefs();
                     $("#web-terminal-font-size").val(prefs.fontSize);
                     $("#web-terminal-theme").val(prefs.theme);
+                    markThemeButton();
                     $container.css('background', TERM_BG[resolveTerminalTheme(prefs.theme)]);
                     $("#web-terminal-settings-panel").toggleClass('light', resolveTerminalTheme(prefs.theme) === 'light');
                     $("#web-terminal-modal").fadeIn(200);
@@ -583,6 +590,13 @@ function openWebTerminal(jailname) {
 
 // Background of each terminal theme: the margin around the terminal must match
 // (themes are defined in BastilleWebTerminalLauncher).
+function markThemeButton() {
+    var theme = $("#web-terminal-theme").val();
+    $("#web-terminal-theme-toggle button").each(function() {
+        $(this).toggleClass('active', $(this).data('theme') === theme);
+    });
+}
+
 function revealTerminal() {
     $('#web-terminal-iframe').addClass('ready');
 }
@@ -624,6 +638,7 @@ function applyTerminalPrefs() {
     var theme = resolveTerminalTheme(prefs.theme);
     $("#web-terminal-iframe-container").css('background', TERM_BG[theme]);
     $("#web-terminal-settings-panel").toggleClass('light', theme === 'light');
+    markThemeButton();
     var iframe = document.getElementById('web-terminal-iframe');
     if (iframe && iframe.contentWindow) {
         iframe.contentWindow.postMessage({ type: 'bastille-term', fontSize: prefs.fontSize, theme: theme }, '*');
@@ -1179,18 +1194,22 @@ endforeach;
                 </div>
                 <div id="web-terminal-settings-panel">
                     <label for="web-terminal-font-size"><?=gtext('Font size');?></label>
-                    <select id="web-terminal-font-size" title="<?=gtext('Tip: Ctrl + mouse wheel over the terminal also changes it');?>">
-                        <?php foreach (range(10, 24) as $size): ?>
-                        <option value="<?=$size;?>"><?=$size;?> px</option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="web-terminal-row">
+                        <select id="web-terminal-font-size" title="<?=gtext('Tip: Ctrl + mouse wheel over the terminal also changes it');?>">
+                            <?php foreach (range(10, 24) as $size): ?>
+                            <option value="<?=$size;?>"><?=$size;?> px</option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" id="web-terminal-font-reset" class="web-terminal-mini-btn" title="<?=gtext('Default size');?>">&#8634;</button>
+                    </div>
                     <div class="web-terminal-hint"><?=gtext('Tip: Ctrl + mouse wheel over the terminal');?></div>
-                    <label for="web-terminal-theme"><?=gtext('Theme');?></label>
-                    <select id="web-terminal-theme">
-                        <option value="dark"><?=gtext('Dark');?></option>
-                        <option value="light"><?=gtext('Light');?></option>
-                        <option value="auto"><?=gtext('Auto (system)');?></option>
-                    </select>
+                    <label><?=gtext('Theme');?></label>
+                    <input type="hidden" id="web-terminal-theme" value="dark" />
+                    <div id="web-terminal-theme-toggle" role="group">
+                        <button type="button" data-theme="auto" title="<?=gtext('Auto (system)');?>"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button>
+                        <button type="button" data-theme="light" title="<?=gtext('Light');?>"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+                        <button type="button" data-theme="dark" title="<?=gtext('Dark');?>"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+                    </div>
                 </div>
                 <div id="web-terminal-iframe-container">
                     <iframe id="web-terminal-iframe" src="about:blank"></iframe>
