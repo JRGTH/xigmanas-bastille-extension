@@ -554,6 +554,7 @@ function openWebTerminal(jailname) {
                     $("#web-terminal-font-size").val(prefs.fontSize);
                     $("#web-terminal-theme").val(prefs.theme);
                     $container.css('background', TERM_BG[resolveTerminalTheme(prefs.theme)]);
+                    $("#web-terminal-settings-panel").toggleClass('light', resolveTerminalTheme(prefs.theme) === 'light');
                     $("#web-terminal-modal").fadeIn(200);
 
                 } else {
@@ -612,6 +613,7 @@ function applyTerminalPrefs() {
     var prefs = terminalPrefs();
     var theme = resolveTerminalTheme(prefs.theme);
     $("#web-terminal-iframe-container").css('background', TERM_BG[theme]);
+    $("#web-terminal-settings-panel").toggleClass('light', theme === 'light');
     var iframe = document.getElementById('web-terminal-iframe');
     if (iframe && iframe.contentWindow) {
         iframe.contentWindow.postMessage({ type: 'bastille-term', fontSize: prefs.fontSize, theme: theme }, '*');
@@ -1167,11 +1169,12 @@ endforeach;
                 </div>
                 <div id="web-terminal-settings-panel">
                     <label for="web-terminal-font-size"><?=gtext('Font size');?></label>
-                    <select id="web-terminal-font-size">
+                    <select id="web-terminal-font-size" title="<?=gtext('Tip: Ctrl + mouse wheel over the terminal also changes it');?>">
                         <?php foreach (range(10, 24) as $size): ?>
                         <option value="<?=$size;?>"><?=$size;?> px</option>
                         <?php endforeach; ?>
                     </select>
+                    <div class="web-terminal-hint"><?=gtext('Tip: Ctrl + mouse wheel over the terminal');?></div>
                     <label for="web-terminal-theme"><?=gtext('Theme');?></label>
                     <select id="web-terminal-theme">
                         <option value="dark"><?=gtext('Dark');?></option>
