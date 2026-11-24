@@ -475,6 +475,16 @@ $(window).on("load", function() {
         e.preventDefault();
         $("#web-terminal-settings-panel").fadeToggle(150);
     });
+    // Click outside the panel closes it. A click inside the iframe does not bubble up here,
+    // but it makes this window lose focus.
+    function closeSettingsPanel(e) {
+        if (e && $(e.target).closest('#web-terminal-settings-panel, #web-terminal-settings').length) {
+            return;
+        }
+        $("#web-terminal-settings-panel:visible").fadeOut(150);
+    }
+    $(document).on('mousedown', closeSettingsPanel);
+    $(window).on('blur', function() { closeSettingsPanel(null); });
     $("#web-terminal-font-size, #web-terminal-theme").change(function() {
         saveTerminalPrefs({
             fontSize: parseInt($("#web-terminal-font-size").val(), 10),

@@ -62,7 +62,7 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 14px; /* the buttons have no margin of their own */
+    gap: 6px; /* the buttons have no margin of their own */
 }
 
 .web-terminal-btn-open-tab {
@@ -250,6 +250,10 @@
     opacity: 0.6;
 }
 
+#web-terminal-settings-panel {
+    color-scheme: dark;
+}
+
 #web-terminal-settings-panel select {
     width: 100%;
     padding: 4px 6px;
@@ -261,6 +265,7 @@
 
 /* Settings panel with the light terminal theme */
 #web-terminal-settings-panel.light {
+    color-scheme: light;
     background: rgba(250,250,250,0.98);
     color: #383a42;
     border-color: rgba(0,0,0,0.15);
