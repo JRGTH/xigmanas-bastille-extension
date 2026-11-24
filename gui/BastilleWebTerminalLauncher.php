@@ -97,6 +97,8 @@ class BastilleWebTerminalLauncher
             . 'var P=T[d.palette]||T.one,V=P&&P[d.theme];'
             . 'if(V){term.options.theme=V;h.style.colorScheme=d.theme;'
             . 'h.classList.toggle("light",d.theme==="light");document.body.style.backgroundColor=V.background}'
+            // Read only: xterm drops typing and pasting (a safeguard against slips, not a security barrier).
+            . 'term.options.disableStdin=d.readOnly===true;'
             . 'try{term.fit()}catch(x){}})})()';
 
         return '<style>' . $style . '</style><script>' . $script . '</script>';

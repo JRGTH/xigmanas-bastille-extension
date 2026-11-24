@@ -492,6 +492,7 @@ $(window).on("load", function() {
     $("#web-terminal-theme-toggle button").click(function() {
         $("#web-terminal-theme").val($(this).data('theme')).trigger('change');
     });
+    $("#web-terminal-readonly").change(applyTerminalPrefs); // not saved: every terminal opens writable
     $("#web-terminal-font-size, #web-terminal-theme, #web-terminal-palette").change(function() {
         saveTerminalPrefs({
             fontSize: parseInt($("#web-terminal-font-size").val(), 10),
@@ -573,6 +574,7 @@ function openWebTerminal(jailname) {
                     $("#web-terminal-theme").val(prefs.theme);
                     markThemeButton();
                     $("#web-terminal-palette").val(prefs.palette);
+                    $("#web-terminal-readonly").prop('checked', false);
                     $container.css('background', termBg(prefs));
                     $("#web-terminal-settings-panel").toggleClass('light', resolveTerminalTheme(prefs.theme) === 'light');
                     $("#web-terminal-modal").fadeIn(200);
@@ -649,7 +651,7 @@ function applyTerminalPrefs() {
     markThemeButton();
     var iframe = document.getElementById('web-terminal-iframe');
     if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage({ type: 'bastille-term', fontSize: prefs.fontSize, theme: theme, palette: prefs.palette }, '*');
+        iframe.contentWindow.postMessage({ type: 'bastille-term', fontSize: prefs.fontSize, theme: theme, palette: prefs.palette, readOnly: $('#web-terminal-readonly').is(':checked') }, '*');
     }
 }
 
@@ -1224,6 +1226,9 @@ endforeach;
                         <option value="<?=htmlspecialchars($paletteId);?>"><?=htmlspecialchars($palette['label']);?></option>
                         <?php endforeach; ?>
                     </select>
+                    <label class="web-terminal-check" title="<?=gtext('Ignores the keyboard and paste in this terminal; it is a safeguard against slips, not a security barrier');?>">
+                        <input type="checkbox" id="web-terminal-readonly" /> <?=gtext('Read only');?>
+                    </label>
                 </div>
                 <div id="web-terminal-iframe-container">
                     <iframe id="web-terminal-iframe" src="about:blank"></iframe>

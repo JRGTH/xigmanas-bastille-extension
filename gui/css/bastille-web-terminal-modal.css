@@ -338,3 +338,13 @@
 #web-terminal-settings-panel.light #web-terminal-theme-toggle {
     border-color: #c8c8c8;
 }
+
+#web-terminal-settings-panel label.web-terminal-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    opacity: 1;
+    font-size: 13px;
+    cursor: pointer;
+}
