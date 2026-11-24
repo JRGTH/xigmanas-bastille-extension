@@ -238,7 +238,7 @@ run_bootstrap() {
 
 run_destroy() {
     # Already confirmed in the browser and checked for child jails by the caller.
-    echo "y" | "$BASTILLE_BIN" destroy "$RELEASE"
+    "$BASTILLE_BIN" destroy -y "$RELEASE"
 }
 
 # Stopped from the GUI (Cancel): put the configuration back and end without a result.
