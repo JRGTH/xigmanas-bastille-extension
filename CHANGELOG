@@ -3,6 +3,7 @@
 ======================
 Version    Description
 
+1.5.13......Feature, resumable background downloads with live progress, by rucko24.
 1.5.12......Add support for 14.5 release, fix base release destroy from WebGUI, by Viper780.
 1.5.11......Feature, add responsive jails table, by rucko24.
 1.5.10......Add static MAC missing options in bastille_manager_add page.
