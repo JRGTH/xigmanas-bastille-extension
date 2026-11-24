@@ -40,6 +40,7 @@ require_once 'guiconfig.inc';
 require_once 'bastille_manager-lib.inc';
 require_once 'BastilleManagerMwExecParallel.php';
 require_once __DIR__ . '/BastilleReleaseView.php';
+require_once __DIR__ . '/BastilleTerminalPalettes.php';
 
 $img_path = [
     'add' => 'images/add.png',
@@ -491,10 +492,11 @@ $(window).on("load", function() {
     $("#web-terminal-theme-toggle button").click(function() {
         $("#web-terminal-theme").val($(this).data('theme')).trigger('change');
     });
-    $("#web-terminal-font-size, #web-terminal-theme").change(function() {
+    $("#web-terminal-font-size, #web-terminal-theme, #web-terminal-palette").change(function() {
         saveTerminalPrefs({
             fontSize: parseInt($("#web-terminal-font-size").val(), 10),
-            theme: $("#web-terminal-theme").val()
+            theme: $("#web-terminal-theme").val(),
+            palette: $("#web-terminal-palette").val()
         });
         applyTerminalPrefs();
     });
@@ -570,7 +572,8 @@ function openWebTerminal(jailname) {
                     $("#web-terminal-font-size").val(prefs.fontSize);
                     $("#web-terminal-theme").val(prefs.theme);
                     markThemeButton();
-                    $container.css('background', TERM_BG[resolveTerminalTheme(prefs.theme)]);
+                    $("#web-terminal-palette").val(prefs.palette);
+                    $container.css('background', termBg(prefs));
                     $("#web-terminal-settings-panel").toggleClass('light', resolveTerminalTheme(prefs.theme) === 'light');
                     $("#web-terminal-modal").fadeIn(200);
 
@@ -588,8 +591,6 @@ function openWebTerminal(jailname) {
         });
 }
 
-// Background of each terminal theme: the margin around the terminal must match
-// (themes are defined in BastilleWebTerminalLauncher).
 function markThemeButton() {
     var theme = $("#web-terminal-theme").val();
     $("#web-terminal-theme-toggle button").each(function() {
@@ -600,7 +601,13 @@ function markThemeButton() {
 function revealTerminal() {
     $('#web-terminal-iframe').addClass('ready');
 }
-var TERM_BG = { dark: '#282c34', light: '#fafafa' };
+// Background of each palette and theme: the margin around the terminal must match
+// (palettes are defined in BastilleTerminalPalettes).
+var TERM_BG = <?=json_encode(BastilleTerminalPalettes::backgrounds(), JSON_HEX_TAG | JSON_HEX_AMP);?>;
+var TERM_DEFAULT_PALETTE = <?=json_encode(BastilleTerminalPalettes::DEFAULT);?>;
+function termBg(prefs) {
+    return TERM_BG[prefs.palette][resolveTerminalTheme(prefs.theme)];
+}
 var TERM_PREFS_KEY = 'bastille_terminal_prefs';
 
 function terminalPrefs() {
@@ -613,7 +620,8 @@ function terminalPrefs() {
     var size = parseInt(prefs.fontSize, 10);
     return {
         fontSize: (size >= 10 && size <= 24) ? size : 15,
-        theme: ['dark', 'light', 'auto'].indexOf(prefs.theme) >= 0 ? prefs.theme : 'dark'
+        theme: ['dark', 'light', 'auto'].indexOf(prefs.theme) >= 0 ? prefs.theme : 'dark',
+        palette: TERM_BG[prefs.palette] ? prefs.palette : TERM_DEFAULT_PALETTE
     };
 }
 
@@ -636,12 +644,12 @@ function resolveTerminalTheme(theme) {
 function applyTerminalPrefs() {
     var prefs = terminalPrefs();
     var theme = resolveTerminalTheme(prefs.theme);
-    $("#web-terminal-iframe-container").css('background', TERM_BG[theme]);
+    $("#web-terminal-iframe-container").css('background', termBg(prefs));
     $("#web-terminal-settings-panel").toggleClass('light', theme === 'light');
     markThemeButton();
     var iframe = document.getElementById('web-terminal-iframe');
     if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage({ type: 'bastille-term', fontSize: prefs.fontSize, theme: theme }, '*');
+        iframe.contentWindow.postMessage({ type: 'bastille-term', fontSize: prefs.fontSize, theme: theme, palette: prefs.palette }, '*');
     }
 }
 
@@ -1210,6 +1218,12 @@ endforeach;
                         <button type="button" data-theme="light" title="<?=gtext('Light');?>"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
                         <button type="button" data-theme="dark" title="<?=gtext('Dark');?>"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
                     </div>
+                    <label for="web-terminal-palette"><?=gtext('Colors');?></label>
+                    <select id="web-terminal-palette">
+                        <?php foreach (BastilleTerminalPalettes::all() as $paletteId => $palette): ?>
+                        <option value="<?=htmlspecialchars($paletteId);?>"><?=htmlspecialchars($palette['label']);?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div id="web-terminal-iframe-container">
                     <iframe id="web-terminal-iframe" src="about:blank"></iframe>

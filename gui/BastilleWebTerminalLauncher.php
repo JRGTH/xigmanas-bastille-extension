@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/BastilleTerminalPalettes.php';
+
 /**
  * Class for managing the lifecycle of the ttyd process in XigmaNAS.
  */
@@ -16,30 +18,6 @@ class BastilleWebTerminalLauncher
      */
     private const string SSL_CERT = '/var/etc/webguicert.pem';
     private const string SSL_KEY = '/var/etc/webguipriv.pem';
-
-    /** One Dark. Its background must match the one in the modal (gui.php, TERM_BG). */
-    private const array DARK_THEME = [
-        'background' => '#282c34', 'foreground' => '#abb2bf',
-        'cursor' => '#528bff', 'cursorAccent' => '#282c34',
-        'selectionBackground' => '#3e4451',
-        'black' => '#282c34', 'red' => '#e06c75', 'green' => '#98c379', 'yellow' => '#e5c07b',
-        'blue' => '#61afef', 'magenta' => '#c678dd', 'cyan' => '#56b6c2', 'white' => '#abb2bf',
-        'brightBlack' => '#5c6370', 'brightRed' => '#e06c75', 'brightGreen' => '#98c379',
-        'brightYellow' => '#e5c07b', 'brightBlue' => '#61afef', 'brightMagenta' => '#c678dd',
-        'brightCyan' => '#56b6c2', 'brightWhite' => '#ffffff',
-    ];
-
-    /** One Light, the counterpart of the dark palette. */
-    private const array LIGHT_THEME = [
-        'background' => '#fafafa', 'foreground' => '#383a42',
-        'cursor' => '#526fff', 'cursorAccent' => '#fafafa',
-        'selectionBackground' => '#dbe4f5',
-        'black' => '#383a42', 'red' => '#e45649', 'green' => '#50a14f', 'yellow' => '#c18401',
-        'blue' => '#4078f2', 'magenta' => '#a626a4', 'cyan' => '#0184bc', 'white' => '#a0a1a7',
-        'brightBlack' => '#696c77', 'brightRed' => '#e45649', 'brightGreen' => '#50a14f',
-        'brightYellow' => '#c18401', 'brightBlue' => '#4078f2', 'brightMagenta' => '#a626a4',
-        'brightCyan' => '#0184bc', 'brightWhite' => '#fafafa',
-    ];
 
     private string $protocol = 'http://';
 
@@ -88,7 +66,14 @@ class BastilleWebTerminalLauncher
      */
     private function indexInject(): string
     {
-        $themes = json_encode(['dark' => self::DARK_THEME, 'light' => self::LIGHT_THEME], JSON_THROW_ON_ERROR);
+        $themes = [];
+        foreach (array_keys(BastilleTerminalPalettes::all()) as $id) {
+            $themes[$id] = [
+                'dark' => BastilleTerminalPalettes::theme($id, 'dark'),
+                'light' => BastilleTerminalPalettes::theme($id, 'light'),
+            ];
+        }
+        $themes = json_encode($themes, JSON_THROW_ON_ERROR);
 
         // scrollbar-color is animated by Chrome (121+) and Firefox; the ::-webkit-scrollbar-thumb is not.
         $style = ':root{color-scheme:dark}'
@@ -109,8 +94,9 @@ class BastilleWebTerminalLauncher
             . 'addEventListener("message",function(e){var d=e.data;'
             . 'if(e.source!==parent||!d||d.type!=="bastille-term"||!window.term){return}'
             . 'var n=parseInt(d.fontSize,10);if(n>=10&&n<=28){term.options.fontSize=n}'
-            . 'if(T[d.theme]){term.options.theme=T[d.theme];h.style.colorScheme=d.theme;'
-            . 'h.classList.toggle("light",d.theme==="light");document.body.style.backgroundColor=T[d.theme].background}'
+            . 'var P=T[d.palette]||T.one,V=P&&P[d.theme];'
+            . 'if(V){term.options.theme=V;h.style.colorScheme=d.theme;'
+            . 'h.classList.toggle("light",d.theme==="light");document.body.style.backgroundColor=V.background}'
             . 'try{term.fit()}catch(x){}})})()';
 
         return '<style>' . $style . '</style><script>' . $script . '</script>';
@@ -233,7 +219,7 @@ class BastilleWebTerminalLauncher
             'fontSize' => 15,
             'lineHeight' => 1.2,
             'fontFamily' => 'JetBrains Mono, Fira Code, DejaVu Sans Mono, Menlo, Consolas, monospace',
-            'theme' => self::DARK_THEME,
+            'theme' => BastilleTerminalPalettes::theme(BastilleTerminalPalettes::DEFAULT, 'dark'),
         ];
 
         $args = [];
