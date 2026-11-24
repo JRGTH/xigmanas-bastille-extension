@@ -1,13 +1,5 @@
 /* main css */
-@import url('bastille-editor-layout.css');
-@import url('bastille-editor-components.css');
-@import url('bastille-editor-quicksearch.css');
-@import url('bastille-header-refresh.css');
-@import url('bastille-web-terminal-modal.css');
-@import url('bastille-editor-upload-modal.css');
-@import url('bastille-editor-info-right-sidebar.css');
-@import url('bastille-editor-charts.css');
-@import url('bastille-editor-diff-modal.css');
+/* The partial stylesheets are linked one by one (BastilleAssets::EDITOR_STYLES), so they carry the version. */
 
 :root {
   --icon-file-item-width: 20px !important;

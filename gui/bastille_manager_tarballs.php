@@ -174,7 +174,9 @@ $(window).on("load",function() {
 //]]>
 </script>
 <script>window.RELEASE_CONFIG = <?=$release_view->clientConfig('bastille_manager_tarballs.php');?>;</script>
-<script type="module" src="ext/bastille/js/release_main.js?v=<?=filemtime(__DIR__ . '/js/release_main.js');?>"></script>
+<?php $assets = new BastilleAssets($versionfile, __DIR__); ?>
+<?=$assets->importMapTag();?>
+<script type="module" src="<?=$assets->url('js/release_main.js');?>"></script>
 <?php
 $document = new co_DOMDocument();
 $document->
