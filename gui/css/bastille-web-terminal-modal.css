@@ -105,8 +105,11 @@
     border-color: rgba(255,255,255,0.7);
 }
 
+.fullscreen-icon-darkbg {
+    filter: brightness(0) invert(1); /* the svg is grey (#aaa): white on the blue header */
+}
+
 .web-terminal-btn-fullscreen:hover .fullscreen-icon-darkbg {
-    filter: brightness(2.0);
     transform: scale(1.1);
 }
 
