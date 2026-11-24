@@ -1,4 +1,8 @@
-<link rel="stylesheet" type="text/css" href="ext/bastille/css/styles.css?v=<?=time();?>">
+<?php
+require_once __DIR__ . '/BastilleAssets.php';
+$assets = new BastilleAssets($versionfile, __DIR__);
+echo $assets->styleTags(BastilleAssets::EDITOR_STYLES);
+?>
 
 <script>
 window.IDE_CONFIG = {
@@ -301,13 +305,14 @@ if (!document.querySelector('meta[name="viewport"]')) {
 <input type="file" id="up-file-input" style="display:none" multiple onchange="handleNativeUpload(this, false)">
 <input type="file" id="up-folder-input" style="display:none" webkitdirectory directory onchange="handleNativeUpload(this, true)">
 
-<script src="ext/bastille/js/modules/bastille_editor_clipboard.js?v=<?=time();?>"></script>
-<script src="ext/bastille/js/modules/sha256.min.js"></script>
-<script src="ext/bastille/js/modules/apexcharts.v5.10.3.js"></script>
+<script src="<?=$assets->url('js/modules/bastille_editor_clipboard.js');?>"></script>
+<script src="<?=$assets->url('js/modules/sha256.min.js');?>"></script>
+<script src="<?=$assets->url('js/modules/apexcharts.v5.10.3.js');?>"></script>
 <script src="js/spin.min.js"></script>
 
 <script src="ext/bastille/js/modules/monaco/vs/loader.js"></script>
-<script type="module" src="ext/bastille/js/editor_main.js"></script>
+<?=$assets->importMapTag();?>
+<script type="module" src="<?=$assets->url('js/editor_main.js');?>"></script>
 
 <?php if (!empty($input_errors)): ?>
     <script>

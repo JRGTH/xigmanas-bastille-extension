@@ -309,11 +309,15 @@ endif;
 $pgtitle = [gtext("Extensions"), gtext('Bastille'), gtext('Manager')];
 include 'fbegin.inc';
 ?>
-<link rel="stylesheet" type="text/css" href="ext/bastille/css/styles.css?v=<?=time();?>">
-<link rel="stylesheet" type="text/css" href="ext/bastille/css/bastille-table.css?v=<?=time();?>">
+<?php
+require_once __DIR__ . '/BastilleAssets.php';
+$assets = new BastilleAssets($versionfile, __DIR__);
+echo $assets->styleTags([...BastilleAssets::EDITOR_STYLES, 'bastille-table.css']);
+?>
 <?php // Tells the user when a Base Releases download/destroy left running ends, wherever they are. ?>
 <script>window.RELEASE_CONFIG = <?=(new BastilleReleaseView(gtext(...)))->watchConfig('bastille_manager_tarballs.php');?>;</script>
-<script type="module" src="ext/bastille/js/release_watch_main.js?v=<?=filemtime(__DIR__ . '/js/release_watch_main.js');?>"></script>
+<?=$assets->importMapTag();?>
+<script type="module" src="<?=$assets->url('js/release_watch_main.js');?>"></script>
 <script type="text/javascript">
 //<![CDATA[
 var currentEvtSource = null; // Global variable to track current SSE connection
