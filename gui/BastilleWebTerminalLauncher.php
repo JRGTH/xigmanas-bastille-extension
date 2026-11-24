@@ -102,6 +102,10 @@ class BastilleWebTerminalLauncher
             // Tell the modal when the terminal exists, so it can send the saved preferences.
             . 'function ready(){if(window.term&&window.term.options){parent.postMessage({type:"bastille-term-ready"},"*")}'
             . 'else if(tries++<100){setTimeout(ready,100)}}ready();'
+            // Ctrl + mouse wheel changes the font size (instead of zooming the page); the modal saves it.
+            . 'addEventListener("wheel",function(e){if(!e.ctrlKey||!window.term||!e.deltaY){return}e.preventDefault();'
+            . 'var n=term.options.fontSize+(e.deltaY<0?1:-1);if(n<10||n>24){return}'
+            . 'term.options.fontSize=n;try{term.fit()}catch(x){}parent.postMessage({type:"bastille-term-font",fontSize:n},"*")},{passive:false});'
             . 'addEventListener("message",function(e){var d=e.data;'
             . 'if(e.source!==parent||!d||d.type!=="bastille-term"||!window.term){return}'
             . 'var n=parseInt(d.fontSize,10);if(n>=10&&n<=28){term.options.fontSize=n}'

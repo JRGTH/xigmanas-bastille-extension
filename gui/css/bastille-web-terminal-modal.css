@@ -170,6 +170,22 @@
     filter: brightness(0) invert(1); /* the svg files are black: white on the blue header */
 }
 
+/* The arrows drawing fills only 3/4 of its viewBox: larger box so it looks as big as the others */
+.web-terminal-header-icon-arrows {
+    width: 21px;
+    height: 21px;
+}
+
+/* Hidden until the terminal is ready, so the white default page of the iframe never shows */
+#web-terminal-iframe {
+    opacity: 0;
+    transition: opacity .25s ease;
+}
+
+#web-terminal-iframe.ready {
+    opacity: 1;
+}
+
 /* "Aa" button that opens the settings panel */
 .web-terminal-btn-text {
     display: inline-flex;
@@ -204,7 +220,7 @@
 
 .web-terminal-btn-borderless.web-terminal-btn-fullscreen:hover,
 .web-terminal-btn-borderless.web-terminal-btn-text:hover {
-    background: rgba(255,255,255,0.22);
+    background: rgba(255,255,255,0.1);
     border-color: transparent;
 }
 

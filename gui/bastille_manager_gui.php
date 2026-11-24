@@ -487,6 +487,17 @@ $(window).on("load", function() {
         var iframe = document.getElementById('web-terminal-iframe');
         if (iframe && e.source === iframe.contentWindow && e.data && e.data.type === 'bastille-term-ready') {
             applyTerminalPrefs();
+            setTimeout(revealTerminal, 120);
+        }
+        // Ctrl + wheel inside the terminal: keep the new size as the preference.
+        if (iframe && e.source === iframe.contentWindow && e.data && e.data.type === 'bastille-term-font') {
+            var size = parseInt(e.data.fontSize, 10);
+            if (size >= 10 && size <= 24) {
+                var prefs = terminalPrefs();
+                prefs.fontSize = size;
+                saveTerminalPrefs(prefs);
+                $("#web-terminal-font-size").val(size);
+            }
         }
     });
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTerminalPrefs);
@@ -536,6 +547,7 @@ function openWebTerminal(jailname) {
                     });
 
                     setupTerminalFocus($iframe);
+                    setTimeout(revealTerminal, 2500); // fallback if the ready message never comes
 
                     $container.append($iframe);
                     var prefs = terminalPrefs();
@@ -560,6 +572,9 @@ function openWebTerminal(jailname) {
 
 // Background of each terminal theme: the margin around the terminal must match
 // (themes are defined in BastilleWebTerminalLauncher).
+function revealTerminal() {
+    $('#web-terminal-iframe').addClass('ready');
+}
 var TERM_BG = { dark: '#282c34', light: '#fafafa' };
 var TERM_PREFS_KEY = 'bastille_terminal_prefs';
 
@@ -1140,11 +1155,11 @@ endforeach;
                         <a href="#" id="web-terminal-settings" class="web-terminal-btn-text web-terminal-btn-borderless" title="<?=gtext('Terminal settings');?>">Aa</a>
                         <a href="#" id="web-terminal-size" class="web-terminal-btn-fullscreen web-terminal-btn-borderless"
                            data-title-on="<?=gtext('Restore size');?>" data-title-off="<?=gtext('Toggle size');?>" title="<?=gtext('Toggle size');?>">
-                            <img id="web-terminal-size-icon" src="ext/bastille/images/expand-arrows-alt-solid.svg" class="web-terminal-header-icon" alt="" />
+                            <img id="web-terminal-size-icon" src="ext/bastille/images/expand-arrows-alt-solid.svg" class="web-terminal-header-icon web-terminal-header-icon-arrows" alt="" />
                         </a>
                         <a href="#" id="web-terminal-native-fullscreen" class="web-terminal-btn-fullscreen web-terminal-btn-borderless"
                            data-title-on="<?=gtext('Exit fullscreen');?>" data-title-off="<?=gtext('Fullscreen');?>" title="<?=gtext('Fullscreen');?>">
-                            <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="" />
+                            <img src="ext/bastille/images/fullscreen.svg" class="web-terminal-header-icon" alt="" />
                         </a>
                         <a href="#" id="web-terminal-popout" class="web-terminal-btn-open-tab">Open in New Tab</a>
                         <span id="web-terminal-close" style="cursor:pointer; font-weight:bold; font-size:1.3em;">&times;</span>
