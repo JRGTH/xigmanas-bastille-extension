@@ -69,8 +69,8 @@
     align-items: center;
     height: 28px;
     box-sizing: border-box;
-    background: #333;
-    border: 1px solid #555;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.45);
     border-radius: 4px;
     color: white !important;
     padding: 0 15px;
@@ -82,8 +82,8 @@
 }
 
 .web-terminal-btn-open-tab:hover {
-    background: #444;
-    border-color: #777;
+    background: rgba(255,255,255,0.32);
+    border-color: rgba(255,255,255,0.7);
 }
 
 .web-terminal-btn-fullscreen {
@@ -92,8 +92,8 @@
     align-items: center;
     width: 28px;
     height: 28px;
-    background: #333;
-    border: 1px solid #555;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.45);
     border-radius: 4px;
     margin-right: 10px;
     text-decoration: none;
@@ -101,8 +101,8 @@
 }
 
 .web-terminal-btn-fullscreen:hover {
-    background: #444;
-    border-color: #777;
+    background: rgba(255,255,255,0.32);
+    border-color: rgba(255,255,255,0.7);
 }
 
 .web-terminal-btn-fullscreen:hover .fullscreen-icon-darkbg {
@@ -117,10 +117,35 @@
     cursor: help;
     color: #aaa;
     font-size: 1.5em;
+    filter: brightness(0) invert(1); /* white, like the title */
+    opacity: 0.85;
 }
 
 .ssl-help-icon:hover {
-    filter: brightness(2.0);
+    filter: brightness(0) invert(1);
+    opacity: 1;
     transform: scale(1.1);
     cursor: help;
+}
+
+#web-terminal-title {
+    font-weight: bold;
+    font-size: 14px;
+    letter-spacing: 0.2px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.25);
+}
+
+#web-terminal-close {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    color: white;
+    transition: background 0.2s ease;
+}
+
+#web-terminal-close:hover {
+    background: rgba(255,255,255,0.32);
 }

@@ -17,15 +17,18 @@ class BastilleWebTerminalLauncher
     private const string SSL_CERT = '/var/etc/webguicert.pem';
     private const string SSL_KEY = '/var/etc/webguipriv.pem';
 
-    /** ttyd's own page plus our <style>, built from the installed ttyd (see buildIndex). */
-    private const string INDEX_FILE = '/tmp/bastille_ttyd_index.html';
-
     /**
      * Added to ttyd's page. A dark colour scheme makes the browser draw dark native scrollbars
      * (ttyd 1.7 uses xterm.js 5, whose scrollbar is the native one and cannot be themed with -t).
+     * The thumb is invisible until the mouse moves or the terminal scrolls ("sb" class on <html>),
+     * and hides again after 1.2 s.
      */
-    private const string INDEX_STYLE = '<style>:root{color-scheme:dark}'
-        . '.xterm-viewport{scrollbar-width:thin;scrollbar-color:#4b5263 #282c34}</style>';
+    private const string INDEX_INJECT = '<style>:root{color-scheme:dark}'
+        . '.xterm-viewport{scrollbar-width:thin;scrollbar-color:transparent transparent}'
+        . 'html.sb .xterm-viewport{scrollbar-color:#4b5263 transparent}</style>'
+        . '<script>(function(){var t,h=document.documentElement;'
+        . 'function s(){h.classList.add("sb");clearTimeout(t);t=setTimeout(function(){h.classList.remove("sb")},1200)}'
+        . '["mousemove","wheel","scroll"].forEach(function(e){addEventListener(e,s,{passive:true,capture:true})})})()</script>';
 
     private string $protocol = 'http://';
 
@@ -57,19 +60,25 @@ class BastilleWebTerminalLauncher
 
         if ($index === null && $this->buildIndex()) {
             // First time with this ttyd: restart it with the page that has our style.
-            $this->spawn(self::INDEX_FILE);
+            $this->spawn($this->indexFile());
         }
 
         return $this->generateUrl();
     }
 
+    /** Named after a hash of what is injected: changing it makes the page be built again. */
+    private function indexFile(): string
+    {
+        return '/tmp/bastille_ttyd_index_' . hash('crc32b', self::INDEX_INJECT) . '.html';
+    }
+
     /** The custom index when it exists and is not older than the ttyd binary, else null. */
     private function currentIndex(): ?string
     {
-        if (!is_file(self::INDEX_FILE)) {
+        if (!is_file($this->indexFile())) {
             return null;
         }
-        return filemtime(self::INDEX_FILE) >= filemtime(self::TTYD_BIN) ? self::INDEX_FILE : null;
+        return filemtime($this->indexFile()) >= filemtime(self::TTYD_BIN) ? $this->indexFile() : null;
     }
 
     /**
@@ -91,12 +100,15 @@ class BastilleWebTerminalLauncher
         if ($end === false) {
             return false;
         }
-        $custom = substr_replace($page, self::INDEX_STYLE, $end, 0);
-        $tmp = self::INDEX_FILE . '.' . getmypid();
+        foreach (glob('/tmp/bastille_ttyd_index*.html') ?: [] as $stale) {
+            unlink($stale);
+        }
+        $custom = substr_replace($page, self::INDEX_INJECT, $end, 0);
+        $tmp = $this->indexFile() . '.' . getmypid();
         if (file_put_contents($tmp, $custom) === false) {
             return false;
         }
-        return rename($tmp, self::INDEX_FILE);
+        return rename($tmp, $this->indexFile());
     }
 
     /** Stop the previous ttyd and start one for this jail; waits until its port answers. */
