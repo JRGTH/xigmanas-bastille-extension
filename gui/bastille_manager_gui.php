@@ -492,12 +492,12 @@ $(window).on("load", function() {
     $("#web-terminal-theme-toggle button").click(function() {
         $("#web-terminal-theme").val($(this).data('theme')).trigger('change');
     });
-    $("#web-terminal-readonly").change(applyTerminalPrefs); // not saved: every terminal opens writable
-    $("#web-terminal-font-size, #web-terminal-theme, #web-terminal-palette").change(function() {
+    $("#web-terminal-font-size, #web-terminal-theme, #web-terminal-palette, #web-terminal-readonly").change(function() {
         saveTerminalPrefs({
             fontSize: parseInt($("#web-terminal-font-size").val(), 10),
             theme: $("#web-terminal-theme").val(),
-            palette: $("#web-terminal-palette").val()
+            palette: $("#web-terminal-palette").val(),
+            readOnly: $("#web-terminal-readonly").is(':checked')
         });
         applyTerminalPrefs();
     });
@@ -574,7 +574,8 @@ function openWebTerminal(jailname) {
                     $("#web-terminal-theme").val(prefs.theme);
                     markThemeButton();
                     $("#web-terminal-palette").val(prefs.palette);
-                    $("#web-terminal-readonly").prop('checked', false);
+                    $("#web-terminal-readonly").prop('checked', prefs.readOnly);
+                    $("#web-terminal-lock").toggle(prefs.readOnly);
                     $container.css('background', termBg(prefs));
                     $("#web-terminal-settings-panel").toggleClass('light', resolveTerminalTheme(prefs.theme) === 'light');
                     $("#web-terminal-modal").fadeIn(200);
@@ -623,7 +624,8 @@ function terminalPrefs() {
     return {
         fontSize: (size >= 10 && size <= 24) ? size : 15,
         theme: ['dark', 'light', 'auto'].indexOf(prefs.theme) >= 0 ? prefs.theme : 'dark',
-        palette: TERM_BG[prefs.palette] ? prefs.palette : TERM_DEFAULT_PALETTE
+        palette: TERM_BG[prefs.palette] ? prefs.palette : TERM_DEFAULT_PALETTE,
+        readOnly: prefs.readOnly === true
     };
 }
 
@@ -649,9 +651,10 @@ function applyTerminalPrefs() {
     $("#web-terminal-iframe-container").css('background', termBg(prefs));
     $("#web-terminal-settings-panel").toggleClass('light', theme === 'light');
     markThemeButton();
+    $("#web-terminal-lock").toggle(prefs.readOnly);
     var iframe = document.getElementById('web-terminal-iframe');
     if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage({ type: 'bastille-term', fontSize: prefs.fontSize, theme: theme, palette: prefs.palette, readOnly: $('#web-terminal-readonly').is(':checked') }, '*');
+        iframe.contentWindow.postMessage({ type: 'bastille-term', fontSize: prefs.fontSize, theme: theme, palette: prefs.palette, readOnly: prefs.readOnly }, '*');
     }
 }
 
@@ -1186,6 +1189,7 @@ endforeach;
             <div id="web-terminal-content">
                 <div id="web-terminal-header">
                     <span id="web-terminal-title"></span>
+                    <svg id="web-terminal-lock" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="<?=gtext('Read only');?>"><title><?=gtext('Read only');?></title><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
                     <img src="ext/bastille/images/info-ssl.svg" class="icon-svg ssl-help-icon"
                              title="MOZILLA_PKIX_ERROR_SELF_SIGNED_CERT Mozilla will display this initial warning, to fix it: Use the button “Open in New Tab” (Top right corner, in this window)" />
                     <div id="web-terminal-right-buttons">

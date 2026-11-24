@@ -348,3 +348,11 @@
     font-size: 13px;
     cursor: pointer;
 }
+
+/* Shown next to the title while the terminal ignores the keyboard */
+#web-terminal-lock {
+    display: none;
+    margin-left: 6px;
+    color: #fff;
+    opacity: 0.9;
+}
