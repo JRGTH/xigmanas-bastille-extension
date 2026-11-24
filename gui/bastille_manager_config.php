@@ -71,7 +71,7 @@ if($zfs_status == "Invalid ZFS configuration"):
 endif;
 
 function htmlInput($name, $title, $value="", $size=80) {
-	$result = "<input name='{$name}' size='{$size}' title='{$title}' placeholder='{$title}' value='{$value}' />";
+	$result = "<input name='" . htmlspecialchars($name) . "' size='" . htmlspecialchars($size) . "' title='" . htmlspecialchars($title) . "' placeholder='" . htmlspecialchars($title) . "' value='" . htmlspecialchars($value) . "' />";
 	return $result;
 }
 
