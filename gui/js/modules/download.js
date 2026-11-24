@@ -4,24 +4,7 @@ import { cfg, cmTargetData } from "./state.js";
 import { spinner, hideSpinner } from "./ui.js";
 import { showConfirmDialog } from "./modal.js";
 import { refreshDir } from "./tree.js";
-
-// --- NOTIFICATION ---
-export function showNotification(title, bodyText) {
-    if (!('Notification' in window)) return;
-
-    const options = {
-        body: bodyText,
-        icon: '/ext/bastille/images/logo-xigmanas.png'
-    };
-
-    if (Notification.permission === 'granted') {
-        new Notification(title, options);
-    } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') new Notification(title, options);
-        });
-    }
-}
+import { showNotification } from "./notification.js";
 
 // --- TRIGGER DOWNLOAD ---
 export function triggerDownload(url) {

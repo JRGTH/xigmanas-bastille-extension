@@ -307,7 +307,7 @@ if (!document.querySelector('meta[name="viewport"]')) {
 <script src="js/spin.min.js"></script>
 
 <script src="ext/bastille/js/modules/monaco/vs/loader.js"></script>
-<script type="module" src="ext/bastille/js/main.js"></script>
+<script type="module" src="ext/bastille/js/editor_main.js"></script>
 
 <?php if (!empty($input_errors)): ?>
     <script>

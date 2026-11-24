@@ -22,7 +22,8 @@ import {
   executeRename,
   executeUnlock,
   checkFileExists} from "./filesystem.js";
-import {executeDownloadRequest, showNotification} from "./download.js";
+import {executeDownloadRequest} from "./download.js";
+import {showNotification} from "./notification.js";
 import {showFileInfo} from "./sidebar-info.js";
 import {openDiffViewer} from "./editor.js";
 

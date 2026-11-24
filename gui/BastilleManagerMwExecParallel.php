@@ -131,6 +131,12 @@ class BastilleManagerMwExecParallel
         $command = $this->commands[0] ?? '';
         if (empty($command)) return;
 
+        // nohup: the command survives a hangup sent by the web server. It runs inside sh -c so a
+        // chain such as "a && b" is protected as a whole. The trailing "&" makes the intermediate
+        // shell exit at once: the command is adopted by init instead of staying a child of this
+        // PHP process that nobody waits for (a zombie, which posix_kill($pid, 0) reports alive).
+        $command = '/usr/bin/nohup /bin/sh -c ' . escapeshellarg($command) . ' &';
+
         $process = proc_open($command, [
             0 => ['file', '/dev/null', 'r'],
             1 => ['file', '/dev/null', 'w'],
