@@ -426,8 +426,15 @@ $(window).on("load", function() {
     });
     // Close web-terminal modal
     $("#web-terminal-close").click(function() {
-        $("#web-terminal-modal").hide();
-        $("#web-terminal-iframe-container").empty(); // Destroy iframe completely
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+        $("#web-terminal-settings-panel").hide();
+        $("#web-terminal-modal").fadeOut(200, function() {
+            $("#web-terminal-iframe-container").empty(); // Destroy iframe completely
+            $("#web-terminal-content").removeClass('fullscreen');
+            setTerminalSizeButton(false);
+        });
     });
 
     // Pop-out web-terminal button
@@ -443,10 +450,46 @@ $(window).on("load", function() {
         }
     });
 
-    //TODO Fullscreen web-terminal button
-    $("#web-terminal-fullscreen").click(function() {
-        $("#web-terminal-content").toggleClass('fullscreen');
+    // Toggle size / Restore size: the modal fills the page and back.
+    $("#web-terminal-size").click(function(e) {
+        e.preventDefault();
+        setTerminalSizeButton($("#web-terminal-content").toggleClass('fullscreen').hasClass('fullscreen'));
     });
+
+    // Native browser fullscreen (Fullscreen API).
+    $("#web-terminal-native-fullscreen").click(function(e) {
+        e.preventDefault();
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else if (document.getElementById('web-terminal-content').requestFullscreen) {
+            document.getElementById('web-terminal-content').requestFullscreen();
+        }
+    });
+    document.addEventListener('fullscreenchange', function() {
+        var $button = $("#web-terminal-native-fullscreen");
+        $button.attr('title', $button.data(document.fullscreenElement ? 'titleOn' : 'titleOff'));
+    });
+
+    // Terminal settings (font size and theme), kept in this browser.
+    $("#web-terminal-settings").click(function(e) {
+        e.preventDefault();
+        $("#web-terminal-settings-panel").fadeToggle(150);
+    });
+    $("#web-terminal-font-size, #web-terminal-theme").change(function() {
+        saveTerminalPrefs({
+            fontSize: parseInt($("#web-terminal-font-size").val(), 10),
+            theme: $("#web-terminal-theme").val()
+        });
+        applyTerminalPrefs();
+    });
+    // The terminal says when it is ready to receive the preferences.
+    window.addEventListener('message', function(e) {
+        var iframe = document.getElementById('web-terminal-iframe');
+        if (iframe && e.source === iframe.contentWindow && e.data && e.data.type === 'bastille-term-ready') {
+            applyTerminalPrefs();
+        }
+    });
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTerminalPrefs);
 
 });
 
@@ -495,7 +538,11 @@ function openWebTerminal(jailname) {
                     setupTerminalFocus($iframe);
 
                     $container.append($iframe);
-                    $("#web-terminal-modal").show();
+                    var prefs = terminalPrefs();
+                    $("#web-terminal-font-size").val(prefs.fontSize);
+                    $("#web-terminal-theme").val(prefs.theme);
+                    $container.css('background', TERM_BG[resolveTerminalTheme(prefs.theme)]);
+                    $("#web-terminal-modal").fadeIn(200);
 
                 } else {
                     alert("Error launching web-terminal: " + data.message);
@@ -509,6 +556,58 @@ function openWebTerminal(jailname) {
             console.error('Error:', error);
             alert("Failed to connect to web-terminal backend.");
         });
+}
+
+// Background of each terminal theme: the margin around the terminal must match
+// (themes are defined in BastilleWebTerminalLauncher).
+var TERM_BG = { dark: '#282c34', light: '#fafafa' };
+var TERM_PREFS_KEY = 'bastille_terminal_prefs';
+
+function terminalPrefs() {
+    var prefs = {};
+    try {
+        prefs = JSON.parse(localStorage.getItem(TERM_PREFS_KEY) || '{}') || {};
+    } catch (e) {
+        prefs = {};
+    }
+    var size = parseInt(prefs.fontSize, 10);
+    return {
+        fontSize: (size >= 10 && size <= 24) ? size : 15,
+        theme: ['dark', 'light', 'auto'].indexOf(prefs.theme) >= 0 ? prefs.theme : 'dark'
+    };
+}
+
+function saveTerminalPrefs(prefs) {
+    try {
+        localStorage.setItem(TERM_PREFS_KEY, JSON.stringify(prefs));
+    } catch (e) {
+        // Storage blocked: the choice only lasts until the terminal is closed.
+    }
+}
+
+function resolveTerminalTheme(theme) {
+    if (theme === 'auto') {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return theme;
+}
+
+// Send the saved font size and theme to the running terminal (no reconnect).
+function applyTerminalPrefs() {
+    var prefs = terminalPrefs();
+    var theme = resolveTerminalTheme(prefs.theme);
+    $("#web-terminal-iframe-container").css('background', TERM_BG[theme]);
+    var iframe = document.getElementById('web-terminal-iframe');
+    if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'bastille-term', fontSize: prefs.fontSize, theme: theme }, '*');
+    }
+}
+
+// Icon and title of the "Toggle size" / "Restore size" button.
+function setTerminalSizeButton(maximized) {
+    var $button = $("#web-terminal-size");
+    $("#web-terminal-size-icon").attr('src', 'ext/bastille/images/' + (maximized ? 'compress' : 'expand') + '-arrows-alt-solid.svg');
+    $button.attr('title', $button.data(maximized ? 'titleOn' : 'titleOff'));
 }
 
 function setupTerminalFocus(iframe) {
@@ -1038,12 +1137,32 @@ endforeach;
                     <img src="ext/bastille/images/info-ssl.svg" class="icon-svg ssl-help-icon"
                              title="MOZILLA_PKIX_ERROR_SELF_SIGNED_CERT Mozilla will display this initial warning, to fix it: Use the button “Open in New Tab” (Top right corner, in this window)" />
                     <div id="web-terminal-right-buttons">
-                        <a href="#" id="web-terminal-fullscreen" class="web-terminal-btn-fullscreen" title="Fullscreen">
-                            <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" />
-                         </a>
+                        <a href="#" id="web-terminal-settings" class="web-terminal-btn-text" title="<?=gtext('Terminal settings');?>">Aa</a>
+                        <a href="#" id="web-terminal-size" class="web-terminal-btn-fullscreen"
+                           data-title-on="<?=gtext('Restore size');?>" data-title-off="<?=gtext('Toggle size');?>" title="<?=gtext('Toggle size');?>">
+                            <img id="web-terminal-size-icon" src="ext/bastille/images/expand-arrows-alt-solid.svg" class="web-terminal-icon" alt="" />
+                        </a>
+                        <a href="#" id="web-terminal-native-fullscreen" class="web-terminal-btn-fullscreen web-terminal-btn-borderless"
+                           data-title-on="<?=gtext('Exit fullscreen');?>" data-title-off="<?=gtext('Fullscreen');?>" title="<?=gtext('Fullscreen');?>">
+                            <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="" />
+                        </a>
                         <a href="#" id="web-terminal-popout" class="web-terminal-btn-open-tab">Open in New Tab</a>
                         <span id="web-terminal-close" style="cursor:pointer; font-weight:bold; font-size:1.3em;">&times;</span>
                     </div>
+                </div>
+                <div id="web-terminal-settings-panel">
+                    <label for="web-terminal-font-size"><?=gtext('Font size');?></label>
+                    <select id="web-terminal-font-size">
+                        <?php foreach (range(10, 24) as $size): ?>
+                        <option value="<?=$size;?>"><?=$size;?> px</option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label for="web-terminal-theme"><?=gtext('Theme');?></label>
+                    <select id="web-terminal-theme">
+                        <option value="dark"><?=gtext('Dark');?></option>
+                        <option value="light"><?=gtext('Light');?></option>
+                        <option value="auto"><?=gtext('Auto (system)');?></option>
+                    </select>
                 </div>
                 <div id="web-terminal-iframe-container">
                     <iframe id="web-terminal-iframe" src="about:blank"></iframe>

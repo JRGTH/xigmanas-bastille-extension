@@ -17,18 +17,29 @@ class BastilleWebTerminalLauncher
     private const string SSL_CERT = '/var/etc/webguicert.pem';
     private const string SSL_KEY = '/var/etc/webguipriv.pem';
 
-    /**
-     * Added to ttyd's page. A dark colour scheme makes the browser draw dark native scrollbars
-     * (ttyd 1.7 uses xterm.js 5, whose scrollbar is the native one and cannot be themed with -t).
-     * The thumb is invisible until the mouse moves or the terminal scrolls ("sb" class on <html>),
-     * and hides again after 1.2 s.
-     */
-    private const string INDEX_INJECT = '<style>:root{color-scheme:dark}'
-        . '.xterm-viewport{scrollbar-width:thin;scrollbar-color:transparent transparent}'
-        . 'html.sb .xterm-viewport{scrollbar-color:#4b5263 transparent}</style>'
-        . '<script>(function(){var t,h=document.documentElement;'
-        . 'function s(){h.classList.add("sb");clearTimeout(t);t=setTimeout(function(){h.classList.remove("sb")},1200)}'
-        . '["mousemove","wheel","scroll"].forEach(function(e){addEventListener(e,s,{passive:true,capture:true})})})()</script>';
+    /** One Dark. Its background must match the one in the modal (gui.php, TERM_BG). */
+    private const array DARK_THEME = [
+        'background' => '#282c34', 'foreground' => '#abb2bf',
+        'cursor' => '#528bff', 'cursorAccent' => '#282c34',
+        'selectionBackground' => '#3e4451',
+        'black' => '#282c34', 'red' => '#e06c75', 'green' => '#98c379', 'yellow' => '#e5c07b',
+        'blue' => '#61afef', 'magenta' => '#c678dd', 'cyan' => '#56b6c2', 'white' => '#abb2bf',
+        'brightBlack' => '#5c6370', 'brightRed' => '#e06c75', 'brightGreen' => '#98c379',
+        'brightYellow' => '#e5c07b', 'brightBlue' => '#61afef', 'brightMagenta' => '#c678dd',
+        'brightCyan' => '#56b6c2', 'brightWhite' => '#ffffff',
+    ];
+
+    /** One Light, the counterpart of the dark palette. */
+    private const array LIGHT_THEME = [
+        'background' => '#fafafa', 'foreground' => '#383a42',
+        'cursor' => '#526fff', 'cursorAccent' => '#fafafa',
+        'selectionBackground' => '#dbe4f5',
+        'black' => '#383a42', 'red' => '#e45649', 'green' => '#50a14f', 'yellow' => '#c18401',
+        'blue' => '#4078f2', 'magenta' => '#a626a4', 'cyan' => '#0184bc', 'white' => '#a0a1a7',
+        'brightBlack' => '#696c77', 'brightRed' => '#e45649', 'brightGreen' => '#50a14f',
+        'brightYellow' => '#c18401', 'brightBlue' => '#4078f2', 'brightMagenta' => '#a626a4',
+        'brightCyan' => '#0184bc', 'brightWhite' => '#fafafa',
+    ];
 
     private string $protocol = 'http://';
 
@@ -66,10 +77,50 @@ class BastilleWebTerminalLauncher
         return $this->generateUrl();
     }
 
+    /**
+     * What is added to ttyd's page (before </head>):
+     *  - a dark colour scheme, so the browser draws dark native scrollbars (ttyd 1.7 uses xterm.js 5,
+     *    whose scrollbar is the native one and cannot be themed with -t). The thumb is invisible
+     *    until the mouse moves or the terminal scrolls ("sb" class on <html>) and fades in and out;
+     *  - a script that applies the theme and font size the modal asks for, through postMessage, on
+     *    the running terminal (window.term), so the session is not interrupted.
+     */
+    private function indexInject(): string
+    {
+        $themes = json_encode(['dark' => self::DARK_THEME, 'light' => self::LIGHT_THEME], JSON_THROW_ON_ERROR);
+
+        $style = ':root{color-scheme:dark}'
+            . '@supports selector(::-webkit-scrollbar){'
+            . '.xterm-viewport::-webkit-scrollbar{width:10px}'
+            . '.xterm-viewport::-webkit-scrollbar-track{background:transparent}'
+            . '.xterm-viewport::-webkit-scrollbar-thumb{background-color:transparent;border-radius:5px;transition:background-color .4s ease}'
+            . 'html.sb .xterm-viewport::-webkit-scrollbar-thumb{background-color:rgba(122,132,153,.65)}'
+            . 'html.light.sb .xterm-viewport::-webkit-scrollbar-thumb{background-color:rgba(0,0,0,.3)}}'
+            . '@supports not selector(::-webkit-scrollbar){'
+            . '.xterm-viewport{scrollbar-width:thin;scrollbar-color:transparent transparent}'
+            . 'html.sb .xterm-viewport{scrollbar-color:#4b5263 transparent}'
+            . 'html.light.sb .xterm-viewport{scrollbar-color:#b4b4b4 transparent}}';
+
+        $script = '(function(){var T=' . $themes . ',t,h=document.documentElement,tries=0;'
+            . 'function s(){h.classList.add("sb");clearTimeout(t);t=setTimeout(function(){h.classList.remove("sb")},1200)}'
+            . '["mousemove","wheel","scroll"].forEach(function(e){addEventListener(e,s,{passive:true,capture:true})});'
+            // Tell the modal when the terminal exists, so it can send the saved preferences.
+            . 'function ready(){if(window.term&&window.term.options){parent.postMessage({type:"bastille-term-ready"},"*")}'
+            . 'else if(tries++<100){setTimeout(ready,100)}}ready();'
+            . 'addEventListener("message",function(e){var d=e.data;'
+            . 'if(e.source!==parent||!d||d.type!=="bastille-term"||!window.term){return}'
+            . 'var n=parseInt(d.fontSize,10);if(n>=10&&n<=28){term.options.fontSize=n}'
+            . 'if(T[d.theme]){term.options.theme=T[d.theme];h.style.colorScheme=d.theme;'
+            . 'h.classList.toggle("light",d.theme==="light");document.body.style.backgroundColor=T[d.theme].background}'
+            . 'try{term.fit()}catch(x){}})})()';
+
+        return '<style>' . $style . '</style><script>' . $script . '</script>';
+    }
+
     /** Named after a hash of what is injected: changing it makes the page be built again. */
     private function indexFile(): string
     {
-        return '/tmp/bastille_ttyd_index_' . hash('crc32b', self::INDEX_INJECT) . '.html';
+        return '/tmp/bastille_ttyd_index_' . hash('crc32b', $this->indexInject()) . '.html';
     }
 
     /** The custom index when it exists and is not older than the ttyd binary, else null. */
@@ -103,7 +154,7 @@ class BastilleWebTerminalLauncher
         foreach (glob('/tmp/bastille_ttyd_index*.html') ?: [] as $stale) {
             unlink($stale);
         }
-        $custom = substr_replace($page, self::INDEX_INJECT, $end, 0);
+        $custom = substr_replace($page, $this->indexInject(), $end, 0);
         $tmp = $this->indexFile() . '.' . getmypid();
         if (file_put_contents($tmp, $custom) === false) {
             return false;
@@ -172,33 +223,18 @@ class BastilleWebTerminalLauncher
     }
 
     /**
-     * xterm.js options passed to ttyd (-t key=value; values are JSON). Always a dark palette
-     * (One Dark); its background must match #web-terminal-iframe-container in
-     * css/bastille-web-terminal-modal.css, which draws the margin around the terminal.
+     * xterm.js options passed to ttyd (-t key=value; values are JSON). It starts dark; the
+     * modal then applies the user's choice of theme and font size (see indexInject()).
      */
     private function terminalOptions(): string
     {
-        $theme = [
-            'background' => '#282c34', 'foreground' => '#abb2bf',
-            'cursor' => '#528bff', 'cursorAccent' => '#282c34',
-            'selectionBackground' => '#3e4451',
-            'black' => '#282c34', 'red' => '#e06c75', 'green' => '#98c379', 'yellow' => '#e5c07b',
-            'blue' => '#61afef', 'magenta' => '#c678dd', 'cyan' => '#56b6c2', 'white' => '#abb2bf',
-            'brightBlack' => '#5c6370', 'brightRed' => '#e06c75', 'brightGreen' => '#98c379',
-            'brightYellow' => '#e5c07b', 'brightBlue' => '#61afef', 'brightMagenta' => '#c678dd',
-            'brightCyan' => '#56b6c2', 'brightWhite' => '#ffffff',
-            // Dark scrollbar (only honoured by the xterm.js versions that know these keys).
-            'scrollbarSliderBackground' => 'rgba(121,121,121,0.4)',
-            'scrollbarSliderHoverBackground' => 'rgba(100,100,100,0.7)',
-            'scrollbarSliderActiveBackground' => 'rgba(191,191,191,0.4)',
-        ];
         $options = [
             'cursorBlink' => true,
             'cursorStyle' => 'bar',
             'fontSize' => 15,
             'lineHeight' => 1.2,
             'fontFamily' => 'JetBrains Mono, Fira Code, DejaVu Sans Mono, Menlo, Consolas, monospace',
-            'theme' => $theme,
+            'theme' => self::DARK_THEME,
         ];
 
         $args = [];
