@@ -81,7 +81,8 @@ class BastilleWebTerminalLauncher
      * What is added to ttyd's page (before </head>):
      *  - a dark colour scheme, so the browser draws dark native scrollbars (ttyd 1.7 uses xterm.js 5,
      *    whose scrollbar is the native one and cannot be themed with -t). The thumb is invisible
-     *    until the mouse moves or the terminal scrolls ("sb" class on <html>) and fades in and out;
+     *    until the mouse moves or the terminal scrolls ("sb" class on <html>) and fades in and out
+     *    (a transition on scrollbar-color);
      *  - a script that applies the theme and font size the modal asks for, through postMessage, on
      *    the running terminal (window.term), so the session is not interrupted.
      */
@@ -89,17 +90,11 @@ class BastilleWebTerminalLauncher
     {
         $themes = json_encode(['dark' => self::DARK_THEME, 'light' => self::LIGHT_THEME], JSON_THROW_ON_ERROR);
 
+        // scrollbar-color is animated by Chrome (121+) and Firefox; the ::-webkit-scrollbar-thumb is not.
         $style = ':root{color-scheme:dark}'
-            . '@supports selector(::-webkit-scrollbar){'
-            . '.xterm-viewport::-webkit-scrollbar{width:10px}'
-            . '.xterm-viewport::-webkit-scrollbar-track{background:transparent}'
-            . '.xterm-viewport::-webkit-scrollbar-thumb{background-color:transparent;border-radius:5px;transition:background-color .4s ease}'
-            . 'html.sb .xterm-viewport::-webkit-scrollbar-thumb{background-color:rgba(122,132,153,.65)}'
-            . 'html.light.sb .xterm-viewport::-webkit-scrollbar-thumb{background-color:rgba(0,0,0,.3)}}'
-            . '@supports not selector(::-webkit-scrollbar){'
-            . '.xterm-viewport{scrollbar-width:thin;scrollbar-color:transparent transparent}'
-            . 'html.sb .xterm-viewport{scrollbar-color:#4b5263 transparent}'
-            . 'html.light.sb .xterm-viewport{scrollbar-color:#b4b4b4 transparent}}';
+            . '.xterm-viewport{scrollbar-width:thin;scrollbar-color:transparent transparent;transition:scrollbar-color .5s ease}'
+            . 'html.sb .xterm-viewport{scrollbar-color:#6b7385 transparent}'
+            . 'html.light.sb .xterm-viewport{scrollbar-color:#a9a9a9 transparent}';
 
         $script = '(function(){var T=' . $themes . ',t,h=document.documentElement,tries=0;'
             . 'function s(){h.classList.add("sb");clearTimeout(t);t=setTimeout(function(){h.classList.remove("sb")},1200)}'

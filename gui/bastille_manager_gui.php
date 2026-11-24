@@ -1137,10 +1137,10 @@ endforeach;
                     <img src="ext/bastille/images/info-ssl.svg" class="icon-svg ssl-help-icon"
                              title="MOZILLA_PKIX_ERROR_SELF_SIGNED_CERT Mozilla will display this initial warning, to fix it: Use the button “Open in New Tab” (Top right corner, in this window)" />
                     <div id="web-terminal-right-buttons">
-                        <a href="#" id="web-terminal-settings" class="web-terminal-btn-text" title="<?=gtext('Terminal settings');?>">Aa</a>
-                        <a href="#" id="web-terminal-size" class="web-terminal-btn-fullscreen"
+                        <a href="#" id="web-terminal-settings" class="web-terminal-btn-text web-terminal-btn-borderless" title="<?=gtext('Terminal settings');?>">Aa</a>
+                        <a href="#" id="web-terminal-size" class="web-terminal-btn-fullscreen web-terminal-btn-borderless"
                            data-title-on="<?=gtext('Restore size');?>" data-title-off="<?=gtext('Toggle size');?>" title="<?=gtext('Toggle size');?>">
-                            <img id="web-terminal-size-icon" src="ext/bastille/images/expand-arrows-alt-solid.svg" class="web-terminal-icon" alt="" />
+                            <img id="web-terminal-size-icon" src="ext/bastille/images/expand-arrows-alt-solid.svg" class="web-terminal-header-icon" alt="" />
                         </a>
                         <a href="#" id="web-terminal-native-fullscreen" class="web-terminal-btn-fullscreen web-terminal-btn-borderless"
                            data-title-on="<?=gtext('Exit fullscreen');?>" data-title-off="<?=gtext('Fullscreen');?>" title="<?=gtext('Fullscreen');?>">
