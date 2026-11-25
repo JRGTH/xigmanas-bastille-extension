@@ -13,6 +13,7 @@ error_reporting(E_ALL);
 require_once 'auth.inc';
 require_once 'guiconfig.inc';
 require_once 'bastille_manager-lib.inc';
+require_once 'BastilleTerminalPalettes.php';
 require_once 'BastilleWebTerminalLauncher.php';
 
 $jailname = $_GET['jailname'] ?? '';

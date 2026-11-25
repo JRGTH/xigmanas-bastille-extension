@@ -40,6 +40,7 @@ require_once 'guiconfig.inc';
 require_once 'bastille_manager-lib.inc';
 require_once 'BastilleManagerMwExecParallel.php';
 require_once __DIR__ . '/BastilleReleaseView.php';
+require_once __DIR__ . '/BastilleTerminalPalettes.php';
 
 $img_path = [
     'add' => 'images/add.png',
@@ -426,8 +427,15 @@ $(window).on("load", function() {
     });
     // Close web-terminal modal
     $("#web-terminal-close").click(function() {
-        $("#web-terminal-modal").hide();
-        $("#web-terminal-iframe-container").empty(); // Destroy iframe completely
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+        $("#web-terminal-settings-panel").hide();
+        $("#web-terminal-modal").fadeOut(200, function() {
+            $("#web-terminal-iframe-container").empty(); // Destroy iframe completely
+            $("#web-terminal-content").removeClass('fullscreen');
+            setTerminalSizeButton(false);
+        });
     });
 
     // Pop-out web-terminal button
@@ -443,10 +451,75 @@ $(window).on("load", function() {
         }
     });
 
-    //TODO Fullscreen web-terminal button
-    $("#web-terminal-fullscreen").click(function() {
-        $("#web-terminal-content").toggleClass('fullscreen');
+    // Toggle size / Restore size: the modal fills the page and back.
+    $("#web-terminal-size").click(function(e) {
+        e.preventDefault();
+        setTerminalSizeButton($("#web-terminal-content").toggleClass('fullscreen').hasClass('fullscreen'));
     });
+
+    // Native browser fullscreen (Fullscreen API).
+    $("#web-terminal-native-fullscreen").click(function(e) {
+        e.preventDefault();
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else if (document.getElementById('web-terminal-content').requestFullscreen) {
+            document.getElementById('web-terminal-content').requestFullscreen();
+        }
+    });
+    document.addEventListener('fullscreenchange', function() {
+        var $button = $("#web-terminal-native-fullscreen");
+        $button.attr('title', $button.data(document.fullscreenElement ? 'titleOn' : 'titleOff'));
+    });
+
+    // Terminal settings (font size and theme), kept in this browser.
+    $("#web-terminal-settings").click(function(e) {
+        e.preventDefault();
+        $("#web-terminal-settings-panel").fadeToggle(150);
+    });
+    // Click outside the panel closes it. A click inside the iframe does not bubble up here,
+    // but it makes this window lose focus.
+    function closeSettingsPanel(e) {
+        if (e && $(e.target).closest('#web-terminal-settings-panel, #web-terminal-settings').length) {
+            return;
+        }
+        $("#web-terminal-settings-panel:visible").fadeOut(150);
+    }
+    $(document).on('mousedown', closeSettingsPanel);
+    $(window).on('blur', function() { closeSettingsPanel(null); });
+    $("#web-terminal-font-reset").click(function() {
+        $("#web-terminal-font-size").val(15).trigger('change'); // 15: default of terminalPrefs()
+    });
+    $("#web-terminal-theme-toggle button").click(function() {
+        $("#web-terminal-theme").val($(this).data('theme')).trigger('change');
+    });
+    $("#web-terminal-font-size, #web-terminal-theme, #web-terminal-palette, #web-terminal-readonly").change(function() {
+        saveTerminalPrefs({
+            fontSize: parseInt($("#web-terminal-font-size").val(), 10),
+            theme: $("#web-terminal-theme").val(),
+            palette: $("#web-terminal-palette").val(),
+            readOnly: $("#web-terminal-readonly").is(':checked')
+        });
+        applyTerminalPrefs();
+    });
+    // The terminal says when it is ready to receive the preferences.
+    window.addEventListener('message', function(e) {
+        var iframe = document.getElementById('web-terminal-iframe');
+        if (iframe && e.source === iframe.contentWindow && e.data && e.data.type === 'bastille-term-ready') {
+            applyTerminalPrefs();
+            setTimeout(revealTerminal, 120);
+        }
+        // Ctrl + wheel inside the terminal: keep the new size as the preference.
+        if (iframe && e.source === iframe.contentWindow && e.data && e.data.type === 'bastille-term-font') {
+            var size = parseInt(e.data.fontSize, 10);
+            if (size >= 10 && size <= 24) {
+                var prefs = terminalPrefs();
+                prefs.fontSize = size;
+                saveTerminalPrefs(prefs);
+                $("#web-terminal-font-size").val(size);
+            }
+        }
+    });
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTerminalPrefs);
 
 });
 
@@ -493,9 +566,19 @@ function openWebTerminal(jailname) {
                     });
 
                     setupTerminalFocus($iframe);
+                    setTimeout(revealTerminal, 2500); // fallback if the ready message never comes
 
                     $container.append($iframe);
-                    $("#web-terminal-modal").show();
+                    var prefs = terminalPrefs();
+                    $("#web-terminal-font-size").val(prefs.fontSize);
+                    $("#web-terminal-theme").val(prefs.theme);
+                    markThemeButton();
+                    $("#web-terminal-palette").val(prefs.palette);
+                    $("#web-terminal-readonly").prop('checked', prefs.readOnly);
+                    $("#web-terminal-lock").toggle(prefs.readOnly);
+                    $container.css('background', termBg(prefs));
+                    $("#web-terminal-settings-panel").toggleClass('light', resolveTerminalTheme(prefs.theme) === 'light');
+                    $("#web-terminal-modal").fadeIn(200);
 
                 } else {
                     alert("Error launching web-terminal: " + data.message);
@@ -509,6 +592,77 @@ function openWebTerminal(jailname) {
             console.error('Error:', error);
             alert("Failed to connect to web-terminal backend.");
         });
+}
+
+function markThemeButton() {
+    var theme = $("#web-terminal-theme").val();
+    $("#web-terminal-theme-toggle button").each(function() {
+        $(this).toggleClass('active', $(this).data('theme') === theme);
+    });
+}
+
+function revealTerminal() {
+    $('#web-terminal-iframe').addClass('ready');
+}
+// Background of each palette and theme: the margin around the terminal must match
+// (palettes are defined in BastilleTerminalPalettes).
+var TERM_BG = <?=json_encode(BastilleTerminalPalettes::backgrounds(), JSON_HEX_TAG | JSON_HEX_AMP);?>;
+var TERM_DEFAULT_PALETTE = <?=json_encode(BastilleTerminalPalettes::DEFAULT);?>;
+function termBg(prefs) {
+    return TERM_BG[prefs.palette][resolveTerminalTheme(prefs.theme)];
+}
+var TERM_PREFS_KEY = 'bastille_terminal_prefs';
+
+function terminalPrefs() {
+    var prefs = {};
+    try {
+        prefs = JSON.parse(localStorage.getItem(TERM_PREFS_KEY) || '{}') || {};
+    } catch (e) {
+        prefs = {};
+    }
+    var size = parseInt(prefs.fontSize, 10);
+    return {
+        fontSize: (size >= 10 && size <= 24) ? size : 15,
+        theme: ['dark', 'light', 'auto'].indexOf(prefs.theme) >= 0 ? prefs.theme : 'dark',
+        palette: TERM_BG[prefs.palette] ? prefs.palette : TERM_DEFAULT_PALETTE,
+        readOnly: prefs.readOnly === true
+    };
+}
+
+function saveTerminalPrefs(prefs) {
+    try {
+        localStorage.setItem(TERM_PREFS_KEY, JSON.stringify(prefs));
+    } catch (e) {
+        // Storage blocked: the choice only lasts until the terminal is closed.
+    }
+}
+
+function resolveTerminalTheme(theme) {
+    if (theme === 'auto') {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return theme;
+}
+
+// Send the saved font size and theme to the running terminal (no reconnect).
+function applyTerminalPrefs() {
+    var prefs = terminalPrefs();
+    var theme = resolveTerminalTheme(prefs.theme);
+    $("#web-terminal-iframe-container").css('background', termBg(prefs));
+    $("#web-terminal-settings-panel").toggleClass('light', theme === 'light');
+    markThemeButton();
+    $("#web-terminal-lock").toggle(prefs.readOnly);
+    var iframe = document.getElementById('web-terminal-iframe');
+    if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'bastille-term', fontSize: prefs.fontSize, theme: theme, palette: prefs.palette, readOnly: prefs.readOnly }, '*');
+    }
+}
+
+// Icon and title of the "Toggle size" / "Restore size" button.
+function setTerminalSizeButton(maximized) {
+    var $button = $("#web-terminal-size");
+    $("#web-terminal-size-icon").attr('src', 'ext/bastille/images/' + (maximized ? 'compress' : 'expand') + '-arrows-alt-solid.svg');
+    $button.attr('title', $button.data(maximized ? 'titleOn' : 'titleOff'));
 }
 
 function setupTerminalFocus(iframe) {
@@ -1035,15 +1189,50 @@ endforeach;
             <div id="web-terminal-content">
                 <div id="web-terminal-header">
                     <span id="web-terminal-title"></span>
+                    <svg id="web-terminal-lock" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="<?=gtext('Read only');?>"><title><?=gtext('Read only');?></title><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
                     <img src="ext/bastille/images/info-ssl.svg" class="icon-svg ssl-help-icon"
                              title="MOZILLA_PKIX_ERROR_SELF_SIGNED_CERT Mozilla will display this initial warning, to fix it: Use the button “Open in New Tab” (Top right corner, in this window)" />
                     <div id="web-terminal-right-buttons">
-                        <a href="#" id="web-terminal-fullscreen" class="web-terminal-btn-fullscreen" title="Fullscreen">
-                            <img src="ext/bastille/images/fullscreen.svg" class="icon-svg fullscreen-icon-darkbg" alt="Fullscreen" />
-                         </a>
+                        <a href="#" id="web-terminal-settings" class="web-terminal-btn-text web-terminal-btn-borderless" title="<?=gtext('Terminal settings');?>">Aa</a>
+                        <a href="#" id="web-terminal-size" class="web-terminal-btn-fullscreen web-terminal-btn-borderless"
+                           data-title-on="<?=gtext('Restore size');?>" data-title-off="<?=gtext('Toggle size');?>" title="<?=gtext('Toggle size');?>">
+                            <img id="web-terminal-size-icon" src="ext/bastille/images/expand-arrows-alt-solid.svg" class="web-terminal-header-icon web-terminal-header-icon-arrows" alt="" />
+                        </a>
+                        <a href="#" id="web-terminal-native-fullscreen" class="web-terminal-btn-fullscreen web-terminal-btn-borderless"
+                           data-title-on="<?=gtext('Exit fullscreen');?>" data-title-off="<?=gtext('Fullscreen');?>" title="<?=gtext('Fullscreen');?>">
+                            <img src="ext/bastille/images/fullscreen.svg" class="web-terminal-header-icon" alt="" />
+                        </a>
                         <a href="#" id="web-terminal-popout" class="web-terminal-btn-open-tab">Open in New Tab</a>
                         <span id="web-terminal-close" style="cursor:pointer; font-weight:bold; font-size:1.3em;">&times;</span>
                     </div>
+                </div>
+                <div id="web-terminal-settings-panel">
+                    <label for="web-terminal-font-size"><?=gtext('Font size');?></label>
+                    <div class="web-terminal-row">
+                        <select id="web-terminal-font-size" title="<?=gtext('Tip: Ctrl + mouse wheel over the terminal also changes it');?>">
+                            <?php foreach (range(10, 24) as $size): ?>
+                            <option value="<?=$size;?>"><?=$size;?> px</option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" id="web-terminal-font-reset" class="web-terminal-mini-btn" title="<?=gtext('Default size');?>">&#8634;</button>
+                    </div>
+                    <div class="web-terminal-hint"><?=gtext('Tip: Ctrl + mouse wheel over the terminal');?></div>
+                    <label><?=gtext('Theme');?></label>
+                    <input type="hidden" id="web-terminal-theme" value="dark" />
+                    <div id="web-terminal-theme-toggle" role="group">
+                        <button type="button" data-theme="auto" title="<?=gtext('Auto (system)');?>"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button>
+                        <button type="button" data-theme="light" title="<?=gtext('Light');?>"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+                        <button type="button" data-theme="dark" title="<?=gtext('Dark');?>"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+                    </div>
+                    <label for="web-terminal-palette"><?=gtext('Colors');?></label>
+                    <select id="web-terminal-palette">
+                        <?php foreach (BastilleTerminalPalettes::all() as $paletteId => $palette): ?>
+                        <option value="<?=htmlspecialchars($paletteId);?>"><?=htmlspecialchars($palette['label']);?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label class="web-terminal-check" title="<?=gtext('Ignores the keyboard and paste in this terminal; it is a safeguard against slips, not a security barrier');?>">
+                        <input type="checkbox" id="web-terminal-readonly" /> <?=gtext('Read only');?>
+                    </label>
                 </div>
                 <div id="web-terminal-iframe-container">
                     <iframe id="web-terminal-iframe" src="about:blank"></iframe>
